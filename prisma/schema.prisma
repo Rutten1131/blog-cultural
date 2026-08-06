@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ─── Catálogo cerrado: Categorías ───────────────────────────
+// Solo lectura para usuarios. Editable solo desde admin.
+model Categoria {
+  id     Int      @id @default(autoincrement())
+  slug   String   @unique @db.VarChar(50)
+  nombre String   @db.VarChar(100)
+
+  eventos Evento[]
+
+  @@map("categorias")
+}
+
+// ─── Catálogo cerrado: Zonas / Parroquias ───────────────────
+// 6 urbanas + 13 rurales del cantón Loja.
+// Solo lectura para usuarios. Editable solo desde admin.
+model Zona {
+  id     Int      @id @default(autoincrement())
+  nombre String   @unique @db.VarChar(100)
+  tipo   TipoZona
+
+  eventos Evento[]
+
+  @@map("zonas")
+}
+
+enum TipoZona {
+  URBANA
+  RURAL
+}
+
+// ─── Evento ─────────────────────────────────────────────────
+model Evento {
+  id           Int           @id @default(autoincrement())
+  nombre       String        @db.VarChar(255)
+  slug         String        @unique @db.VarChar(300)
+  fecha        DateTime
+  lugar        String        @db.VarChar(255)
+  descripcion  String        @db.Text
+  imagenUrl    String?       @db.VarChar(500)
+  estado       EstadoEvento  @default(PENDIENTE)
+  nombreGestor          String        @db.VarChar(200)
+  confianzaClasificacion Float?
+  createdAt             DateTime      @default(now())
+
+  categoriaId  Int?
+  categoria    Categoria?    @relation(fields: [categoriaId], references: [id])
+
+  zonaId       Int?
+  zona         Zona?         @relation(fields: [zonaId], references: [id])
+
+  @@index([estado])
+  @@index([fecha])
+  @@index([categoriaId])
+  @@index([zonaId])
+  @@map("eventos")
+}
+
+enum EstadoEvento {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}

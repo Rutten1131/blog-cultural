@@ -28,6 +28,9 @@ Sitio web (agendaculturalloja.com) que agrega eventos culturales de Loja. Gestor
 
 **Zonas:** por parroquia de Loja (lista de parroquias a definir como catálogo cerrado, editable solo desde el backend/admin, no por el usuario final).
 
+## Motor de clasificación — decisión de proveedor
+La clasificación por IA (categoría + zona sugeridas) usa **Groq (llama-3.3-70b-versatile)**, no Anthropic. Decisión de César, confirmada en el Paso 4. Cualquier prompt o instrucción futura que mencione "API de Anthropic" para este módulo específico está desactualizada — el módulo real es `lib/clasificarEvento.ts` contra el endpoint de chat de Groq, con `GROQ_API_KEY` en `.env.local`.
+
 ## Flujo de publicación de un evento
 1. Gestor llena formulario público con: nombre del evento, fecha, lugar, descripción (texto libre), imagen.
 2. El sistema genera automáticamente:
