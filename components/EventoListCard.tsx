@@ -13,92 +13,171 @@ interface EventoCardProps {
   zona: { nombre: string } | null;
 }
 
-export function EventoListCard({ evento }: { evento: EventoCardProps }) {
-  const fechaFormateada = new Date(evento.fecha).toLocaleDateString("es-EC", {
+/** Formatea fecha en español */
+function formatFecha(fecha: Date) {
+  return new Date(fecha).toLocaleDateString("es-EC", {
     weekday: "short",
     day: "numeric",
-    month: "long",
-    year: "numeric",
+    month: "short",
   });
+}
 
-  const descripcionCorta =
-    evento.descripcion.length > 120
-      ? `${evento.descripcion.slice(0, 117)}...`
-      : evento.descripcion;
+/** Colores por categoría */
+const CAT_COLORS: Record<string, string> = {
+  "arte-y-exposiciones": "bg-violet-100 text-violet-700 border-violet-200",
+  teatro:               "bg-pink-100 text-pink-700 border-pink-200",
+  musica:               "bg-blue-100 text-blue-700 border-blue-200",
+  ferias:               "bg-amber-100 text-amber-700 border-amber-200",
+  "artes-vivas":        "bg-emerald-100 text-emerald-700 border-emerald-200",
+};
+
+/** Badge de categoría */
+export function CategoriaBadge({ categoria }: { categoria: { nombre: string; slug: string } | null }) {
+  if (!categoria) return null;
+  const color = CAT_COLORS[categoria.slug] ?? "bg-purple-100 text-purple-700 border-purple-200";
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${color}`}>
+      {categoria.nombre}
+    </span>
+  );
+}
+
+/** ── EventoCardFeatured — card grande para la sección hero y destacados ── */
+export function EventoCardFeatured({ evento }: { evento: EventoCardProps }) {
+  const fecha = formatFecha(evento.fecha);
+  const descripcionCorta = evento.descripcion.length > 140
+    ? `${evento.descripcion.slice(0, 137)}...`
+    : evento.descripcion;
 
   return (
     <Link
       href={`/eventos/${evento.slug}`}
-      className="group flex flex-col rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-sm hover:border-zinc-400 hover:shadow-md transition-all dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
+      className="card-surface sheen-hover group relative flex flex-col overflow-hidden rounded-2xl"
     >
       {/* Imagen */}
-      {evento.imagenUrl ? (
-        <div className="relative h-44 w-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+      <div className="relative h-52 w-full overflow-hidden bg-gradient-to-br from-purple-100 to-violet-200">
+        {evento.imagenUrl ? (
           <Image
             src={evento.imagenUrl}
             alt={evento.nombre}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             unoptimized
           />
-        </div>
-      ) : (
-        <div className="h-44 w-full bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 flex items-center justify-center">
-          <span className="text-4xl opacity-30">🎭</span>
-        </div>
-      )}
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-5xl opacity-20">🎭</span>
+          </div>
+        )}
+        {/* Gradient overlay bottom */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        {/* Fecha flotante */}
+        <span className="absolute bottom-3 left-3 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+          📅 {fecha}
+        </span>
+      </div>
 
-      <div className="flex flex-col flex-1 p-5 gap-3">
-        {/* Badges */}
+      {/* Contenido */}
+      <div className="flex flex-col gap-2.5 p-5">
         <div className="flex flex-wrap gap-1.5">
-          {evento.categoria && (
-            <span className="rounded-full bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              {evento.categoria.nombre}
-            </span>
-          )}
+          <CategoriaBadge categoria={evento.categoria} />
           {evento.zona && (
-            <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-              {evento.zona.nombre}
+            <span className="inline-flex items-center rounded-full border border-[var(--color-border)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-muted)]">
+              📍 {evento.zona.nombre}
             </span>
           )}
         </div>
 
-        {/* Título */}
-        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 leading-snug group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">
+        <h3 className="font-display text-xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] transition-colors group-hover:text-[var(--color-purple-1)]">
           {evento.nombre}
         </h3>
 
-        {/* Descripción corta */}
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed flex-1">
+        <p className="text-sm leading-relaxed text-[var(--color-muted)]">
           {descripcionCorta}
         </p>
 
-        {/* Fecha y Lugar */}
-        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-1 text-xs text-zinc-400 dark:text-zinc-500">
-          <span>📅 <span className="capitalize">{fechaFormateada}</span></span>
-          <span>📍 {evento.lugar}</span>
-        </div>
+        {/* CTA */}
+        <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[var(--color-purple-2)] transition-all duration-200 group-hover:gap-3">
+          Ver evento
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
+          </svg>
+        </span>
       </div>
     </Link>
   );
 }
 
+/** ── EventoCardHorizontal — card compacta horizontal para listas de sección ── */
+export function EventoCardHorizontal({ evento }: { evento: EventoCardProps }) {
+  const fecha = formatFecha(evento.fecha);
+
+  return (
+    <Link
+      href={`/eventos/${evento.slug}`}
+      className="card-surface group flex items-start gap-4 overflow-hidden rounded-xl p-3 transition-all"
+    >
+      {/* Thumbnail */}
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-purple-100 to-violet-200">
+        {evento.imagenUrl ? (
+          <Image
+            src={evento.imagenUrl}
+            alt={evento.nombre}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-110"
+            unoptimized
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xl opacity-30">
+            🎭
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <h4 className="font-display text-base font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] transition-colors group-hover:text-[var(--color-purple-1)] truncate">
+          {evento.nombre}
+        </h4>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-muted)]">
+          <span>📅 {fecha}</span>
+          {evento.zona && <span>📍 {evento.zona.nombre}</span>}
+        </div>
+        {evento.categoria && (
+          <CategoriaBadge categoria={evento.categoria} />
+        )}
+      </div>
+
+      {/* Arrow */}
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="mt-1 shrink-0 text-[var(--color-border)] transition-all duration-200 group-hover:translate-x-1 group-hover:text-[var(--color-purple-2)]"
+        aria-hidden="true"
+      >
+        <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
+      </svg>
+    </Link>
+  );
+}
+
+/** ── EventoListCard — card original mejorada ── */
+export function EventoListCard({ evento }: { evento: EventoCardProps }) {
+  return <EventoCardFeatured evento={evento} />;
+}
+
+/** ── EstadoVacioEvento ── */
 export function EstadoVacioEvento({ mensaje }: { mensaje: string }) {
   return (
-    <div className="col-span-full flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900">
-      <div className="text-4xl mb-4 opacity-40">📭</div>
-      <p className="text-base font-medium text-zinc-500 dark:text-zinc-400">
-        {mensaje}
-      </p>
-      <p className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
-        ¿Tenés un evento para publicar?{" "}
-        <Link
-          href="/publicar"
-          className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-300"
-        >
-          Publicalo acá
-        </Link>
-      </p>
+    <div className="col-span-full flex flex-col items-center justify-center py-16 text-center rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-white/60">
+      <div className="mb-4 text-5xl opacity-30">📭</div>
+      <p className="text-base font-semibold text-[var(--color-muted)]">{mensaje}</p>
     </div>
   );
 }

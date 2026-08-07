@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function PublicarPage() {
   return (
     <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="w-full max-w-2xl px-6 py-16">
+      <main className="w-full max-w-5xl px-6 py-16">
         {/* Header */}
         <div className="mb-10">
           <a

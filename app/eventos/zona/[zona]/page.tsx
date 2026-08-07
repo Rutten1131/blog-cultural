@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ZONAS } from "@/lib/constants";
 import { SITE_CONFIG } from "@/lib/utils";
 import { EventoListCard, EstadoVacioEvento } from "@/components/EventoListCard";
+import { Navbar } from "@/components/Navbar";
 
 export const revalidate = 60;
 
@@ -72,26 +73,28 @@ export default async function ZonaPage({ params }: PageProps) {
   const tipoLabel = zonaInfo.tipo === "URBANA" ? "Parroquia Urbana" : "Parroquia Rural";
 
   return (
-    <div className="min-h-screen bg-zinc-50 font-sans dark:bg-black">
-      <main className="w-full max-w-5xl mx-auto px-6 py-12">
+    <div className="flex min-h-screen flex-col font-sans" style={{ background: "var(--color-bg)" }}>
+      <Navbar />
+
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16 flex-1">
         {/* Breadcrumb */}
-        <nav className="mb-8 text-sm text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-          <Link href="/" className="hover:text-zinc-900 dark:hover:text-zinc-100">Inicio</Link>
+        <nav className="mb-6 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)] flex items-center gap-2">
+          <Link href="/" className="hover:text-[var(--color-purple-1)] transition-colors">Inicio</Link>
           <span>›</span>
-          <span className="text-zinc-900 dark:text-zinc-100 font-medium">{zonaInfo.nombre}</span>
+          <span className="text-[var(--color-dark)] font-bold">{zonaInfo.nombre}</span>
         </nav>
 
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-3">
-            <span className="rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <span className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1 text-xs font-semibold text-[var(--color-muted)]">
               {tipoLabel}
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="font-display text-4xl sm:text-5xl font-black uppercase tracking-tight text-[var(--color-dark)]">
             Eventos en {zonaInfo.nombre}
           </h1>
-          <p className="mt-2 text-zinc-500 dark:text-zinc-400">
+          <p className="mt-2 text-sm text-[var(--color-muted)]">
             {eventos.length > 0
               ? `${eventos.length} evento${eventos.length !== 1 ? "s" : ""} próximo${eventos.length !== 1 ? "s" : ""}`
               : ""}
@@ -112,10 +115,10 @@ export default async function ZonaPage({ params }: PageProps) {
         </div>
 
         {/* Link de vuelta */}
-        <div className="mt-12 pt-8 border-t border-zinc-200 dark:border-zinc-800 text-center">
+        <div className="mt-12 pt-8 border-t border-[var(--color-border)] text-center">
           <Link
             href="/"
-            className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="text-sm font-semibold text-[var(--color-muted)] hover:text-[var(--color-purple-1)] transition-colors"
           >
             ← Volver al inicio
           </Link>

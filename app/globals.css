@@ -1,26 +1,140 @@
 @import "tailwindcss";
 
+/* ── Google Fonts ── */
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+/* ── Design Tokens ── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Paleta principal */
+  --color-bg:        #eeeef8;
+  --color-surface:   #ffffff;
+  --color-purple-1:  #6d28d9;
+  --color-purple-2:  #7c3aed;
+  --color-purple-3:  #8b5cf6;
+  --color-violet:    #a78bfa;
+  --color-coral:     #ec4899;
+  --color-blue:      #3b82f6;
+  --color-dark:      #0f0f1a;
+  --color-text:      #1a1a2e;
+  --color-muted:     #64648a;
+  --color-border:    #ddddf0;
+
+  /* Gradientes */
+  --grad-purple:     linear-gradient(135deg, #6d28d9, #ec4899);
+  --grad-blob-1:     linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #3b82f6 100%);
+  --grad-blob-2:     linear-gradient(160deg, #6d28d9 0%, #a78bfa 60%, #ec4899 100%);
+
+  /* Tipografía */
+  --font-display:    "Barlow Condensed", "Arial Black", sans-serif;
+  --font-body:       "Manrope", system-ui, sans-serif;
+
+  /* Sombras */
+  --shadow-card:     0 2px 16px -4px rgba(109,40,217,0.10), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 12px 36px -8px rgba(109,40,217,0.22), 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-nav:      0 6px 20px -6px rgba(109,40,217,0.18), 0 1px 3px rgba(0,0,0,0.06);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ── Reset base ── */
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
+
+/* ── Noise overlay (efecto grano cinematográfico) ── */
+.noise-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+}
+
+/* ── Ticker marquee animation ── */
+@keyframes ticker-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-left 28s linear infinite;
+}
+.ticker-track:hover { animation-play-state: paused; }
+
+/* ── Blob float animation ── */
+@keyframes blob-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%       { transform: translateY(-18px) scale(1.04); }
+}
+.blob-float { animation: blob-float 8s ease-in-out infinite; }
+.blob-float-delay { animation: blob-float 10s ease-in-out infinite 2s; }
+
+/* ── Fade-up entrance ── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.fade-up-delay-1 { animation-delay: 0.1s; }
+.fade-up-delay-2 { animation-delay: 0.2s; }
+.fade-up-delay-3 { animation-delay: 0.3s; }
+
+/* ── Hero mobile image scroll ── */
+@keyframes hero-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.hero-mobile-flow { animation: hero-scroll 22s linear infinite; }
+
+/* ── Sheen (brillo) hover ── */
+@keyframes sheen-pass {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+.sheen-hover {
+  position: relative;
+  overflow: hidden;
+}
+.sheen-hover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  transform: translateX(-100%);
+  transition: none;
+}
+.sheen-hover:hover::after {
+  animation: sheen-pass 0.55s ease-out forwards;
+}
+
+/* ── Utility: display font ── */
+.font-display { font-family: var(--font-display); }
+
+/* ── Gradient text ── */
+.text-gradient-purple {
+  background: var(--grad-purple);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Card base ── */
+.card-surface {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease;
+}
+.card-surface:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-3px);
+  border-color: rgba(124,58,237,0.25);
+}
+

@@ -4,6 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { SITE_CONFIG } from "@/lib/utils";
+import { BackButton } from "@/components/BackButton";
+import { EventoListCard } from "@/components/EventoListCard";
+import { Navbar } from "@/components/Navbar";
 
 // Habilitar ISR (Incremental Static Regeneration) cada 60 segundos
 export const revalidate = 60;
@@ -54,17 +57,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const title = `${evento.nombre} — ${SITE_CONFIG.nombre}`;
+  const title = `${evento.nombre} — Evento Cultural en Loja`;
   const description =
     evento.descripcion.length > 155
       ? `${evento.descripcion.slice(0, 152)}...`
       : evento.descripcion;
 
   const url = `${SITE_CONFIG.url}/eventos/${evento.slug}`;
+  const categoriaNombre = evento.categoria?.nombre || "Cultural";
+  const zonaNombre = evento.zona?.nombre || "Loja";
+
+  const keywords = [
+    evento.nombre,
+    `evento ${categoriaNombre}`,
+    `que hacer en Loja ${zonaNombre}`,
+    `cultura Loja`,
+    `agenda cultural Loja`,
+    evento.lugar,
+    evento.nombreGestor,
+  ].filter(Boolean);
 
   return {
     title,
     description,
+    keywords,
     alternates: {
       canonical: url,
     },
@@ -80,6 +96,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             {
               url: evento.imagenUrl,
               alt: evento.nombre,
+              width: 1200,
+              height: 630,
             },
           ]
         : [],
@@ -102,7 +120,35 @@ export default async function EventoDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // Schema.org Event (JSON-LD)
+  // Buscar eventos relacionados (misma categoría o fecha más cercana, excluyendo el actual)
+  const eventosRelacionados = await prisma.evento.findMany({
+    where: {
+      estado: "APROBADO",
+      id: { not: evento.id },
+      ...(evento.categoriaId ? { categoriaId: evento.categoriaId } : {}),
+    },
+    include: { categoria: true, zona: true },
+    orderBy: { fecha: "asc" },
+    take: 3,
+  });
+
+  // Si no hay suficientes de la misma categoría, traer los más próximos en fecha general
+  let masRelacionados = eventosRelacionados;
+  if (masRelacionados.length < 3) {
+    const idsExistentes = [evento.id, ...masRelacionados.map((r) => r.id)];
+    const extra = await prisma.evento.findMany({
+      where: {
+        estado: "APROBADO",
+        id: { notIn: idsExistentes },
+      },
+      include: { categoria: true, zona: true },
+      orderBy: { fecha: "asc" },
+      take: 3 - masRelacionados.length,
+    });
+    masRelacionados = [...masRelacionados, ...extra];
+  }
+
+  // Schema.org Event (JSON-LD) totalmente enriquecido para Google Rich Snippets
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -111,6 +157,8 @@ export default async function EventoDetailPage({ params }: PageProps) {
     description: evento.descripcion,
     eventStatus: "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    inLanguage: "es-EC",
+    category: evento.categoria?.nombre || "Cultura",
     location: {
       "@type": "Place",
       name: evento.lugar,
@@ -124,6 +172,10 @@ export default async function EventoDetailPage({ params }: PageProps) {
     ...(evento.imagenUrl && { image: [evento.imagenUrl] }),
     organizer: {
       "@type": "Organization",
+      name: evento.nombreGestor,
+    },
+    performer: {
+      "@type": "PerformingGroup",
       name: evento.nombreGestor,
     },
   };
@@ -143,15 +195,13 @@ export default async function EventoDetailPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="min-h-screen bg-zinc-50 font-sans dark:bg-black text-zinc-900 dark:text-zinc-100">
-        <main className="w-full max-w-4xl mx-auto px-6 py-12">
-          {/* Miga de pan / Botón volver */}
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 mb-8 transition-colors"
-          >
-            ← Volver a la agenda
-          </Link>
+      <div className="flex min-h-screen flex-col font-sans text-zinc-900 dark:text-zinc-100" style={{ background: "var(--color-bg)" }}>
+        {/* Navbar Flotante */}
+        <Navbar />
+
+        <main className="w-full max-w-4xl mx-auto px-6 pt-28 pb-16 flex-1">
+          {/* Botón inteligente Volver (regresa a la página anterior en el historial) */}
+          <BackButton />
 
           <article className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
             {/* Imagen Destacada */}
@@ -172,9 +222,12 @@ export default async function EventoDetailPage({ params }: PageProps) {
               {/* Badges de Categoría y Zona */}
               <div className="flex flex-wrap gap-2.5 mb-6">
                 {evento.categoria && (
-                  <span className="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 px-3.5 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                  <Link
+                    href={`/eventos/categoria/${evento.categoria.slug}`}
+                    className="inline-flex items-center rounded-full bg-zinc-100 hover:bg-purple-100 hover:text-purple-700 dark:bg-zinc-800 px-3.5 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition-colors"
+                  >
                     {evento.categoria.nombre}
-                  </span>
+                  </Link>
                 )}
                 {evento.zona && (
                   <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3.5 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-300">
@@ -235,6 +288,20 @@ export default async function EventoDetailPage({ params }: PageProps) {
               </div>
             </div>
           </article>
+
+          {/* Sección de Eventos Relacionados / Recomendados */}
+          {masRelacionados.length > 0 && (
+            <section className="mt-16 border-t border-zinc-200 dark:border-zinc-800 pt-12">
+              <h2 className="text-2xl font-black uppercase tracking-tight text-zinc-900 dark:text-zinc-100 mb-6">
+                Otros eventos que te pueden interesar
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {masRelacionados.map((item) => (
+                  <EventoListCard key={item.id} evento={item} />
+                ))}
+              </div>
+            </section>
+          )}
         </main>
       </div>
     </>

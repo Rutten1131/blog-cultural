@@ -5,6 +5,7 @@
  * No asigna categoría ni zona (eso se hace en el paso de clasificación IA).
  */
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generarSlug } from "@/lib/utils";
 
@@ -105,6 +106,9 @@ export async function crearEvento(
         console.error("Error en clasificación en segundo plano:", err);
       }
     })();
+
+    revalidatePath("/admin");
+    revalidatePath("/");
 
     return { success: true };
   } catch (error: unknown) {

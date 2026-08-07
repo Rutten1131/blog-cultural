@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: "Moderación de eventos pendientes para la Agenda Cultural de Loja.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   const eventosPendientes = await prisma.evento.findMany({
     where: { estado: "PENDIENTE" },
