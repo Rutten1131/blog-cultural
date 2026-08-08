@@ -9,6 +9,7 @@ import {
 import { Navbar } from "@/components/Navbar";
 import { CategoryTicker } from "@/components/CategoryTicker";
 import { UltimosEventosSection } from "@/components/UltimosEventosSection";
+import { ProximosEventosCarousel } from "@/components/ProximosEventosCarousel";
 
 export const revalidate = 60;
 
@@ -164,12 +165,12 @@ async function SeccionCategoria({
    PAGE — Homepage Magazine
 ══════════════════════════════════════════════════ */
 export default async function Home() {
-  // Destacados para el hero (3 más próximos)
+  // Próximos eventos ordenados por fecha (hasta 12 para el carrusel)
   const destacados = await prisma.evento.findMany({
     where: { estado: "APROBADO", fecha: { gte: new Date() } },
     include: { categoria: true, zona: true },
     orderBy: { fecha: "asc" },
-    take: 3,
+    take: 12,
   });
 
   // Últimos eventos publicados (ordenados por fecha de creación descendente)
@@ -223,14 +224,10 @@ export default async function Home() {
               <span className="text-3xl font-bold sm:text-4xl md:text-5xl">Loja</span>
             </h1>
 
-            {/* Grid de destacados */}
+            {/* Carrusel de próximos eventos ordenados por fecha */}
             {destacados.length > 0 ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {destacados.map((ev, i) => (
-                  <div key={ev.id} className={`fade-up fade-up-delay-${i + 1}`}>
-                    <EventoCardFeatured evento={ev} />
-                  </div>
-                ))}
+              <div className="relative px-1">
+                <ProximosEventosCarousel eventos={destacados} />
               </div>
             ) : (
               <EstadoVacioEvento mensaje="No hay eventos próximos publicados todavía." />

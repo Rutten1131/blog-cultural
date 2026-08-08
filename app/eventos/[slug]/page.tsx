@@ -7,6 +7,7 @@ import { SITE_CONFIG } from "@/lib/utils";
 import { BackButton } from "@/components/BackButton";
 import { EventoListCard } from "@/components/EventoListCard";
 import { Navbar } from "@/components/Navbar";
+import { MediaGallery } from "@/components/MediaGallery";
 
 // Habilitar ISR (Incremental Static Regeneration) cada 60 segundos
 export const revalidate = 60;
@@ -204,19 +205,13 @@ export default async function EventoDetailPage({ params }: PageProps) {
           <BackButton />
 
           <article className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-            {/* Imagen Destacada */}
-            {evento.imagenUrl && (
-              <div className="relative w-full h-72 sm:h-96 bg-zinc-100 dark:bg-zinc-800">
-                <Image
-                  src={evento.imagenUrl}
-                  alt={evento.nombre}
-                  fill
-                  className="object-cover"
-                  priority
-                  unoptimized
-                />
-              </div>
-            )}
+            {/* Galería / Carrusel de Imágenes y Video */}
+            <MediaGallery
+              multimedia={(evento.multimedia as string[]) || []}
+              imagenUrl={evento.imagenUrl}
+              videoUrl={evento.videoUrl}
+              nombre={evento.nombre}
+            />
 
             <div className="p-8 sm:p-12">
               {/* Badges de Categoría y Zona */}

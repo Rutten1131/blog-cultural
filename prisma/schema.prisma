@@ -48,6 +48,8 @@ model Evento {
   lugar        String        @db.VarChar(255)
   descripcion  String        @db.Text
   imagenUrl    String?       @db.VarChar(500)
+  multimedia   Json?         // Array de URLs de imágenes para el carrusel
+  videoUrl     String?       @db.VarChar(500) // Enlace a video (FB, IG, TikTok, YT)
   estado       EstadoEvento  @default(PENDIENTE)
   nombreGestor          String        @db.VarChar(200)
   confianzaClasificacion Float?

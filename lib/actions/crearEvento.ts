@@ -14,6 +14,12 @@ export interface CrearEventoState {
   error?: string;
 }
 
+function imagenesUrl(imagenUrl: string | null, multimedia: string[]): string | null {
+  if (imagenUrl) return imagenUrl;
+  if (multimedia.length > 0) return multimedia[0];
+  return null;
+}
+
 export async function crearEvento(
   _prevState: CrearEventoState,
   formData: FormData
@@ -24,6 +30,17 @@ export async function crearEvento(
   const lugar = formData.get("lugar")?.toString().trim() ?? "";
   const descripcion = formData.get("descripcion")?.toString().trim() ?? "";
   const imagenUrl = formData.get("imagenUrl")?.toString().trim() || null;
+  const videoUrl = formData.get("videoUrl")?.toString().trim() || null;
+  const multimediaRaw = formData.get("multimedia")?.toString().trim();
+  let multimedia: string[] = [];
+  if (multimediaRaw) {
+    try {
+      multimedia = JSON.parse(multimediaRaw);
+    } catch {
+      multimedia = [];
+    }
+  }
+
   const nombreGestor = formData.get("nombreGestor")?.toString().trim() ?? "";
 
   // Validación de campos obligatorios
@@ -43,10 +60,11 @@ export async function crearEvento(
     };
   }
 
-  // Validar URL de imagen si se proporcionó
-  if (imagenUrl) {
+  // Validar URL de imagen o primera de multimedia
+  const mainImage = imagenesUrl(imagenUrl, multimedia);
+  if (mainImage) {
     try {
-      new URL(imagenUrl);
+      new URL(mainImage);
     } catch {
       return {
         success: false,
@@ -66,7 +84,9 @@ export async function crearEvento(
         fecha: fechaDate,
         lugar,
         descripcion,
-        imagenUrl,
+        imagenUrl: mainImage,
+        multimedia: multimedia.length > 0 ? multimedia : undefined,
+        videoUrl,
         nombreGestor,
       },
     });

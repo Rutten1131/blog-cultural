@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { crearEvento, type CrearEventoState } from "@/lib/actions/crearEvento";
-import { ImageUploader } from "@/components/ImageUploader";
+import { MultiMediaUploader } from "@/components/MultiMediaUploader";
 import { PublicarPreviewCard } from "@/components/PublicarPreviewCard";
 
 const initialState: CrearEventoState = { success: false };
@@ -12,7 +12,8 @@ export function PublicarForm() {
   const [fecha, setFecha] = useState("");
   const [lugar, setLugar] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [imagenUrl, setImagenUrl] = useState("");
+  const [imagenes, setImagenes] = useState<string[]>([]);
+  const [videoUrl, setVideoUrl] = useState("");
   const [nombreGestor, setNombreGestor] = useState("");
 
   const [state, formAction, isPending] = useActionState(
@@ -134,16 +135,16 @@ export function PublicarForm() {
           />
         </div>
 
-        {/* Imagen / Video del evento */}
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Imagen o Afiche del evento{" "}
-            <span className="font-normal text-zinc-400">(opcional)</span>
-          </label>
-          <ImageUploader value={imagenUrl} onChange={setImagenUrl} />
-          {/* Input hidden para enviar la URL en el FormData */}
-          <input type="hidden" name="imagenUrl" value={imagenUrl} />
-        </div>
+        {/* Multimedia del evento (Galería de imágenes + Enlace de Video) */}
+        <MultiMediaUploader
+          imagenes={imagenes}
+          onImagenesChange={setImagenes}
+          videoUrl={videoUrl}
+          onVideoUrlChange={setVideoUrl}
+        />
+        <input type="hidden" name="multimedia" value={JSON.stringify(imagenes)} />
+        <input type="hidden" name="videoUrl" value={videoUrl} />
+        <input type="hidden" name="imagenUrl" value={imagenes[0] || ""} />
 
         {/* Nombre del gestor */}
         <div>
@@ -187,7 +188,7 @@ export function PublicarForm() {
           fecha={fecha}
           lugar={lugar}
           descripcion={descripcion}
-          imagenUrl={imagenUrl}
+          imagenUrl={imagenes[0] || ""}
           nombreGestor={nombreGestor}
         />
       </div>
