@@ -128,14 +128,14 @@ export function ProximosEventosCarousel({ eventos }: Props) {
     <div className="relative flex flex-col items-center gap-8">
       {/* ── Stack de cartas ── */}
       <div
-        className="relative w-full max-w-sm mx-auto"
+        className="relative w-full max-w-sm mx-auto mt-6"
         style={{ height: 420 }}
       >
         {/* Cartas del fondo (de atrás hacia adelante) */}
         {shown.slice(1).reverse().map((ev, revIdx) => {
           const idx = shown.length - 1 - revIdx; // posición real en stack (1, 2, 3...)
           const scale = 1 - idx * 0.04;
-          const translateY = -idx * 28; // sobresale por arriba
+          const translateY = idx * 16; // sobresale ligeramente por abajo
           const opacity = 1 - idx * 0.15;
           return (
             <div
@@ -143,7 +143,7 @@ export function ProximosEventosCarousel({ eventos }: Props) {
               className="absolute inset-0 rounded-2xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]"
               style={{
                 transform: `scale(${scale}) translateY(${translateY}px)`,
-                transformOrigin: "top center",
+                transformOrigin: "bottom center",
                 opacity,
                 zIndex: shown.length - idx,
                 transition: "transform 0.3s ease, opacity 0.3s ease",

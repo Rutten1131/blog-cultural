@@ -27,7 +27,6 @@ function formatFecha(fecha: Date | string) {
 
 export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
   const [busqueda, setBusqueda] = useState("");
-  const [mostrarTodos, setMostrarTodos] = useState(false);
 
   // Filtrado dinámico por buscador (nombre, lugar, descripción, categoría, zona)
   const eventosFiltrados = eventos.filter((ev) => {
@@ -42,17 +41,12 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
     );
   });
 
-  // Mostramos 10 por defecto, o todos si hace click en "Ver más" (o si está buscando)
-  const limite = busqueda.trim() || mostrarTodos ? eventosFiltrados.length : 10;
-  const eventosVisibles = eventosFiltrados.slice(0, limite);
-  const hayMas = eventosFiltrados.length > 10 && !mostrarTodos && !busqueda.trim();
-
   return (
     <section className="w-full py-12 bg-white/50 backdrop-blur-sm border-y border-[var(--color-border)]" aria-label="Últimos eventos publicados">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         
         {/* Encabezado + Buscador */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="mb-2 flex items-center gap-2">
               <span className="relative flex h-2 w-2">
@@ -63,8 +57,8 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
                 Recientemente agregados
               </span>
             </div>
-            <h2 className="font-display text-3xl font-black uppercase tracking-tight text-[var(--color-dark)] sm:text-4xl">
-              Últimos Eventos Publicados
+            <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)] sm:text-3xl">
+              Últimos Eventos Artísticos Publicados en Loja
             </h2>
           </div>
 
@@ -97,17 +91,36 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
           </div>
         </div>
 
-        {/* Lista/Grid de Eventos */}
-        {eventosVisibles.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {eventosVisibles.map((ev) => (
+        {/* Indicador de deslizar */}
+        {eventosFiltrados.length > 0 && !busqueda.trim() && (
+          <div className="mb-3 flex items-center gap-1.5 text-[var(--color-muted)]">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-pulse">
+              <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
+            </svg>
+            <span className="text-[11px] font-semibold">Desliza hacia la derecha para ver más</span>
+          </div>
+        )}
+
+        {/* Slide Horizontal de Eventos */}
+        {eventosFiltrados.length > 0 ? (
+          <div
+            className="flex gap-4 overflow-x-auto scroll-smooth pb-4"
+            style={{
+              scrollSnapType: "x mandatory",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
+            {eventosFiltrados.map((ev) => (
               <Link
                 key={ev.id}
                 href={`/eventos/${ev.slug}`}
-                className="card-surface group flex flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-md"
+                className="card-surface group flex-none w-[200px] sm:w-[220px] flex flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-white transition-all hover:-translate-y-1 hover:shadow-md"
+                style={{ scrollSnapAlign: "start" }}
               >
                 {/* Imagen mini */}
-                <div className="relative h-36 w-full overflow-hidden bg-gradient-to-br from-purple-100 to-violet-200">
+                <div className="relative h-32 w-full overflow-hidden bg-gradient-to-br from-purple-100 to-violet-200">
                   {ev.imagenUrl ? (
                     <Image
                       src={ev.imagenUrl}
@@ -132,13 +145,13 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
                     <div className="mb-1 flex flex-wrap gap-1">
                       <CategoriaBadge categoria={ev.categoria} />
                     </div>
-                    <h3 className="font-display text-sm font-bold uppercase leading-snug text-[var(--color-dark)] line-clamp-2 group-hover:text-[var(--color-purple-1)]">
+                    <h3 className="font-display text-xs font-bold uppercase leading-snug text-[var(--color-dark)] line-clamp-2 group-hover:text-[var(--color-purple-1)]">
                       {ev.nombre}
                     </h3>
                   </div>
 
                   {ev.zona && (
-                    <span className="mt-2 text-[11px] font-medium text-[var(--color-muted)] truncate">
+                    <span className="mt-2 text-[10px] font-medium text-[var(--color-muted)] truncate">
                       📍 {ev.zona.nombre}
                     </span>
                   )}
@@ -151,22 +164,6 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
             <p className="text-sm font-semibold text-[var(--color-muted)]">
               No se encontraron eventos con &quot;{busqueda}&quot;
             </p>
-          </div>
-        )}
-
-        {/* Botón Ver Más */}
-        {hayMas && (
-          <div className="mt-8 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setMostrarTodos(true)}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--color-purple-1)] bg-white px-6 py-2.5 text-sm font-bold text-[var(--color-purple-1)] shadow-sm transition-all hover:bg-[var(--color-purple-1)] hover:text-white"
-            >
-              Ver más eventos ({eventosFiltrados.length - 10} más)
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 9l6 6 6-6"/>
-              </svg>
-            </button>
           </div>
         )}
 
