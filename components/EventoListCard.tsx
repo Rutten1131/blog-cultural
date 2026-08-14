@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { formatFechaLoja } from "@/lib/fechas";
 
 interface EventoCardProps {
   id: number;
@@ -13,13 +14,9 @@ interface EventoCardProps {
   zona: { nombre: string } | null;
 }
 
-/** Formatea fecha en español */
+/** Formatea fecha en zona Loja (corto: "vie, 14 ago") */
 function formatFecha(fecha: Date) {
-  return new Date(fecha).toLocaleDateString("es-EC", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  return formatFechaLoja(fecha, "corto");
 }
 
 /** Colores por categoría */

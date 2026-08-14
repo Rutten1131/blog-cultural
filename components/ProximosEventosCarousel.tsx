@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { formatFechaLojaCliente } from "@/lib/fechasCliente";
 
 interface Evento {
   id: number;
@@ -16,8 +17,7 @@ interface Evento {
 }
 
 function formatFechaCorta(fecha: Date | string) {
-  const d = new Date(fecha);
-  return d.toLocaleDateString("es-EC", { weekday: "short", day: "numeric", month: "short" });
+  return formatFechaLojaCliente(fecha, "corto");
 }
 
 interface Props {

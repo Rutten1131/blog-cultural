@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   },
   description:
     "Descubre los mejores eventos culturales de Loja: arte, teatro, música, ferias y artes vivas. Publicación abierta para gestores culturales.",
-  metadataBase: new URL("https://agendaculturalloja.com"),
+  metadataBase: new URL("https://agendacultural-loja.com"),
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",

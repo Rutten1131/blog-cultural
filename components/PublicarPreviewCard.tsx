@@ -1,25 +1,37 @@
-import Link from "next/link";
+"use client";
+
 import Image from "next/image";
+import { formatFechaHoraLojaCliente } from "@/lib/fechasCliente";
 
 interface PublicarPreviewCardProps {
   nombre: string;
-  fecha: string;
+  fecha: string; // datetime-local: "YYYY-MM-DDTHH:mm"
   lugar: string;
   descripcion: string;
   imagenUrl: string;
   nombreGestor: string;
 }
 
-function formatFecha(fechaStr: string) {
-  if (!fechaStr) return "Fecha del evento";
-  const date = new Date(fechaStr + "T00:00:00");
-  if (isNaN(date.getTime())) return "Fecha del evento";
-
-  return date.toLocaleDateString("es-EC", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+/**
+ * Parsea el input datetime-local ("YYYY-MM-DDTHH:mm") y lo muestra en zona Loja.
+ * Misma semántica que `parseFechaInputLocal` del servidor pero client-safe.
+ */
+function formatFechaPreview(input: string): string {
+  if (!input) return "Fecha del evento";
+  // Convertir "2026-08-14T20:00" → "2026-08-14T20:00:00-05:00" (hora Loja)
+  // para que el formateo use la zona correcta independientemente del browser.
+  let isoLoja: string;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(input)) {
+    isoLoja = `${input}:00-05:00`;
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    // Solo fecha sin hora: mediodía Loja
+    isoLoja = `${input}T12:00:00-05:00`;
+  } else {
+    return "Fecha del evento";
+  }
+  const d = new Date(isoLoja);
+  if (isNaN(d.getTime())) return "Fecha del evento";
+  return formatFechaHoraLojaCliente(d, "corto");
 }
 
 export function PublicarPreviewCard({
@@ -30,7 +42,7 @@ export function PublicarPreviewCard({
   imagenUrl,
   nombreGestor,
 }: PublicarPreviewCardProps) {
-  const fechaFormateada = formatFecha(fecha);
+  const fechaFormateada = formatFechaPreview(fecha);
   const descripcionCorta =
     descripcion.length > 140
       ? `${descripcion.slice(0, 137)}...`

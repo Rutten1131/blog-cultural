@@ -3,11 +3,18 @@
 /**
  * Server Action — Crear un evento pendiente.
  * No asigna categoría ni zona (eso se hace en el paso de clasificación IA).
+ *
+ * REGLA de zona horaria (CONTEXTO-TECNICO.md §5):
+ * El input de fecha puede venir en dos formatos:
+ *   1. "YYYY-MM-DD" (legacy `type="date"`) → se interpreta como mediodía Ecuador
+ *   2. "YYYY-MM-DDTHH:mm" (`type="datetime-local"`) → hora local Loja
+ * Ambos se parsean vía `parseFechaInputLocal()` de lib/fechas.ts.
  */
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generarSlug } from "@/lib/utils";
+import { parseFechaInputLocal } from "@/lib/fechas";
+import { revalidateAll } from "./revalidate";
 
 export interface CrearEventoState {
   success: boolean;
@@ -26,7 +33,7 @@ export async function crearEvento(
 ): Promise<CrearEventoState> {
   // Extraer campos
   const nombre = formData.get("nombre")?.toString().trim() ?? "";
-  const fecha = formData.get("fecha")?.toString().trim() ?? "";
+  const fechaInput = formData.get("fecha")?.toString().trim() ?? "";
   const lugar = formData.get("lugar")?.toString().trim() ?? "";
   const descripcion = formData.get("descripcion")?.toString().trim() ?? "";
   const imagenUrl = formData.get("imagenUrl")?.toString().trim() || null;
@@ -44,16 +51,16 @@ export async function crearEvento(
   const nombreGestor = formData.get("nombreGestor")?.toString().trim() ?? "";
 
   // Validación de campos obligatorios
-  if (!nombre || !fecha || !lugar || !descripcion || !nombreGestor) {
+  if (!nombre || !fechaInput || !lugar || !descripcion || !nombreGestor) {
     return {
       success: false,
       error: "Todos los campos obligatorios deben estar completos.",
     };
   }
 
-  // Validar formato de fecha
-  const fechaDate = new Date(fecha);
-  if (isNaN(fechaDate.getTime())) {
+  // Validar fecha vía lib/fechas.ts (parsea formato YYYY-MM-DD o YYYY-MM-DDTHH:mm)
+  const fechaDate = parseFechaInputLocal(fechaInput);
+  if (!fechaDate) {
     return {
       success: false,
       error: "La fecha ingresada no es válida.",
@@ -73,8 +80,10 @@ export async function crearEvento(
     }
   }
 
-  // Generar slug determinista (sin IA)
-  const slug = generarSlug(nombre, fecha, lugar);
+  // Generar slug determinista (sin IA). Usamos la fecha en formato ISO
+  // en zona Loja para que el slug sea estable y refleje la fecha local.
+  const fechaParaSlug = fechaInput.split("T")[0]; // "YYYY-MM-DD"
+  const slug = generarSlug(nombre, fechaParaSlug, lugar);
 
   try {
     const nuevoEvento = await prisma.evento.create({
@@ -127,8 +136,8 @@ export async function crearEvento(
       }
     })();
 
-    revalidatePath("/admin");
-    revalidatePath("/");
+    // Revalidar TODAS las rutas afectadas (no solo / y /admin)
+    revalidateAll();
 
     return { success: true };
   } catch (error: unknown) {

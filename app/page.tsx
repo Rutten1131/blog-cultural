@@ -2,11 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIAS } from "@/types";
-import {
-  EventoCardFeatured,
-  EventoCardHorizontal,
-  EstadoVacioEvento,
-} from "@/components/EventoListCard";
+import { ahoraUTC } from "@/lib/fechas";
+import { EstadoVacioEvento } from "@/components/EventoListCard";
 import { Navbar } from "@/components/Navbar";
 import { CategoryTicker } from "@/components/CategoryTicker";
 import { UltimosEventosSection } from "@/components/UltimosEventosSection";
@@ -139,7 +136,7 @@ async function SeccionCategoria({
   blobVariant: 1 | 2;
 }) {
   const eventos = await prisma.evento.findMany({
-    where: { estado: "APROBADO", fecha: { gte: new Date() }, categoria: { slug } },
+    where: { estado: "APROBADO", fecha: { gte: ahoraUTC() }, categoria: { slug } },
     include: { categoria: true, zona: true },
     orderBy: { fecha: "asc" },
     take: 5,
@@ -231,7 +228,7 @@ async function SeccionCategoria({
 export default async function Home() {
   // Próximos eventos ordenados por fecha (hasta 12 para el carrusel)
   const destacados = await prisma.evento.findMany({
-    where: { estado: "APROBADO", fecha: { gte: new Date() } },
+    where: { estado: "APROBADO", fecha: { gte: ahoraUTC() } },
     include: { categoria: true, zona: true },
     orderBy: { fecha: "asc" },
     take: 12,

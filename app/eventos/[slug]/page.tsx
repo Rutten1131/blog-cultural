@@ -1,9 +1,9 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { SITE_CONFIG } from "@/lib/utils";
+import { formatFechaHoraLoja } from "@/lib/fechas";
 import { BackButton } from "@/components/BackButton";
 import { EventoListCard } from "@/components/EventoListCard";
 import { Navbar } from "@/components/Navbar";
@@ -181,12 +181,7 @@ export default async function EventoDetailPage({ params }: PageProps) {
     },
   };
 
-  const fechaFormateada = new Date(evento.fecha).toLocaleDateString("es-EC", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const fechaFormateada = formatFechaHoraLoja(evento.fecha, "largo");
 
   return (
     <>

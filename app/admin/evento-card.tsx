@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { aprobarEvento, rechazarEvento } from "@/lib/actions/moderacionEvento";
+import { formatFechaLojaCliente } from "@/lib/fechasCliente";
 
 interface Categoria {
   id: number;
@@ -94,12 +95,7 @@ export function EventoCard({
         </div>
         <div>
           📅 <span className="font-medium text-zinc-900 dark:text-zinc-100">Fecha:</span>{" "}
-          {new Date(evento.fecha).toLocaleDateString("es-EC", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+          {formatFechaLojaCliente(evento.fecha, "largo")}
         </div>
       </div>
 

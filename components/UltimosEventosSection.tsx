@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CategoriaBadge } from "./EventoListCard";
+import { formatFechaLojaCliente } from "@/lib/fechasCliente";
 
 interface Evento {
   id: number;
@@ -18,11 +19,7 @@ interface Evento {
 }
 
 function formatFecha(fecha: Date | string) {
-  return new Date(fecha).toLocaleDateString("es-EC", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  return formatFechaLojaCliente(fecha, "corto");
 }
 
 export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {

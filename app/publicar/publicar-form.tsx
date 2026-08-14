@@ -9,7 +9,7 @@ const initialState: CrearEventoState = { success: false };
 
 export function PublicarForm() {
   const [nombre, setNombre] = useState("");
-  const [fecha, setFecha] = useState("");
+  const [fecha, setFecha] = useState(""); // datetime-local: "YYYY-MM-DDTHH:mm"
   const [lugar, setLugar] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [imagenes, setImagenes] = useState<string[]>([]);
@@ -76,23 +76,26 @@ export function PublicarForm() {
           />
         </div>
 
-        {/* Fecha */}
+        {/* Fecha y hora — REGLA TZ: datetime-local interpreta como hora de Loja */}
         <div>
           <label
             htmlFor="fecha"
             className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Fecha <span className="text-red-500">*</span>
+            Fecha y hora del evento <span className="text-red-500">*</span>
           </label>
           <input
             id="fecha"
             name="fecha"
-            type="date"
+            type="datetime-local"
             required
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
             className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 shadow-sm transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
           />
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Horario de Loja (UTC-5). Si no indicás hora, se interpreta como 12:00 del día seleccionado.
+          </p>
         </div>
 
         {/* Lugar */}
@@ -195,4 +198,3 @@ export function PublicarForm() {
     </div>
   );
 }
-
