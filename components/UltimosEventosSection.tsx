@@ -117,7 +117,7 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
                 style={{ scrollSnapAlign: "start" }}
               >
                 {/* Imagen mini */}
-                <div className="relative h-32 w-full overflow-hidden bg-gradient-to-br from-purple-100 to-violet-200">
+                <div className="relative h-32 w-full overflow-hidden bg-gradient-to-br from-purple-900 via-indigo-900 to-zinc-950">
                   {ev.imagenUrl ? (
                     <Image
                       src={ev.imagenUrl}
@@ -125,12 +125,14 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
                       fill
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
                       unoptimized
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-3xl opacity-20">
-                      🎭
-                    </div>
-                  )}
+                  ) : null}
+                  <div className="flex h-full w-full items-center justify-center text-3xl opacity-30">
+                    🎭
+                  </div>
                   <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
                     📅 {formatFecha(ev.fecha)}
                   </span>

@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { formatFechaLojaCliente } from "@/lib/fechasCliente";
@@ -52,7 +54,7 @@ export function EventoCardFeatured({ evento }: { evento: EventoCardProps }) {
       className="card-surface sheen-hover group relative flex flex-col overflow-hidden rounded-2xl"
     >
       {/* Imagen */}
-      <div className="relative h-52 w-full overflow-hidden bg-gradient-to-br from-purple-100 to-violet-200">
+      <div className="relative h-52 w-full overflow-hidden bg-gradient-to-br from-purple-900 via-indigo-900 to-zinc-950">
         {evento.imagenUrl ? (
           <Image
             src={evento.imagenUrl}
@@ -60,16 +62,18 @@ export function EventoCardFeatured({ evento }: { evento: EventoCardProps }) {
             fill
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             unoptimized
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-5xl opacity-20">🎭</span>
-          </div>
-        )}
+        ) : null}
+        <div className="flex h-full w-full items-center justify-center">
+          <span className="text-5xl opacity-30">🎭</span>
+        </div>
         {/* Gradient overlay bottom */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         {/* Fecha flotante */}
-        <span className="absolute bottom-3 left-3 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+        <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
           📅 {fecha}
         </span>
       </div>
@@ -115,7 +119,7 @@ export function EventoCardHorizontal({ evento }: { evento: EventoCardProps }) {
       className="card-surface group flex items-start gap-4 overflow-hidden rounded-xl p-3 transition-all"
     >
       {/* Thumbnail */}
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-purple-100 to-violet-200">
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-purple-900 via-indigo-900 to-zinc-950">
         {evento.imagenUrl ? (
           <Image
             src={evento.imagenUrl}
@@ -123,12 +127,14 @@ export function EventoCardHorizontal({ evento }: { evento: EventoCardProps }) {
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-110"
             unoptimized
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xl opacity-30">
-            🎭
-          </div>
-        )}
+        ) : null}
+        <div className="flex h-full w-full items-center justify-center text-xl opacity-30">
+          🎭
+        </div>
       </div>
 
       {/* Info */}

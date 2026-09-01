@@ -150,10 +150,20 @@ export function ProximosEventosCarousel({ eventos }: Props) {
                 pointerEvents: "none",
               }}
             >
-              <div className="relative h-52 w-full bg-gradient-to-br from-purple-100 to-violet-200">
+              <div className="relative h-52 w-full bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-950">
                 {ev.imagenUrl && (
-                  <Image src={ev.imagenUrl} alt={ev.nombre} fill className="object-cover" unoptimized />
+                  <Image
+                    src={ev.imagenUrl}
+                    alt={ev.nombre}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
                 )}
+                <div className="flex h-full w-full items-center justify-center text-5xl opacity-20">🎭</div>
               </div>
               <div className="p-4">
                 <p className="font-display text-base font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] line-clamp-2">
@@ -203,7 +213,7 @@ export function ProximosEventosCarousel({ eventos }: Props) {
             )}
 
             {/* Imagen */}
-            <div className="relative h-52 w-full bg-gradient-to-br from-purple-100 to-violet-200 overflow-hidden pointer-events-none">
+            <div className="relative h-52 w-full bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-950 overflow-hidden pointer-events-none">
               {topEvent.imagenUrl ? (
                 <Image
                   src={topEvent.imagenUrl}
@@ -212,11 +222,14 @@ export function ProximosEventosCarousel({ eventos }: Props) {
                   className="object-cover"
                   unoptimized
                   priority
+                  onError={(e) => {
+                    // Si la imagen falla en cliente, ocultar img para mostrar el gradiente de fondo
+                    e.currentTarget.style.display = "none";
+                  }}
                 />
-              ) : (
-                <div className="flex h-full items-center justify-center text-6xl opacity-20">🎭</div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+              ) : null}
+              <div className="flex h-full w-full items-center justify-center text-6xl opacity-30">🎭</div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
               {/* Fecha badge */}
               <div className="absolute bottom-3 left-3 rounded-xl bg-black/70 backdrop-blur-sm px-3 py-1.5 text-white text-xs font-bold pointer-events-none">
