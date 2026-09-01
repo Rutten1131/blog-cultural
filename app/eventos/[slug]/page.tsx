@@ -35,16 +35,21 @@ export async function generateStaticParams() {
 
 // ─── Auxiliar: Obtener evento aprobado ────────────────────────────────
 async function getEventoAprobado(slug: string) {
-  return await prisma.evento.findFirst({
-    where: {
-      slug,
-      estado: "APROBADO",
-    },
-    include: {
-      categoria: true,
-      zona: true,
-    },
-  });
+  try {
+    return await prisma.evento.findFirst({
+      where: {
+        slug,
+        estado: "APROBADO",
+      },
+      include: {
+        categoria: true,
+        zona: true,
+      },
+    });
+  } catch (error) {
+    console.error(`Error buscando evento aprobado (${slug}):`, error);
+    return null;
+  }
 }
 
 // ─── 2. Metadata Dinámica SEO ──────────────────────────────────────────
@@ -59,10 +64,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const title = `${evento.nombre} — Evento Cultural en Loja`;
+  const desc = evento.descripcion || "";
   const description =
-    evento.descripcion.length > 155
-      ? `${evento.descripcion.slice(0, 152)}...`
-      : evento.descripcion;
+    desc.length > 155
+      ? `${desc.slice(0, 152)}...`
+      : desc;
 
   const url = `${SITE_CONFIG.url}/eventos/${evento.slug}`;
   const categoriaNombre = evento.categoria?.nombre || "Cultural";
@@ -76,7 +82,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     `agenda cultural Loja`,
     evento.lugar,
     evento.nombreGestor,
-  ].filter(Boolean);
+  ].filter(Boolean) as string[];
 
   return {
     title,
@@ -122,40 +128,50 @@ export default async function EventoDetailPage({ params }: PageProps) {
   }
 
   // Buscar eventos relacionados (misma categoría o fecha más cercana, excluyendo el actual)
-  const eventosRelacionados = await prisma.evento.findMany({
-    where: {
-      estado: "APROBADO",
-      id: { not: evento.id },
-      ...(evento.categoriaId ? { categoriaId: evento.categoriaId } : {}),
-    },
-    include: { categoria: true, zona: true },
-    orderBy: { fecha: "asc" },
-    take: 3,
-  });
-
-  // Si no hay suficientes de la misma categoría, traer los más próximos en fecha general
-  let masRelacionados = eventosRelacionados;
-  if (masRelacionados.length < 3) {
-    const idsExistentes = [evento.id, ...masRelacionados.map((r) => r.id)];
-    const extra = await prisma.evento.findMany({
+  let masRelacionados: any[] = [];
+  try {
+    const eventosRelacionados = await prisma.evento.findMany({
       where: {
         estado: "APROBADO",
-        id: { notIn: idsExistentes },
+        id: { not: evento.id },
+        ...(evento.categoriaId ? { categoriaId: evento.categoriaId } : {}),
       },
       include: { categoria: true, zona: true },
       orderBy: { fecha: "asc" },
-      take: 3 - masRelacionados.length,
+      take: 3,
     });
-    masRelacionados = [...masRelacionados, ...extra];
+
+    masRelacionados = eventosRelacionados;
+
+    // Si no hay suficientes de la misma categoría, traer los más próximos en fecha general
+    if (masRelacionados.length < 3) {
+      const idsExistentes = [evento.id, ...masRelacionados.map((r) => r.id)];
+      const extra = await prisma.evento.findMany({
+        where: {
+          estado: "APROBADO",
+          id: { notIn: idsExistentes },
+        },
+        include: { categoria: true, zona: true },
+        orderBy: { fecha: "asc" },
+        take: 3 - masRelacionados.length,
+      });
+      masRelacionados = [...masRelacionados, ...extra];
+    }
+  } catch (error) {
+    console.error("Error buscando eventos relacionados:", error);
   }
+
+  // Validar y serializar fecha de manera segura para JSON-LD
+  const parsedDate = new Date(evento.fecha);
+  const isoStartDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
 
   // Schema.org Event (JSON-LD) totalmente enriquecido para Google Rich Snippets
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
     name: evento.nombre,
-    startDate: new Date(evento.fecha).toISOString(),
-    description: evento.descripcion,
+    startDate: isoStartDate,
+    description: evento.descripcion || "",
     eventStatus: "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     inLanguage: "es-EC",
@@ -200,9 +216,9 @@ export default async function EventoDetailPage({ params }: PageProps) {
           <BackButton />
 
           <article className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-            {/* Galería / Carrusel de Imágenes y Video */}
+            {/* Galería / Carrusel de Imágenes y Video con fallback seguro */}
             <MediaGallery
-              multimedia={(evento.multimedia as string[]) || []}
+              multimedia={evento.multimedia}
               imagenUrl={evento.imagenUrl}
               videoUrl={evento.videoUrl}
               nombre={evento.nombre}

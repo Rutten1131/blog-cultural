@@ -1,12 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
-import { formatFechaLoja } from "@/lib/fechas";
+import { formatFechaLojaCliente } from "@/lib/fechasCliente";
 
 interface EventoCardProps {
   id: number;
   nombre: string;
   slug: string;
-  fecha: Date;
+  fecha: Date | string;
   lugar: string;
   descripcion: string;
   imagenUrl: string | null;
@@ -15,8 +15,8 @@ interface EventoCardProps {
 }
 
 /** Formatea fecha en zona Loja (corto: "vie, 14 ago") */
-function formatFecha(fecha: Date) {
-  return formatFechaLoja(fecha, "corto");
+function formatFecha(fecha: Date | string) {
+  return formatFechaLojaCliente(fecha, "corto");
 }
 
 /** Colores por categoría */

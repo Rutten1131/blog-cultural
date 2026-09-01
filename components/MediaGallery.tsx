@@ -5,44 +5,86 @@ import Image from "next/image";
 import { parseVideoUrl } from "@/lib/mediaUtils";
 
 interface MediaGalleryProps {
-  multimedia?: string[]; // URLs de imágenes o videos
+  multimedia?: string[] | string | null | any;
   imagenUrl?: string | null;
   videoUrl?: string | null;
   nombre: string;
 }
 
 export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: MediaGalleryProps) {
-  // Construir lista combinada limpia
+  // Construir lista combinada limpia y tolerante a fallos
   const items: { type: "image" | "video"; url: string }[] = [];
 
-  // Agregar imágenes
-  if (multimedia.length > 0) {
-    multimedia.forEach((url) => {
-      if (url) items.push({ type: "image", url });
-    });
-  } else if (imagenUrl) {
-    items.push({ type: "image", url: imagenUrl });
+  // 1. Extraer imágenes de multimedia (soporta Array o JSON string)
+  let rawList: string[] = [];
+  if (Array.isArray(multimedia)) {
+    rawList = multimedia;
+  } else if (typeof multimedia === "string") {
+    const trimmed = multimedia.trim();
+    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          rawList = parsed;
+        } else if (typeof parsed === "string") {
+          rawList = [parsed];
+        }
+      } catch {
+        if (trimmed.startsWith("http")) rawList = [trimmed];
+      }
+    } else if (trimmed.startsWith("http")) {
+      rawList = [trimmed];
+    }
+  }
+
+  // Filtrar y agregar imágenes válidas evitando duplicados
+  const addedUrls = new Set<string>();
+  rawList.forEach((url) => {
+    if (url && typeof url === "string" && url.trim().length > 0 && !addedUrls.has(url.trim())) {
+      items.push({ type: "image", url: url.trim() });
+      addedUrls.add(url.trim());
+    }
+  });
+
+  // Si imagenUrl no está en la lista, agregarla
+  if (imagenUrl && typeof imagenUrl === "string" && imagenUrl.trim().length > 0 && !addedUrls.has(imagenUrl.trim())) {
+    items.push({ type: "image", url: imagenUrl.trim() });
+    addedUrls.add(imagenUrl.trim());
   }
 
   // Agregar video enlazado si existe
-  if (videoUrl) {
-    items.push({ type: "video", url: videoUrl });
+  if (videoUrl && typeof videoUrl === "string" && videoUrl.trim().length > 0) {
+    items.push({ type: "video", url: videoUrl.trim() });
   }
 
   const [activeIndex, setActiveIndex] = useState(0);
 
-  if (items.length === 0) return null;
+  // Si no hay ninguna imagen ni video, mostrar banner de respaldo cultural estilizado
+  if (items.length === 0) {
+    return (
+      <div className="relative w-full h-56 sm:h-72 rounded-3xl overflow-hidden bg-gradient-to-br from-purple-900 via-indigo-900 to-zinc-950 flex flex-col items-center justify-center p-6 text-center text-white shadow-inner">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.25),transparent_50%)]" />
+        <span className="text-5xl sm:text-6xl mb-3 drop-shadow-md animate-pulse">🎭</span>
+        <p className="font-display font-black uppercase tracking-wider text-sm sm:text-base text-purple-200">
+          Agenda Cultural Loja
+        </p>
+        <p className="text-xs text-zinc-400 mt-1 max-w-md">
+          {nombre}
+        </p>
+      </div>
+    );
+  }
 
-  const currentItem = items[activeIndex];
+  const safeIndex = activeIndex >= items.length ? 0 : activeIndex;
+  const currentItem = items[safeIndex];
   const videoInfo = currentItem.type === "video" ? parseVideoUrl(currentItem.url) : null;
-
   const isVerticalVideo = videoInfo?.format === "vertical";
 
   return (
     <div className="space-y-4">
       {/* Visualizador Principal */}
       <div
-        className={`relative w-full bg-black rounded-3xl overflow-hidden shadow-md flex items-center justify-center transition-all ${
+        className={`relative w-full bg-zinc-950 rounded-3xl overflow-hidden shadow-md flex items-center justify-center transition-all ${
           isVerticalVideo
             ? "h-[500px] sm:h-[580px] max-w-sm mx-auto"
             : "h-80 sm:h-[450px]"
@@ -51,7 +93,7 @@ export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: M
         {currentItem.type === "image" ? (
           <Image
             src={currentItem.url}
-            alt={`${nombre} - ${activeIndex + 1}`}
+            alt={`${nombre} - ${safeIndex + 1}`}
             fill
             className="object-contain"
             priority
@@ -111,7 +153,7 @@ export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: M
                 key={idx}
                 onClick={() => setActiveIndex(idx)}
                 className={`relative h-20 w-24 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
-                  activeIndex === idx
+                  safeIndex === idx
                     ? "border-purple-600 ring-2 ring-purple-400/50 scale-105"
                     : "border-transparent opacity-70 hover:opacity-100"
                 }`}
