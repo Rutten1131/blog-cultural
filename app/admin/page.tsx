@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { logoutAdmin } from "@/lib/actions/authAdmin";
 import { EventoCard } from "./evento-card";
+import { AdminNotificaciones } from "./admin-notificaciones";
 
 export const metadata: Metadata = {
   title: "Panel de Moderación | Admin",
@@ -19,6 +20,10 @@ export default async function AdminPage() {
   const recomendaciones = await prisma.recomendacion.findMany({
     orderBy: { createdAt: "desc" },
     take: 50,
+  });
+
+  const numerosNotificacion = await prisma.numeroNotificacion.findMany({
+    orderBy: { createdAt: "asc" },
   });
 
   const categorias = await prisma.categoria.findMany({
@@ -141,6 +146,10 @@ export default async function AdminPage() {
             </div>
           )}
         </section>
+
+        {/* Sección 3: Gestión de Números de Notificación WhatsApp */}
+        <AdminNotificaciones numeros={numerosNotificacion} />
+
       </main>
     </div>
   );

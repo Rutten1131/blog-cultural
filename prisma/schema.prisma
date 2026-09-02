@@ -84,3 +84,16 @@ model Recomendacion {
 
   @@map("recomendaciones")
 }
+
+// ─── Números de WhatsApp para notificaciones de admin ────────
+// Gestionados desde el panel /admin. Se notifica a todos cuando
+// un nuevo evento es enviado para revisión.
+model NumeroNotificacion {
+  id        Int      @id @default(autoincrement())
+  nombre    String   @db.VarChar(100)   // Etiqueta descriptiva (Ej: "César - Admin")
+  numero    String   @unique @db.VarChar(20) // Formato internacional sin + (Ej: 593987654321)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("numeros_notificacion")
+}

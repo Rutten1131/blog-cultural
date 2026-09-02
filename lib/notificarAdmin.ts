@@ -1,6 +1,7 @@
 import "server-only";
+import { prisma } from "@/lib/prisma";
 
-interface NotificacionEventoData {
+export interface NotificacionEventoData {
   id: number;
   nombre: string;
   fechaFormateada: string;
@@ -11,20 +12,19 @@ interface NotificacionEventoData {
 }
 
 /**
- * Envía una notificación a WhatsApp (vía Evolution API o webhook)
- * para alertar al administrador de un nuevo evento pendiente de revisión.
+ * Envía una notificación a WhatsApp mediante Evolution API.
+ * Los números destinatarios se obtienen de la tabla numeros_notificacion (activos).
  *
- * Variables de entorno requeridas (opcionales para no romper en desarrollo):
- * - EVOLUTION_API_URL: e.g. "https://api.evolution.ejemplo.com"
- * - EVOLUTION_API_KEY: e.g. "token-secreto"
- * - EVOLUTION_INSTANCE: e.g. "agenda-loja"
- * - ADMIN_WHATSAPP_NUMBER: e.g. "593987654321" (formato internacional)
+ * Variables de entorno requeridas en .env.local:
+ * - EVOLUTION_API_URL
+ * - EVOLUTION_API_KEY
+ * - EVOLUTION_INSTANCE
+ * - NEXT_PUBLIC_APP_URL (para el link al admin)
  */
 export async function notificarNuevoEventoAdmin(datos: NotificacionEventoData): Promise<void> {
   const apiUrl = process.env.EVOLUTION_API_URL;
   const apiKey = process.env.EVOLUTION_API_KEY;
-  const instance = process.env.EVOLUTION_INSTANCE || "agenda";
-  const adminNumber = process.env.ADMIN_WHATSAPP_NUMBER;
+  const instance = process.env.EVOLUTION_INSTANCE;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agendacultural-loja.com";
 
   const mensaje = `🔔 *NUEVO EVENTO PENDIENTE DE REVISIÓN*
@@ -39,46 +39,65 @@ export async function notificarNuevoEventoAdmin(datos: NotificacionEventoData): 
 👉 *Revisar en el Panel de Moderación:*
 ${appUrl}/admin`;
 
-  // Si no están configuradas las variables, emitimos log informativo sin romper el flujo
-  if (!apiUrl || !apiKey || !adminNumber) {
-    console.log("[NOTIFICACION WHATSAPP ADMIN - SIMULADA]");
+  // Si no están configuradas las credenciales de Evolution, loguear y salir
+  if (!apiUrl || !apiKey || !instance) {
+    console.log("[NOTIFICACION WHATSAPP - Evolution API no configurada]");
     console.log(mensaje);
     return;
   }
 
+  // Obtener números activos desde la base de datos
+  let destinatarios: { numero: string; nombre: string }[] = [];
   try {
-    const formattedNumber = adminNumber.replace(/\D/g, "");
-    const endpoint = `${apiUrl.replace(/\/$/, "")}/message/sendText/${instance}`;
-
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: apiKey,
-      },
-      body: JSON.stringify({
-        number: formattedNumber,
-        options: {
-          delay: 1200,
-          presence: "composing",
-          linkPreview: false,
-        },
-        textMessage: {
-          text: mensaje,
-        },
-      }),
+    destinatarios = await prisma.numeroNotificacion.findMany({
+      where: { activo: true },
+      select: { numero: true, nombre: true },
     });
+  } catch (err) {
+    console.error("Error obteniendo números de notificación:", err);
+    return;
+  }
 
-    if (!res.ok) {
-      console.error(
-        "Error enviando WhatsApp a admin via Evolution API:",
-        res.status,
-        await res.text()
-      );
-    } else {
-      console.log(`Notificación WhatsApp enviada exitosamente al admin (${formattedNumber})`);
+  if (destinatarios.length === 0) {
+    console.log("[NOTIFICACION WHATSAPP] No hay números activos configurados en el panel admin.");
+    return;
+  }
+
+  const endpoint = `${apiUrl.replace(/\/$/, "")}/message/sendText/${instance}`;
+
+  // Enviar a cada destinatario activo
+  for (const dest of destinatarios) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: apiKey,
+        },
+        body: JSON.stringify({
+          number: dest.numero,
+          options: {
+            delay: 1200,
+            presence: "composing",
+            linkPreview: false,
+          },
+          textMessage: {
+            text: mensaje,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        console.error(
+          `Error enviando a ${dest.nombre} (${dest.numero}):`,
+          res.status,
+          await res.text()
+        );
+      } else {
+        console.log(`✅ Notificación enviada a ${dest.nombre} (+${dest.numero})`);
+      }
+    } catch (error) {
+      console.error(`Fallo de red al notificar a ${dest.nombre}:`, error);
     }
-  } catch (error) {
-    console.error("Fallo de red al enviar notificación WhatsApp:", error);
   }
 }
