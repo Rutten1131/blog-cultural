@@ -55,6 +55,7 @@ model Evento {
   confianzaClasificacion Float?
   createdAt             DateTime      @default(now())
 
+  institucionRelacionada String?       @db.VarChar(150)
   categoriaId  Int?
   categoria    Categoria?    @relation(fields: [categoriaId], references: [id])
 
@@ -72,4 +73,14 @@ enum EstadoEvento {
   PENDIENTE
   APROBADO
   RECHAZADO
+}
+
+// ─── Buzón de sugerencias y recomendaciones ciudadanas ───────
+model Recomendacion {
+  id        Int      @id @default(autoincrement())
+  mensaje   String   @db.Text
+  contacto  String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+
+  @@map("recomendaciones")
 }

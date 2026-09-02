@@ -9,29 +9,33 @@ import { CategoryTicker } from "@/components/CategoryTicker";
 import { UltimosEventosSection } from "@/components/UltimosEventosSection";
 import { ProximosEventosCarousel } from "@/components/ProximosEventosCarousel";
 
+import { BuzonRecomendaciones } from "@/components/BuzonRecomendaciones";
+
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Eventos Artísticos en Loja — Agenda Cultural Ecuador",
+  title: "Qué hacer en Loja — Eventos, Arte y Agenda Cultural",
   description:
-    "Descubrí qué eventos artísticos hay en Loja. Cartelera actualizada con obras de teatro, conciertos de música, exposiciones de arte, ferias y artes vivas.",
+    "Descubre qué está pasando en Loja. ¿Qué hacer en Loja? Conciertos, teatro, exposiciones, ferias y actividades culturales hoy y este fin de semana.",
   keywords: [
-    "Eventos artísticos en Loja",
-    "Qué eventos artísticos hay en Loja",
-    "Agenda cultural Loja",
+    "Qué hacer en Loja",
+    "Eventos en Loja",
+    "Eventos Loja",
+    "Agenda cultural de Loja",
+    "Eventos culturales en Loja",
+    "Actividades culturales en Loja",
+    "Qué hacer este fin de semana en Loja",
     "Teatro en Loja",
-    "Conciertos de música Loja",
-    "Exposiciones de arte Loja",
-    "Ferias culturales Loja",
-    "Artes Vivas Loja Ecuador",
+    "Conciertos en Loja",
+    "Ferias en Loja",
   ],
   alternates: {
     canonical: "https://agendacultural-loja.com",
   },
   openGraph: {
-    title: "Eventos Artísticos en Loja — Agenda Cultural",
+    title: "Qué hacer en Loja — Agenda Cultural de Loja",
     description:
-      "Directorio completo de eventos artísticos, festivales y agenda cultural en Loja, Ecuador.",
+      "Descubre qué está pasando en Loja. Cartelera oficial de eventos culturales, arte, música y actividades de fin de semana.",
     url: "https://agendacultural-loja.com",
     siteName: "Agenda Cultural Loja",
     locale: "es_EC",
@@ -317,17 +321,17 @@ export default async function Home() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-coral)]" />
               </span>
               <span className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-muted)]">
-                Directorio Cultural de Loja
+                Descubre qué está pasando en Loja
               </span>
             </div>
 
-            {/* Título hero H1 optimizado en tamaño y jerarquía visual */}
-            <h1 className="font-display mb-8 text-3xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] sm:text-5xl md:text-6xl fade-up">
-              Eventos{" "}
-              <span className="text-gradient-purple">Artísticos</span>
+            {/* Título hero H1 orientado a intención de búsqueda principal */}
+            <h1 className="font-display mb-4 text-3xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] sm:text-5xl md:text-6xl fade-up">
+              ¿Qué hacer <br />
+              <span className="text-gradient-purple">en Loja?</span>
               <br />
-              <span className="text-xl font-bold sm:text-3xl md:text-4xl text-[var(--color-muted)]">
-                en Loja, Ecuador
+              <span className="text-xl font-bold sm:text-2xl md:text-3xl text-[var(--color-muted)] normal-case tracking-normal block mt-2">
+                Eventos, arte y actividades culturales en la ciudad
               </span>
             </h1>
 
@@ -434,6 +438,13 @@ export default async function Home() {
               blobVariant={i % 2 === 0 ? 1 : 2}
             />
           ))}
+        </div>
+
+        {/* ═══════════════════════════════
+            BUZÓN CIUDADANO DE RECOMENDACIONES
+        ═══════════════════════════════ */}
+        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+          <BuzonRecomendaciones />
         </div>
 
         {/* ═══════════════════════════════

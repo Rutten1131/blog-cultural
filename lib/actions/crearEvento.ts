@@ -49,6 +49,8 @@ export async function crearEvento(
   }
 
   const nombreGestor = formData.get("nombreGestor")?.toString().trim() ?? "";
+  const institucionRelacionada =
+    formData.get("institucionRelacionada")?.toString().trim() || null;
 
   // Validación de campos obligatorios
   if (!nombre || !fechaInput || !lugar || !descripcion || !nombreGestor) {
@@ -97,11 +99,13 @@ export async function crearEvento(
         multimedia: multimedia.length > 0 ? multimedia : undefined,
         videoUrl,
         nombreGestor,
+        institucionRelacionada,
       },
     });
 
-    // Disparar clasificación por IA en segundo plano (sin bloquear respuesta al usuario)
+    // Disparar clasificación por IA y notificación al administrador en segundo plano
     (async () => {
+      let categoriaNombreSugerida: string | null = null;
       try {
         const { clasificarEvento } = await import("@/lib/clasificarEvento");
         const res = await clasificarEvento({ nombre, lugar, descripcion });
@@ -113,7 +117,10 @@ export async function crearEvento(
           const cat = await prisma.categoria.findUnique({
             where: { slug: res.categoriaSlug },
           });
-          if (cat) categoriaId = cat.id;
+          if (cat) {
+            categoriaId = cat.id;
+            categoriaNombreSugerida = cat.nombre;
+          }
         }
 
         if (res.zonaNombre) {
@@ -133,6 +140,23 @@ export async function crearEvento(
         });
       } catch (err) {
         console.error("Error en clasificación en segundo plano:", err);
+      }
+
+      // Notificar al administrador por WhatsApp
+      try {
+        const { notificarNuevoEventoAdmin } = await import("@/lib/notificarAdmin");
+        const { formatFechaHoraLoja } = await import("@/lib/fechas");
+        await notificarNuevoEventoAdmin({
+          id: nuevoEvento.id,
+          nombre: nuevoEvento.nombre,
+          fechaFormateada: formatFechaHoraLoja(fechaDate),
+          lugar: nuevoEvento.lugar,
+          nombreGestor: nuevoEvento.nombreGestor,
+          institucionRelacionada: nuevoEvento.institucionRelacionada,
+          categoriaSugerida: categoriaNombreSugerida,
+        });
+      } catch (notifErr) {
+        console.error("Error al notificar al admin por WhatsApp:", notifErr);
       }
     })();
 

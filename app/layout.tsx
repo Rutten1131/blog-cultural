@@ -3,11 +3,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Agenda Cultural Loja",
+    default: "Agenda Cultural Loja — Qué hacer en Loja | Eventos y Cultura",
     template: "%s | Agenda Cultural Loja",
   },
   description:
-    "Descubre los mejores eventos culturales de Loja: arte, teatro, música, ferias y artes vivas. Publicación abierta para gestores culturales.",
+    "Descubre qué está pasando en Loja. ¿Qué hacer en Loja? Cartelera oficial con eventos culturales, conciertos, teatro, ferias y actividades artísticas hoy y este fin de semana.",
   metadataBase: new URL("https://agendacultural-loja.com"),
   icons: {
     icon: "/icon.png",
@@ -17,6 +17,9 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_EC",
     siteName: "Agenda Cultural Loja",
+    title: "Agenda Cultural Loja — Qué hacer en Loja",
+    description:
+      "Descubre qué está pasando en Loja. Cartelera cultural y turística actualizada: música, teatro, arte y actividades de fin de semana.",
   },
 };
 

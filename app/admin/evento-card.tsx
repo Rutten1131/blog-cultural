@@ -23,6 +23,7 @@ interface EventoItem {
   lugar: string;
   descripcion: string;
   nombreGestor: string;
+  institucionRelacionada?: string | null;
   imagenUrl: string | null;
   confianzaClasificacion: number | null;
   categoriaId: number | null;
@@ -72,6 +73,11 @@ export function EventoCard({
           </div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
             Organiza: <span className="font-medium">{evento.nombreGestor}</span>
+            {evento.institucionRelacionada && (
+              <span className="ml-2 inline-flex items-center rounded-md bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                🏛️ {evento.institucionRelacionada}
+              </span>
+            )}
           </p>
         </div>
 
