@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   },
   description:
     "Descubre qué está pasando en Loja. ¿Qué hacer en Loja? Cartelera oficial con eventos culturales, conciertos, teatro, ferias y actividades artísticas hoy y este fin de semana.",
-  metadataBase: new URL("https://agendacultural-loja.com"),
+  metadataBase: new URL("https://www.agendaculturalloja.com"),
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",

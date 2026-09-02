@@ -33,6 +33,6 @@ export const SITE_CONFIG = {
   nombre: "Agenda Cultural Loja",
   descripcion:
     "Descubre los mejores eventos culturales de Loja: arte, teatro, música, ferias y artes vivas. Publicación abierta para gestores culturales.",
-  url: "https://agendacultural-loja.com",
+  url: "https://www.agendaculturalloja.com",
   locale: "es_EC",
 } as const;

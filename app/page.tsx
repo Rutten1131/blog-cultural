@@ -30,13 +30,13 @@ export const metadata: Metadata = {
     "Ferias en Loja",
   ],
   alternates: {
-    canonical: "https://agendacultural-loja.com",
+    canonical: "https://www.agendaculturalloja.com",
   },
   openGraph: {
     title: "Qué hacer en Loja — Agenda Cultural de Loja",
     description:
       "Descubre qué está pasando en Loja. Cartelera oficial de eventos culturales, arte, música y actividades de fin de semana.",
-    url: "https://agendacultural-loja.com",
+    url: "https://www.agendaculturalloja.com",
     siteName: "Agenda Cultural Loja",
     locale: "es_EC",
     type: "website",
@@ -251,8 +251,8 @@ export default async function Home() {
     "@graph": [
       {
         "@type": "WebSite",
-        "@id": "https://agendacultural-loja.com/#website",
-        url: "https://agendacultural-loja.com",
+        "@id": "https://www.agendaculturalloja.com/#website",
+        url: "https://www.agendaculturalloja.com",
         name: "Agenda Cultural Loja",
         description: "Directorio de eventos artísticos y culturales en Loja, Ecuador",
         inLanguage: "es-EC",
@@ -276,7 +276,7 @@ export default async function Home() {
                 addressCountry: "EC",
               },
             },
-            url: `https://agendacultural-loja.com/eventos/${ev.slug}`,
+            url: `https://www.agendaculturalloja.com/eventos/${ev.slug}`,
           },
         })),
       },
