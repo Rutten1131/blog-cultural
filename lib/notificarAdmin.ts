@@ -76,14 +76,7 @@ ${appUrl}/admin`;
         },
         body: JSON.stringify({
           number: dest.numero,
-          options: {
-            delay: 1200,
-            presence: "composing",
-            linkPreview: false,
-          },
-          textMessage: {
-            text: mensaje,
-          },
+          text: mensaje,
         }),
       });
 
