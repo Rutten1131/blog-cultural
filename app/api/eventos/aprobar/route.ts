@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
   // Si ya está aprobado, informar
   if (evento.estado === "APROBADO") {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agendacultural-loja.com";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.agendaculturalloja.com";
     return respuestaHTML({
       titulo: "Evento ya aprobado",
       mensaje: `El evento "${evento.nombre}" ya fue aprobado previamente y está visible en la agenda pública.`,
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
   // Revalidar todas las rutas para que aparezca en la web pública
   revalidateAll();
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agendacultural-loja.com";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.agendaculturalloja.com";
 
   return respuestaHTML({
     titulo: "¡Evento Aprobado y Publicado!",

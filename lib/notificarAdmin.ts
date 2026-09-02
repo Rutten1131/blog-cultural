@@ -26,7 +26,7 @@ export async function notificarNuevoEventoAdmin(datos: NotificacionEventoData): 
   const apiUrl = process.env.EVOLUTION_API_URL;
   const apiKey = process.env.EVOLUTION_API_KEY;
   const instance = process.env.EVOLUTION_INSTANCE;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agendacultural-loja.com";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.agendaculturalloja.com";
 
   const { generarTokenAprobacion } = await import("@/lib/tokensAprobacion");
   const token = generarTokenAprobacion(datos.id, datos.slug);
