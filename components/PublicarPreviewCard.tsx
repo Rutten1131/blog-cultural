@@ -109,9 +109,6 @@ export function PublicarPreviewCard({
           )}
         </div>
       </div>
-      <p className="text-center text-[11px] text-[var(--color-muted)]">
-        * Al publicar, la IA clasificará automáticamente la categoría exacta y la parroquia de Loja.
-      </p>
     </div>
   );
 }

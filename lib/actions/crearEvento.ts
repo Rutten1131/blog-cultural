@@ -103,62 +103,61 @@ export async function crearEvento(
       },
     });
 
-    // Disparar clasificación por IA y notificación al administrador en segundo plano
-    (async () => {
-      let categoriaNombreSugerida: string | null = null;
-      try {
-        const { clasificarEvento } = await import("@/lib/clasificarEvento");
-        const res = await clasificarEvento({ nombre, lugar, descripcion });
+    // En Serverless (Vercel), las promesas no awaitadas pueden ser congeladas (frozen)
+    // antes de terminar el fetch de WhatsApp. Ejecutamos la clasificación y notificación de forma segura.
+    let categoriaNombreSugerida: string | null = null;
+    try {
+      const { clasificarEvento } = await import("@/lib/clasificarEvento");
+      const res = await clasificarEvento({ nombre, lugar, descripcion });
 
-        let categoriaId: number | null = null;
-        let zonaId: number | null = null;
+      let categoriaId: number | null = null;
+      let zonaId: number | null = null;
 
-        if (res.categoriaSlug) {
-          const cat = await prisma.categoria.findUnique({
-            where: { slug: res.categoriaSlug },
-          });
-          if (cat) {
-            categoriaId = cat.id;
-            categoriaNombreSugerida = cat.nombre;
-          }
-        }
-
-        if (res.zonaNombre) {
-          const zona = await prisma.zona.findUnique({
-            where: { nombre: res.zonaNombre },
-          });
-          if (zona) zonaId = zona.id;
-        }
-
-        await prisma.evento.update({
-          where: { id: nuevoEvento.id },
-          data: {
-            categoriaId,
-            zonaId,
-            confianzaClasificacion: res.confianza,
-          },
+      if (res.categoriaSlug) {
+        const cat = await prisma.categoria.findUnique({
+          where: { slug: res.categoriaSlug },
         });
-      } catch (err) {
-        console.error("Error en clasificación en segundo plano:", err);
+        if (cat) {
+          categoriaId = cat.id;
+          categoriaNombreSugerida = cat.nombre;
+        }
       }
 
-      // Notificar al administrador por WhatsApp
-      try {
-        const { notificarNuevoEventoAdmin } = await import("@/lib/notificarAdmin");
-        const { formatFechaHoraLoja } = await import("@/lib/fechas");
-        await notificarNuevoEventoAdmin({
-          id: nuevoEvento.id,
-          nombre: nuevoEvento.nombre,
-          fechaFormateada: formatFechaHoraLoja(fechaDate),
-          lugar: nuevoEvento.lugar,
-          nombreGestor: nuevoEvento.nombreGestor,
-          institucionRelacionada: nuevoEvento.institucionRelacionada,
-          categoriaSugerida: categoriaNombreSugerida,
+      if (res.zonaNombre) {
+        const zona = await prisma.zona.findUnique({
+          where: { nombre: res.zonaNombre },
         });
-      } catch (notifErr) {
-        console.error("Error al notificar al admin por WhatsApp:", notifErr);
+        if (zona) zonaId = zona.id;
       }
-    })();
+
+      await prisma.evento.update({
+        where: { id: nuevoEvento.id },
+        data: {
+          categoriaId,
+          zonaId,
+          confianzaClasificacion: res.confianza,
+        },
+      });
+    } catch (err) {
+      console.error("Error en clasificación por IA:", err);
+    }
+
+    // Notificar a los administradores por WhatsApp (Evolution API)
+    try {
+      const { notificarNuevoEventoAdmin } = await import("@/lib/notificarAdmin");
+      const { formatFechaHoraLoja } = await import("@/lib/fechas");
+      await notificarNuevoEventoAdmin({
+        id: nuevoEvento.id,
+        nombre: nuevoEvento.nombre,
+        fechaFormateada: formatFechaHoraLoja(fechaDate),
+        lugar: nuevoEvento.lugar,
+        nombreGestor: nuevoEvento.nombreGestor,
+        institucionRelacionada: nuevoEvento.institucionRelacionada,
+        categoriaSugerida: categoriaNombreSugerida,
+      });
+    } catch (notifErr) {
+      console.error("Error al notificar al admin por WhatsApp:", notifErr);
+    }
 
     // Revalidar TODAS las rutas afectadas (no solo / y /admin)
     revalidateAll();
