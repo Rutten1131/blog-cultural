@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export interface NotificacionEventoData {
   id: number;
+  slug: string;
   nombre: string;
   fechaFormateada: string;
   lugar: string;
@@ -19,13 +20,17 @@ export interface NotificacionEventoData {
  * - EVOLUTION_API_URL
  * - EVOLUTION_API_KEY
  * - EVOLUTION_INSTANCE
- * - NEXT_PUBLIC_APP_URL (para el link al admin)
+ * - NEXT_PUBLIC_APP_URL (para los links)
  */
 export async function notificarNuevoEventoAdmin(datos: NotificacionEventoData): Promise<void> {
   const apiUrl = process.env.EVOLUTION_API_URL;
   const apiKey = process.env.EVOLUTION_API_KEY;
   const instance = process.env.EVOLUTION_INSTANCE;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agendacultural-loja.com";
+
+  const { generarTokenAprobacion } = await import("@/lib/tokensAprobacion");
+  const token = generarTokenAprobacion(datos.id, datos.slug);
+  const linkAprobacionDirecta = `${appUrl}/api/eventos/aprobar?id=${datos.id}&token=${token}`;
 
   const mensaje = `🔔 *NUEVO EVENTO PENDIENTE DE REVISIÓN*
 
@@ -36,7 +41,10 @@ export async function notificarNuevoEventoAdmin(datos: NotificacionEventoData): 
 🏛️ *Ámbito/Institución:* ${datos.institucionRelacionada || "No especificada"}
 🏷️ *Categoría sugerida:* ${datos.categoriaSugerida || "Por clasificar"}
 
-👉 *Revisar en el Panel de Moderación:*
+⚡ *APROBAR Y PUBLICAR (1 CLIC):*
+${linkAprobacionDirecta}
+
+🔍 *O revisar detalles en el Panel Admin:*
 ${appUrl}/admin`;
 
   // Si no están configuradas las credenciales de Evolution, loguear y salir

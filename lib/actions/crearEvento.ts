@@ -148,6 +148,7 @@ export async function crearEvento(
       const { formatFechaHoraLoja } = await import("@/lib/fechas");
       await notificarNuevoEventoAdmin({
         id: nuevoEvento.id,
+        slug: nuevoEvento.slug,
         nombre: nuevoEvento.nombre,
         fechaFormateada: formatFechaHoraLoja(fechaDate),
         lugar: nuevoEvento.lugar,
