@@ -75,13 +75,13 @@ export function AdminNotificaciones({ numeros }: { numeros: Numero[] }) {
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Número WhatsApp (formato internacional)
+                Número WhatsApp (con código de país)
               </label>
               <input
                 name="numero"
                 type="text"
                 required
-                placeholder="593987654321  (sin + ni espacios)"
+                placeholder="+5491127886554 o 593987654321"
                 className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
               />
             </div>
@@ -170,7 +170,7 @@ export function AdminNotificaciones({ numeros }: { numeros: Numero[] }) {
 
       <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
         Solo recibirán notificaciones los números con estado <span className="font-medium text-emerald-600 dark:text-emerald-400">🟢 Activo</span>.
-        El número debe estar en formato internacional sin + (Ej: <span className="font-mono">593987654321</span>).
+        Puedes ingresarlo con o sin signo <span className="font-mono">+</span> (Ej: <span className="font-mono">+5491127886554</span> o <span className="font-mono">593987654321</span>).
       </p>
     </section>
   );

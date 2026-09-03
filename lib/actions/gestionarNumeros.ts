@@ -20,12 +20,12 @@ export async function agregarNumero(
     return { success: false, error: "El nombre y el número son obligatorios." };
   }
 
-  // Limpiar número: solo dígitos
+  // Limpiar número: extraer solo dígitos (remueve +, espacios, guiones, etc.)
   const numero = numeroRaw.replace(/\D/g, "");
-  if (numero.length < 10 || numero.length > 15) {
+  if (numero.length < 8 || numero.length > 18) {
     return {
       success: false,
-      error: "El número debe estar en formato internacional (Ej: 593987654321). Sin + ni espacios.",
+      error: "Número inválido. Ingresa el código de país y número (Ej: +5491127886554 o 593987654321).",
     };
   }
 
