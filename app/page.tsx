@@ -309,7 +309,7 @@ export default async function Home() {
             HERO — Eventos destacados
         ═══════════════════════════════ */}
         <section
-          className="relative w-full overflow-hidden pb-8 sm:pb-12 pt-20 sm:pt-32"
+          className="relative w-full overflow-hidden pb-6 sm:pb-12 pt-16 sm:pt-32 min-h-[100dvh] sm:min-h-0 flex flex-col justify-center"
           aria-label="Eventos destacados"
         >
           {/* Blob de fondo hero */}
@@ -322,62 +322,79 @@ export default async function Home() {
             variant={2}
           />
 
-          <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
-            {/* Eyebrow */}
-            <div className="mb-3 flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-coral)] opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-coral)]" />
-              </span>
-              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-muted)]">
-                Descubre qué está pasando en Loja
-              </span>
-            </div>
-
-            {/* Título hero H1 orientado a intención de búsqueda principal (100% SEO preservado) */}
-            <h1 className="font-display mb-3 text-2xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] sm:text-5xl md:text-6xl fade-up">
-              ¿Qué hacer <br />
-              <span className="text-gradient-purple">en Loja?</span>
-              <br />
-              <span className="text-base font-bold sm:text-2xl md:text-3xl text-[var(--color-muted)] normal-case tracking-normal block mt-1 sm:mt-2">
-                Eventos, arte y actividades culturales en la ciudad
-              </span>
-            </h1>
-
-            {/* Carrusel de próximos eventos ordenados por fecha */}
-            <div className="mt-6 sm:mt-10 mb-3 sm:mb-4 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-[var(--color-purple-1)]">
-                  Cartelera Destacada
+          <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 w-full flex flex-col justify-between flex-1 sm:block">
+            <div>
+              {/* Eyebrow (visible en desktop) */}
+              <div className="mb-2 hidden sm:flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-coral)] opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-coral)]" />
                 </span>
-                <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)] sm:text-3xl">
-                  Próximas Actividades
-                </h2>
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
+                  Descubre qué está pasando en Loja
+                </span>
               </div>
-              <Link
-                href="/eventos"
-                className="hidden sm:inline-flex items-center gap-1.5 text-sm font-bold text-[var(--color-purple-2)] hover:gap-2.5 transition-all"
-              >
-                Ver todos los eventos
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
-                </svg>
-              </Link>
+
+              {/* Título hero H1 compacto y balanceado para destacar las cartas de eventos */}
+              <h1 className="font-display mb-2 text-2xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] sm:text-3xl md:text-4xl fade-up">
+                ¿Qué hacer{" "}
+                <span className="text-gradient-purple">en Loja?</span>
+                <span className="hidden sm:block text-sm sm:text-base md:text-lg font-bold text-[var(--color-muted)] normal-case tracking-normal mt-1">
+                  Eventos, arte y actividades culturales en la ciudad
+                </span>
+              </h1>
+
+              {/* Carrusel de próximos eventos ordenados por fecha */}
+              <div className="mt-2 sm:mt-6 mb-2 sm:mb-4 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[var(--color-purple-1)]">
+                    Cartelera Destacada
+                  </span>
+                  <h2 className="font-display text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-[var(--color-dark)]">
+                    Próximas Actividades
+                  </h2>
+                </div>
+                <Link
+                  href="/eventos"
+                  className="hidden sm:inline-flex items-center gap-1.5 text-sm font-bold text-[var(--color-purple-2)] hover:gap-2.5 transition-all"
+                >
+                  Ver todos los eventos
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
+                  </svg>
+                </Link>
+              </div>
+
+              {destacados.length > 0 ? (
+                <div className="relative w-full px-0 sm:px-1">
+                  <ProximosEventosCarousel eventos={destacados} />
+                </div>
+              ) : (
+                <EstadoVacioEvento mensaje="No hay eventos próximos publicados todavía." />
+              )}
             </div>
 
-            {destacados.length > 0 ? (
-              <div className="relative px-1">
-                <ProximosEventosCarousel eventos={destacados} />
+            {/* ── TEXTOS MOVIDOS EN MODO CELULAR JUSTO DESPUÉS DEL ELEMENTO HERO ── */}
+            <div className="sm:hidden mt-4 pt-3 border-t border-purple-100/60 flex flex-col gap-1.5 text-center">
+              <div className="inline-flex items-center justify-center gap-1.5">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-coral)] opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--color-coral)]" />
+                </span>
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[var(--color-purple-1)]">
+                  Descubre qué está pasando en Loja
+                </span>
               </div>
-            ) : (
-              <EstadoVacioEvento mensaje="No hay eventos próximos publicados todavía." />
-            )}
+              <p className="text-xs font-bold text-[var(--color-muted)] leading-relaxed">
+                Eventos, arte y actividades culturales en la ciudad
+              </p>
+            </div>
 
             {/* CTA secundario */}
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-4 sm:mt-8 flex flex-wrap gap-3 justify-center sm:justify-start">
               <Link
                 href="/eventos"
-                className="inline-flex items-center gap-2 rounded-full bg-[var(--color-dark)] px-6 py-3 text-sm font-bold text-white shadow-lg transition-all duration-300 hover:bg-[var(--color-purple-1)] hover:shadow-[0_12px_28px_-8px_rgba(109,40,217,0.5)]"
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--color-dark)] px-5 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold text-white shadow-lg transition-all duration-300 hover:bg-[var(--color-purple-1)] hover:shadow-[0_12px_28px_-8px_rgba(109,40,217,0.5)]"
               >
                 Ver todos los eventos
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

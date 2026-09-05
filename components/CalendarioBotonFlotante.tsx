@@ -36,11 +36,11 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
   return (
     <>
       {/* ── BOTÓN FLOTANTE ANCLADO A LA DERECHA ── */}
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex items-center">
+      <div className="fixed right-0 top-[28%] sm:top-1/2 -translate-y-1/2 z-40 flex items-center">
         <button
           type="button"
           onClick={() => setAbierto(true)}
-          className="group relative flex items-center gap-1.5 bg-gradient-to-b from-[var(--color-purple-1)] to-[var(--color-purple-2)] text-white px-2 py-3 rounded-l-xl shadow-[0_6px_20px_rgba(124,58,237,0.35)] hover:shadow-[0_10px_25px_rgba(124,58,237,0.5)] transition-all duration-300 hover:pr-3 border-y border-l border-white/25 active:scale-95 cursor-pointer"
+          className="group relative flex items-center gap-1.5 bg-gradient-to-b from-[var(--color-purple-1)] to-[var(--color-purple-2)] text-white px-2 py-2.5 sm:py-3 rounded-l-xl shadow-[0_6px_20px_rgba(124,58,237,0.35)] hover:shadow-[0_10px_25px_rgba(124,58,237,0.5)] transition-all duration-300 hover:pr-3 border-y border-l border-white/25 active:scale-95 cursor-pointer"
           style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
           aria-label="Abrir calendario interactivo de eventos"
         >

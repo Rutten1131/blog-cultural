@@ -128,7 +128,7 @@ export function ProximosEventosCarousel({ eventos }: Props) {
     <div className="relative flex flex-col items-center gap-8">
       {/* ── Stack de cartas ── */}
       <div
-        className="relative w-full max-w-sm mx-auto mt-2 sm:mt-6 h-[375px] sm:h-[420px]"
+        className="relative w-full max-w-full sm:max-w-[440px] mx-auto mt-1 sm:mt-6 h-[465px] sm:h-[480px]"
       >
         {/* Cartas del fondo (de atrás hacia adelante) */}
         {shown.slice(1).reverse().map((ev, revIdx) => {
@@ -149,7 +149,7 @@ export function ProximosEventosCarousel({ eventos }: Props) {
                 pointerEvents: "none",
               }}
             >
-              <div className="relative h-52 w-full bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-950">
+              <div className="relative h-60 sm:h-64 w-full bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-950">
                 {ev.imagenUrl && (
                   <Image
                     src={ev.imagenUrl}
@@ -212,7 +212,7 @@ export function ProximosEventosCarousel({ eventos }: Props) {
             )}
 
             {/* Imagen */}
-            <div className="relative h-52 w-full bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-950 overflow-hidden pointer-events-none">
+            <div className="relative h-60 sm:h-64 w-full bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-950 overflow-hidden pointer-events-none">
               {topEvent.imagenUrl ? (
                 <Image
                   src={topEvent.imagenUrl}
