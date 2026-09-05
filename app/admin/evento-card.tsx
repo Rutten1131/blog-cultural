@@ -20,6 +20,7 @@ interface EventoItem {
   id: number;
   nombre: string;
   fecha: Date;
+  fechaFin?: Date | null;
   lugar: string;
   descripcion: string;
   nombreGestor: string;
@@ -102,6 +103,11 @@ export function EventoCard({
         <div>
           📅 <span className="font-medium text-zinc-900 dark:text-zinc-100">Fecha:</span>{" "}
           {formatFechaLojaCliente(evento.fecha, "largo")}
+          {evento.fechaFin && (
+            <div className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+              🏁 Hasta: {formatFechaLojaCliente(evento.fechaFin, "largo")}
+            </div>
+          )}
         </div>
       </div>
 

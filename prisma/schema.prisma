@@ -45,6 +45,7 @@ model Evento {
   nombre       String        @db.VarChar(255)
   slug         String        @unique @db.VarChar(300)
   fecha        DateTime
+  fechaFin     DateTime?     @map("fecha_fin")
   lugar        String        @db.VarChar(255)
   descripcion  String        @db.Text
   imagenUrl    String?       @db.VarChar(500)
@@ -64,6 +65,7 @@ model Evento {
 
   @@index([estado])
   @@index([fecha])
+  @@index([fechaFin])
   @@index([categoriaId])
   @@index([zonaId])
   @@map("eventos")

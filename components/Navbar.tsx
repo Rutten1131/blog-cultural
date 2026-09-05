@@ -48,15 +48,15 @@ export function Navbar() {
         {/* ── Logo ── */}
         <Link
           href="/"
-          className="sheen-hover inline-flex shrink-0 items-center gap-2.5 overflow-hidden rounded-2xl border border-white/80 bg-white/80 px-3 py-2 shadow-[var(--shadow-nav)] backdrop-blur-md transition-all duration-300 hover:bg-white hover:shadow-[0_14px_30px_-8px_rgba(109,40,217,0.28)]"
+          className="sheen-hover inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-white/80 bg-white/80 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-[var(--shadow-nav)] backdrop-blur-md transition-all duration-300 hover:bg-white hover:shadow-[0_14px_30px_-8px_rgba(109,40,217,0.28)]"
           aria-label="Agenda Cultural Loja — Inicio"
         >
-          <LogoGeometrico className="h-8 w-8 shrink-0" />
-          <span className="hidden sm:flex flex-col leading-none">
-            <span className="font-display text-[15px] font-black uppercase tracking-wider text-[var(--color-dark)]">
+          <LogoGeometrico className="h-7 w-7 sm:h-8 sm:w-8 shrink-0" />
+          <span className="flex flex-col leading-none">
+            <span className="font-display text-[13px] sm:text-[15px] font-black uppercase tracking-wider text-[var(--color-dark)]">
               Agenda Cultural
             </span>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-purple-1)]">
+            <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-purple-1)]">
               Loja
             </span>
           </span>

@@ -4,13 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { SITE_CONFIG } from "@/lib/utils";
 import { EventoListCard, EstadoVacioEvento } from "@/components/EventoListCard";
 import { Navbar } from "@/components/Navbar";
+import { CalendarioCulturalHome } from "@/components/CalendarioCulturalHome";
 
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Todos los Eventos Culturales en Loja",
+  title: "Todos los Eventos Culturales en Loja — Cartelera y Calendario",
   description:
-    "Explorá el catálogo completo de eventos culturales en Loja, Ecuador: música, teatro, arte, ferias y artes vivas.",
+    "Explorá el catálogo completo y calendario interactivo de eventos culturales en Loja, Ecuador: música, teatro, arte, ferias y artes vivas.",
   alternates: {
     canonical: `${SITE_CONFIG.url}/eventos`,
   },
@@ -36,15 +37,27 @@ export default async function EventosPage() {
         </nav>
 
         {/* Header */}
-        <div className="mb-10">
+        <div className="mb-8">
           <h1 className="font-display text-4xl sm:text-5xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-            Todos los Eventos Culturales
+            Cartelera y Calendario Cultural
           </h1>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
             {eventos.length > 0
-              ? `Mostrando ${eventos.length} evento${eventos.length !== 1 ? "s" : ""} próximo${eventos.length !== 1 ? "s" : ""} en Loja, Ecuador.`
+              ? `Explora los ${eventos.length} eventos registrados o toca un día en el calendario para ver qué hacer en Loja.`
               : "No hay eventos próximos en este momento."}
           </p>
+        </div>
+
+        {/* Calendario Interactivo */}
+        <div className="mb-12">
+          <CalendarioCulturalHome eventos={eventos} />
+        </div>
+
+        {/* Separador de vista corrida */}
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)]">
+            Todos los eventos en lista
+          </h2>
         </div>
 
         {/* Grid de Eventos */}

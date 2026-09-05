@@ -128,8 +128,7 @@ export function ProximosEventosCarousel({ eventos }: Props) {
     <div className="relative flex flex-col items-center gap-8">
       {/* ── Stack de cartas ── */}
       <div
-        className="relative w-full max-w-sm mx-auto mt-6"
-        style={{ height: 420 }}
+        className="relative w-full max-w-sm mx-auto mt-2 sm:mt-6 h-[375px] sm:h-[420px]"
       >
         {/* Cartas del fondo (de atrás hacia adelante) */}
         {shown.slice(1).reverse().map((ev, revIdx) => {

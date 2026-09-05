@@ -1,48 +1,57 @@
 "use client";
 
 import Image from "next/image";
-import { formatFechaHoraLojaCliente } from "@/lib/fechasCliente";
+import { formatFechaHoraLojaCliente, formatRangoFechasLojaCliente } from "@/lib/fechasCliente";
 
 interface PublicarPreviewCardProps {
   nombre: string;
   fecha: string; // datetime-local: "YYYY-MM-DDTHH:mm"
+  fechaFin?: string; // datetime-local opcional
   lugar: string;
   descripcion: string;
   imagenUrl: string;
   nombreGestor: string;
 }
 
-/**
- * Parsea el input datetime-local ("YYYY-MM-DDTHH:mm") y lo muestra en zona Loja.
- * Misma semántica que `parseFechaInputLocal` del servidor pero client-safe.
- */
-function formatFechaPreview(input: string): string {
-  if (!input) return "Fecha del evento";
-  // Convertir "2026-08-14T20:00" → "2026-08-14T20:00:00-05:00" (hora Loja)
-  // para que el formateo use la zona correcta independientemente del browser.
+function parseClientDateLoja(input: string): Date | null {
+  if (!input) return null;
   let isoLoja: string;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(input)) {
-    isoLoja = `${input}:00-05:00`;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(input)) {
+    isoLoja = `${input.slice(0, 16)}:00-05:00`;
   } else if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
-    // Solo fecha sin hora: mediodía Loja
     isoLoja = `${input}T12:00:00-05:00`;
   } else {
-    return "Fecha del evento";
+    return null;
   }
   const d = new Date(isoLoja);
-  if (isNaN(d.getTime())) return "Fecha del evento";
-  return formatFechaHoraLojaCliente(d, "corto");
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Parsea los inputs datetime-local y los muestra en rango o fecha simple en zona Loja.
+ */
+function formatFechaPreview(fechaIni: string, fechaFin?: string): string {
+  const dIni = parseClientDateLoja(fechaIni);
+  if (!dIni) return "Fecha del evento";
+
+  const dFin = fechaFin ? parseClientDateLoja(fechaFin) : null;
+  if (dFin && dFin.getTime() > dIni.getTime()) {
+    return formatRangoFechasLojaCliente(dIni, dFin, true);
+  }
+
+  return formatFechaHoraLojaCliente(dIni, "corto");
 }
 
 export function PublicarPreviewCard({
   nombre,
   fecha,
+  fechaFin,
   lugar,
   descripcion,
   imagenUrl,
   nombreGestor,
 }: PublicarPreviewCardProps) {
-  const fechaFormateada = formatFechaPreview(fecha);
+  const fechaFormateada = formatFechaPreview(fecha, fechaFin);
   const descripcionCorta =
     descripcion.length > 140
       ? `${descripcion.slice(0, 137)}...`

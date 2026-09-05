@@ -114,3 +114,33 @@ export function formatFechaHoraLojaCliente(
 
   return new Intl.DateTimeFormat(LOCALE_LOJA_CLIENTE, config).format(d);
 }
+
+/**
+ * Formatea un rango de fechas para eventos que duran uno o varios días en Loja (Client-safe).
+ */
+export function formatRangoFechasLojaCliente(
+  inicio: Date | string | number,
+  fin?: Date | string | number | null,
+  conHora: boolean = false,
+): string {
+  if (!fin) {
+    return conHora ? formatFechaHoraLojaCliente(inicio, "corto") : formatFechaLojaCliente(inicio, "medio");
+  }
+
+  const dInicio = inicio instanceof Date ? inicio : new Date(inicio);
+  const dFin = fin instanceof Date ? fin : new Date(fin);
+  if (isNaN(dInicio.getTime())) return "";
+  if (isNaN(dFin.getTime())) return conHora ? formatFechaHoraLojaCliente(dInicio, "corto") : formatFechaLojaCliente(dInicio, "medio");
+
+  const isoIni = formatFechaLojaCliente(dInicio, "iso");
+  const isoFin = formatFechaLojaCliente(dFin, "iso");
+
+  if (isoIni === isoFin) {
+    return conHora ? formatFechaHoraLojaCliente(dInicio, "corto") : formatFechaLojaCliente(dInicio, "medio");
+  }
+
+  const partesIni = formatFechaLojaCliente(dInicio, "corto");
+  const partesFin = formatFechaLojaCliente(dFin, "corto");
+
+  return `${partesIni} al ${partesFin}`;
+}

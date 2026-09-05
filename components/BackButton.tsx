@@ -18,7 +18,7 @@ export function BackButton({ fallbackHref = "/" }: { fallbackHref?: string }) {
     <button
       type="button"
       onClick={handleBack}
-      className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 mb-8 transition-colors cursor-pointer"
+      className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer shrink-0"
     >
       ← Volver
     </button>

@@ -205,3 +205,36 @@ export function getDayBoundsLoja(
   const fin = new Date(`${ymd}T23:59:59.999-05:00`);
   return { inicio, fin };
 }
+
+/**
+ * Formatea un rango de fechas para eventos que duran uno o varios días en Loja.
+ * Ejemplos:
+ * - Mismo día: "sáb, 12 sept 2026, 18:00"
+ * - Varios días: "Del 21 al 24 sept 2026" o "vie, 21 sept — lun, 24 sept"
+ */
+export function formatRangoFechasLoja(
+  inicio: Date | string | number,
+  fin?: Date | string | number | null,
+  conHora: boolean = false,
+): string {
+  if (!fin) {
+    return conHora ? formatFechaHoraLoja(inicio, "corto") : formatFechaLoja(inicio, "medio");
+  }
+
+  const dInicio = inicio instanceof Date ? inicio : new Date(inicio);
+  const dFin = fin instanceof Date ? fin : new Date(fin);
+  if (isNaN(dInicio.getTime())) return "";
+  if (isNaN(dFin.getTime())) return conHora ? formatFechaHoraLoja(dInicio, "corto") : formatFechaLoja(dInicio, "medio");
+
+  const isoIni = formatFechaLoja(dInicio, "iso");
+  const isoFin = formatFechaLoja(dFin, "iso");
+
+  if (isoIni === isoFin) {
+    return conHora ? formatFechaHoraLoja(dInicio, "corto") : formatFechaLoja(dInicio, "medio");
+  }
+
+  const partesIni = formatFechaLoja(dInicio, "corto");
+  const partesFin = formatFechaLoja(dFin, "corto");
+
+  return `${partesIni} al ${partesFin}`;
+}

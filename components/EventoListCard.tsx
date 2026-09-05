@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { formatFechaLojaCliente } from "@/lib/fechasCliente";
+import { formatFechaLojaCliente, formatRangoFechasLojaCliente } from "@/lib/fechasCliente";
 
 interface EventoCardProps {
   id: number;
   nombre: string;
   slug: string;
   fecha: Date | string;
+  fechaFin?: Date | string | null;
   lugar: string;
   descripcion: string;
   imagenUrl: string | null;
@@ -16,8 +17,11 @@ interface EventoCardProps {
   zona: { nombre: string } | null;
 }
 
-/** Formatea fecha en zona Loja (corto: "vie, 14 ago") */
-function formatFecha(fecha: Date | string) {
+/** Formatea fecha en zona Loja (soporta eventos de varios días) */
+function formatFecha(fecha: Date | string, fechaFin?: Date | string | null) {
+  if (fechaFin) {
+    return formatRangoFechasLojaCliente(fecha, fechaFin);
+  }
   return formatFechaLojaCliente(fecha, "corto");
 }
 
@@ -43,7 +47,7 @@ export function CategoriaBadge({ categoria }: { categoria: { nombre: string; slu
 
 /** ── EventoCardFeatured — card grande para la sección hero y destacados ── */
 export function EventoCardFeatured({ evento }: { evento: EventoCardProps }) {
-  const fecha = formatFecha(evento.fecha);
+  const fecha = formatFecha(evento.fecha, evento.fechaFin);
   const descripcionCorta = evento.descripcion.length > 140
     ? `${evento.descripcion.slice(0, 137)}...`
     : evento.descripcion;
@@ -111,7 +115,7 @@ export function EventoCardFeatured({ evento }: { evento: EventoCardProps }) {
 
 /** ── EventoCardHorizontal — card compacta horizontal para listas de sección ── */
 export function EventoCardHorizontal({ evento }: { evento: EventoCardProps }) {
-  const fecha = formatFecha(evento.fecha);
+  const fecha = formatFecha(evento.fecha, evento.fechaFin);
 
   return (
     <Link

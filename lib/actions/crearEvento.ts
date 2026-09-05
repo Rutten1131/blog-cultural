@@ -34,6 +34,7 @@ export async function crearEvento(
   // Extraer campos
   const nombre = formData.get("nombre")?.toString().trim() ?? "";
   const fechaInput = formData.get("fecha")?.toString().trim() ?? "";
+  const fechaFinInput = formData.get("fechaFin")?.toString().trim() ?? "";
   const lugar = formData.get("lugar")?.toString().trim() ?? "";
   const descripcion = formData.get("descripcion")?.toString().trim() ?? "";
   const imagenUrl = formData.get("imagenUrl")?.toString().trim() || null;
@@ -69,6 +70,24 @@ export async function crearEvento(
     };
   }
 
+  // Validar fechaFin si viene indicada
+  let fechaFinDate: Date | null = null;
+  if (fechaFinInput) {
+    fechaFinDate = parseFechaInputLocal(fechaFinInput);
+    if (!fechaFinDate) {
+      return {
+        success: false,
+        error: "La fecha de finalización ingresada no es válida.",
+      };
+    }
+    if (fechaFinDate.getTime() < fechaDate.getTime()) {
+      return {
+        success: false,
+        error: "La fecha de finalización no puede ser anterior a la fecha de inicio.",
+      };
+    }
+  }
+
   // Validar URL de imagen o primera de multimedia
   const mainImage = imagenesUrl(imagenUrl, multimedia);
   if (mainImage) {
@@ -93,6 +112,7 @@ export async function crearEvento(
         nombre,
         slug,
         fecha: fechaDate,
+        fechaFin: fechaFinDate,
         lugar,
         descripcion,
         imagenUrl: mainImage,
@@ -145,12 +165,12 @@ export async function crearEvento(
     // Notificar a los administradores por WhatsApp (Evolution API)
     try {
       const { notificarNuevoEventoAdmin } = await import("@/lib/notificarAdmin");
-      const { formatFechaHoraLoja } = await import("@/lib/fechas");
+      const { formatRangoFechasLoja } = await import("@/lib/fechas");
       await notificarNuevoEventoAdmin({
         id: nuevoEvento.id,
         slug: nuevoEvento.slug,
         nombre: nuevoEvento.nombre,
-        fechaFormateada: formatFechaHoraLoja(fechaDate),
+        fechaFormateada: formatRangoFechasLoja(fechaDate, fechaFinDate, true),
         lugar: nuevoEvento.lugar,
         nombreGestor: nuevoEvento.nombreGestor,
         institucionRelacionada: nuevoEvento.institucionRelacionada,

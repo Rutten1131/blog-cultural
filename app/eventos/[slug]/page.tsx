@@ -164,6 +164,8 @@ export default async function EventoDetailPage({ params }: PageProps) {
   // Validar y serializar fecha de manera segura para JSON-LD
   const parsedDate = new Date(evento.fecha);
   const isoStartDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
+  const parsedEndDate = evento.fechaFin ? new Date(evento.fechaFin) : null;
+  const isoEndDate = parsedEndDate && !isNaN(parsedEndDate.getTime()) ? parsedEndDate.toISOString() : undefined;
 
   // Schema.org Event (JSON-LD) totalmente enriquecido para Google Rich Snippets
   const jsonLd = {
@@ -171,6 +173,7 @@ export default async function EventoDetailPage({ params }: PageProps) {
     "@type": "Event",
     name: evento.nombre,
     startDate: isoStartDate,
+    ...(isoEndDate && { endDate: isoEndDate }),
     description: evento.descripcion || "",
     eventStatus: "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
@@ -197,7 +200,8 @@ export default async function EventoDetailPage({ params }: PageProps) {
     },
   };
 
-  const fechaFormateada = formatFechaHoraLoja(evento.fecha, "largo");
+  const fechaInicioFormateada = formatFechaHoraLoja(evento.fecha, "largo");
+  const fechaFinFormateada = evento.fechaFin ? formatFechaHoraLoja(evento.fechaFin, "largo") : null;
 
   return (
     <>
@@ -211,9 +215,18 @@ export default async function EventoDetailPage({ params }: PageProps) {
         {/* Navbar Flotante */}
         <Navbar />
 
-        <main className="w-full max-w-4xl mx-auto px-6 pt-28 pb-16 flex-1">
-          {/* Botón inteligente Volver (regresa a la página anterior en el historial) */}
-          <BackButton />
+        <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 flex-1">
+          {/* Navegación y Volver */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <BackButton />
+            <nav className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+              <Link href="/" className="hover:text-purple-600 transition-colors">Inicio</Link>
+              <span>›</span>
+              <Link href="/eventos" className="hover:text-purple-600 transition-colors">Eventos</Link>
+              <span>›</span>
+              <span className="text-zinc-800 dark:text-zinc-200 truncate max-w-[140px] sm:max-w-[220px]">{evento.nombre}</span>
+            </nav>
+          </div>
 
           <article className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
             {/* Galería / Carrusel de Imágenes y Video con fallback seguro */}
@@ -240,6 +253,11 @@ export default async function EventoDetailPage({ params }: PageProps) {
                     📍 {evento.zona.nombre} ({evento.zona.tipo})
                   </span>
                 )}
+                {evento.fechaFin && (
+                  <span className="inline-flex items-center rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 px-3.5 py-1 text-xs font-bold text-purple-700 dark:text-purple-300">
+                    ✨ Evento de varios días
+                  </span>
+                )}
               </div>
 
               {/* Título */}
@@ -251,12 +269,22 @@ export default async function EventoDetailPage({ params }: PageProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-50 dark:bg-zinc-800/50 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800/80 mb-8 text-sm">
                 <div>
                   <span className="block text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">
-                    Fecha y Hora
+                    {evento.fechaFin ? "Fecha de Inicio" : "Fecha y Hora"}
                   </span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 capitalize">
-                    {fechaFormateada}
+                    {fechaInicioFormateada}
                   </span>
                 </div>
+                {evento.fechaFin && (
+                  <div>
+                    <span className="block text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">
+                      Fecha de Finalización
+                    </span>
+                    <span className="font-semibold text-purple-700 dark:text-purple-300 capitalize">
+                      {fechaFinFormateada}
+                    </span>
+                  </div>
+                )}
                 <div>
                   <span className="block text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">
                     Lugar / Recinto

@@ -8,6 +8,7 @@ import { Navbar } from "@/components/Navbar";
 import { CategoryTicker } from "@/components/CategoryTicker";
 import { UltimosEventosSection } from "@/components/UltimosEventosSection";
 import { ProximosEventosCarousel } from "@/components/ProximosEventosCarousel";
+import { CalendarioBotonFlotante } from "@/components/CalendarioBotonFlotante";
 
 import { BuzonRecomendaciones } from "@/components/BuzonRecomendaciones";
 
@@ -238,6 +239,13 @@ export default async function Home() {
     take: 12,
   });
 
+  // Todos los eventos aprobados (para alimentar el Calendario Interactivo completo del mes y futuros)
+  const eventosCalendario = await prisma.evento.findMany({
+    where: { estado: "APROBADO" },
+    include: { categoria: true, zona: true },
+    orderBy: { fecha: "asc" },
+  });
+
   // Últimos eventos publicados (ordenados por fecha de creación descendente)
   const ultimosEventos = await prisma.evento.findMany({
     where: { estado: "APROBADO" },
@@ -267,6 +275,7 @@ export default async function Home() {
             "@type": "Event",
             name: ev.nombre,
             startDate: new Date(ev.fecha).toISOString(),
+            ...(ev.fechaFin ? { endDate: new Date(ev.fechaFin).toISOString() } : {}),
             location: {
               "@type": "Place",
               name: ev.lugar,
@@ -300,7 +309,7 @@ export default async function Home() {
             HERO — Eventos destacados
         ═══════════════════════════════ */}
         <section
-          className="relative w-full overflow-hidden pb-12 pt-28 sm:pt-32"
+          className="relative w-full overflow-hidden pb-8 sm:pb-12 pt-20 sm:pt-32"
           aria-label="Eventos destacados"
         >
           {/* Blob de fondo hero */}
@@ -315,27 +324,47 @@ export default async function Home() {
 
           <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
             {/* Eyebrow */}
-            <div className="mb-4 flex items-center gap-2">
+            <div className="mb-3 flex items-center gap-2">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-coral)] opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-coral)]" />
               </span>
-              <span className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-muted)]">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-muted)]">
                 Descubre qué está pasando en Loja
               </span>
             </div>
 
-            {/* Título hero H1 orientado a intención de búsqueda principal */}
-            <h1 className="font-display mb-4 text-3xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] sm:text-5xl md:text-6xl fade-up">
+            {/* Título hero H1 orientado a intención de búsqueda principal (100% SEO preservado) */}
+            <h1 className="font-display mb-3 text-2xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] sm:text-5xl md:text-6xl fade-up">
               ¿Qué hacer <br />
               <span className="text-gradient-purple">en Loja?</span>
               <br />
-              <span className="text-xl font-bold sm:text-2xl md:text-3xl text-[var(--color-muted)] normal-case tracking-normal block mt-2">
+              <span className="text-base font-bold sm:text-2xl md:text-3xl text-[var(--color-muted)] normal-case tracking-normal block mt-1 sm:mt-2">
                 Eventos, arte y actividades culturales en la ciudad
               </span>
             </h1>
 
             {/* Carrusel de próximos eventos ordenados por fecha */}
+            <div className="mt-6 sm:mt-10 mb-3 sm:mb-4 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-widest text-[var(--color-purple-1)]">
+                  Cartelera Destacada
+                </span>
+                <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)] sm:text-3xl">
+                  Próximas Actividades
+                </h2>
+              </div>
+              <Link
+                href="/eventos"
+                className="hidden sm:inline-flex items-center gap-1.5 text-sm font-bold text-[var(--color-purple-2)] hover:gap-2.5 transition-all"
+              >
+                Ver todos los eventos
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
+                </svg>
+              </Link>
+            </div>
+
             {destacados.length > 0 ? (
               <div className="relative px-1">
                 <ProximosEventosCarousel eventos={destacados} />
@@ -523,6 +552,9 @@ export default async function Home() {
           </div>
         </footer>
       </main>
+
+      {/* ── BOTÓN FLOTANTE Y POPUP LATERAL DEL CALENDARIO ── */}
+      <CalendarioBotonFlotante eventos={eventosCalendario} />
     </div>
   );
 }
