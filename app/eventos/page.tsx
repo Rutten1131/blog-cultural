@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { SITE_CONFIG } from "@/lib/utils";
+import { inicioDelDiaLojaUTC } from "@/lib/fechas";
 import { EventoListCard, EstadoVacioEvento } from "@/components/EventoListCard";
+import { EventosPasadosList } from "@/components/EventosPasadosList";
 import { Navbar } from "@/components/Navbar";
 import { CalendarioCulturalHome } from "@/components/CalendarioCulturalHome";
 
@@ -18,11 +20,37 @@ export const metadata: Metadata = {
 };
 
 export default async function EventosPage() {
-  const eventos = await prisma.evento.findMany({
-    where: { estado: "APROBADO" },
+  const hoyLoja = inicioDelDiaLojaUTC();
+
+  // 1. Eventos vigentes (hoy y días siguientes), ordenados cronológicamente
+  const eventosProximos = await prisma.evento.findMany({
+    where: {
+      estado: "APROBADO",
+      OR: [
+        { fechaFin: { gte: hoyLoja } },
+        { fecha: { gte: hoyLoja } },
+      ],
+    },
     include: { categoria: true, zona: true },
     orderBy: { fecha: "asc" },
   });
+
+  // 2. Eventos pasados / memoria histórica
+  const eventosPasados = await prisma.evento.findMany({
+    where: {
+      estado: "APROBADO",
+      AND: [
+        { fecha: { lt: hoyLoja } },
+        { OR: [{ fechaFin: null }, { fechaFin: { lt: hoyLoja } }] },
+      ],
+    },
+    include: { categoria: true, zona: true },
+    orderBy: { fecha: "desc" },
+    take: 50,
+  });
+
+  // Para el calendario se pasan todos
+  const todosLosEventos = [...eventosProximos, ...eventosPasados];
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: "var(--color-bg)" }}>
@@ -42,34 +70,50 @@ export default async function EventosPage() {
             Cartelera y Calendario Cultural
           </h1>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
-            {eventos.length > 0
-              ? `Explora los ${eventos.length} eventos registrados o toca un día en el calendario para ver qué hacer en Loja.`
+            {eventosProximos.length > 0
+              ? `Explora los ${eventosProximos.length} eventos próximos en agenda o toca un día en el calendario interactivo.`
               : "No hay eventos próximos en este momento."}
           </p>
         </div>
 
         {/* Calendario Interactivo */}
         <div className="mb-12">
-          <CalendarioCulturalHome eventos={eventos} />
+          <CalendarioCulturalHome eventos={todosLosEventos} />
         </div>
 
-        {/* Separador de vista corrida */}
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-            Todos los eventos en lista
-          </h2>
-        </div>
+        {/* ── SECCIÓN 1: CARTELERA ACTIVA (HOY Y PRÓXIMOS DÍAS) ── */}
+        <section className="mb-14">
+          <div className="mb-6 flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)]">
+              Eventos Próximos (Hoy y siguientes fechas)
+            </h2>
+          </div>
 
-        {/* Grid de Eventos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {eventos.length > 0 ? (
-            eventos.map((evento) => (
-              <EventoListCard key={evento.id} evento={evento} />
-            ))
-          ) : (
-            <EstadoVacioEvento mensaje="No hay eventos próximos en este momento." />
-          )}
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {eventosProximos.length > 0 ? (
+              eventosProximos.map((evento) => (
+                <EventoListCard key={evento.id} evento={evento} />
+              ))
+            ) : (
+              <div className="sm:col-span-2 lg:col-span-3">
+                <EstadoVacioEvento mensaje="No hay eventos próximos programados para hoy o los siguientes días." />
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── SECCIÓN 2: EVENTOS ANTERIORES / ARCHIVO CULTURAL CON LÍMITE Y VER MÁS ── */}
+        <EventosPasadosList
+          eventos={eventosPasados}
+          titulo="Eventos Realizados Anteriormente en Loja"
+          subtitulo="Registro histórico de presentaciones, talleres y festivales concluidos en la ciudad."
+          initialCount={6}
+          step={6}
+        />
       </main>
     </div>
   );

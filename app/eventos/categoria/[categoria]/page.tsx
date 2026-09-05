@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIAS } from "@/types";
 import { SITE_CONFIG } from "@/lib/utils";
+import { inicioDelDiaLojaUTC } from "@/lib/fechas";
 import { EventoListCard, EstadoVacioEvento } from "@/components/EventoListCard";
+import { EventosPasadosList } from "@/components/EventosPasadosList";
 import { Navbar } from "@/components/Navbar";
 
 export const revalidate = 60;
@@ -154,16 +156,42 @@ export default async function CategoriaPage({ params }: PageProps) {
     where: { slug: categoriaSlug },
   });
 
-  const eventos = categoriaDb
+  const hoyLoja = inicioDelDiaLojaUTC();
+
+  // 1. Eventos vigentes (hoy y días siguientes), ordenados cronológicamente
+  const eventosProximos = categoriaDb
     ? await prisma.evento.findMany({
         where: {
           estado: "APROBADO",
           categoriaId: categoriaDb.id,
+          OR: [
+            { fechaFin: { gte: hoyLoja } },
+            { fecha: { gte: hoyLoja } },
+          ],
         },
         include: { categoria: true, zona: true },
         orderBy: { fecha: "asc" },
       })
     : [];
+
+  // 2. Eventos anteriores / finalizados, ordenados del más reciente al más antiguo
+  const eventosPasados = categoriaDb
+    ? await prisma.evento.findMany({
+        where: {
+          estado: "APROBADO",
+          categoriaId: categoriaDb.id,
+          AND: [
+            { fecha: { lt: hoyLoja } },
+            { OR: [{ fechaFin: null }, { fechaFin: { lt: hoyLoja } }] },
+          ],
+        },
+        include: { categoria: true, zona: true },
+        orderBy: { fecha: "desc" },
+        take: 30,
+      })
+    : [];
+
+  const todosEventosCat = [...eventosProximos, ...eventosPasados];
 
   // JSON-LD Schema.org para CollectionPage + ItemList
   const jsonLdCategory = {
@@ -180,8 +208,8 @@ export default async function CategoriaPage({ params }: PageProps) {
       {
         "@type": "ItemList",
         name: seoInfo.tituloH1,
-        numberOfItems: eventos.length,
-        itemListElement: eventos.map((ev, index) => ({
+        numberOfItems: todosEventosCat.length,
+        itemListElement: todosEventosCat.map((ev, index) => ({
           "@type": "ListItem",
           position: index + 1,
           item: {
@@ -229,7 +257,7 @@ export default async function CategoriaPage({ params }: PageProps) {
               Categoría Cultural
             </span>
             <span className="text-xs text-[var(--color-muted)] font-medium">
-              {eventos.length} evento{eventos.length !== 1 ? "s" : ""} disponible{eventos.length !== 1 ? "s" : ""}
+              {eventosProximos.length} próximo{eventosProximos.length !== 1 ? "s" : ""} · {todosEventosCat.length} en total
             </span>
           </div>
 
@@ -246,21 +274,44 @@ export default async function CategoriaPage({ params }: PageProps) {
           </p>
         </div>
 
-        {/* Grid de eventos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {eventos.length > 0 ? (
-            eventos.map((evento) => (
-              <EventoListCard key={evento.id} evento={evento} />
-            ))
-          ) : (
-            <EstadoVacioEvento
-              mensaje={`No hay eventos próximos registrados en la categoría "${cat.nombre}".`}
-            />
-          )}
-        </div>
+        {/* ── SECCIÓN 1: EVENTOS VIGENTES (HOY Y PRÓXIMOS DÍAS) ── */}
+        <section className="mb-14">
+          <div className="mb-6 flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <h3 className="font-display text-xl sm:text-2xl font-black uppercase tracking-tight text-[var(--color-dark)]">
+              Próximos Eventos en Cartelera (Hoy y siguientes días)
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {eventosProximos.length > 0 ? (
+              eventosProximos.map((evento) => (
+                <EventoListCard key={evento.id} evento={evento} />
+              ))
+            ) : (
+              <div className="sm:col-span-2 lg:col-span-3">
+                <EstadoVacioEvento
+                  mensaje={`No hay eventos próximos en fechas futuras para "${cat.nombre}". Consulta los eventos realizados anteriormente a continuación.`}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── SECCIÓN 2: EVENTOS ANTERIORES / HISTORIAL CULTURAL CON LÍMITE Y VER MÁS ── */}
+        <EventosPasadosList
+          eventos={eventosPasados}
+          titulo={`Eventos Anteriores en ${cat.nombre}`}
+          subtitulo={`Ediciones, exposiciones y presentaciones ya concluidas en Loja.`}
+          initialCount={6}
+          step={6}
+        />
 
         {/* Link de vuelta */}
-        <div className="mt-12 pt-8 border-t border-[var(--color-border)] text-center">
+        <div className="mt-14 pt-8 border-t border-[var(--color-border)] text-center">
           <Link
             href="/"
             className="text-sm font-semibold text-[var(--color-muted)] hover:text-[var(--color-purple-1)] transition-colors"

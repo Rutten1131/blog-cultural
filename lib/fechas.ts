@@ -189,6 +189,16 @@ export function esEventoPasado(fecha: Date | string | number): boolean {
 }
 
 /**
+ * Devuelve el inicio del día actual (00:00:00) en hora de Loja (UTC-5) convertido a Date UTC.
+ * Útil para queries: cualquier evento programado para hoy debe seguir apareciendo
+ * como vigente a lo largo de todo el día.
+ */
+export function inicioDelDiaLojaUTC(referencia: Date = new Date()): Date {
+  const bounds = getDayBoundsLoja(referencia);
+  return bounds ? bounds.inicio : new Date();
+}
+
+/**
  * Devuelve los límites del día en zona Loja para una fecha dada.
  * Útil para queries "eventos de hoy" o "eventos de este finde".
  */

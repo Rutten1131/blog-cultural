@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIAS } from "@/types";
-import { ahoraUTC } from "@/lib/fechas";
+import { ahoraUTC, inicioDelDiaLojaUTC } from "@/lib/fechas";
 import { EstadoVacioEvento } from "@/components/EventoListCard";
 import { Navbar } from "@/components/Navbar";
 import { CategoryTicker } from "@/components/CategoryTicker";
@@ -140,12 +140,32 @@ async function SeccionCategoria({
   nombre: string;
   blobVariant: 1 | 2;
 }) {
-  const eventos = await prisma.evento.findMany({
-    where: { estado: "APROBADO", fecha: { gte: ahoraUTC() }, categoria: { slug } },
+  const hoyLoja = inicioDelDiaLojaUTC();
+
+  // Buscar eventos vigentes (que ocurran hoy o en los días siguientes)
+  let eventos = await prisma.evento.findMany({
+    where: {
+      estado: "APROBADO",
+      categoria: { slug },
+      OR: [
+        { fechaFin: { gte: hoyLoja } },
+        { fecha: { gte: hoyLoja } },
+      ],
+    },
     include: { categoria: true, zona: true },
     orderBy: { fecha: "asc" },
-    take: 5,
+    take: 6,
   });
+
+  // Si no hay futuros registrados aún en esta categoría, mostramos los eventos más recientes
+  if (eventos.length === 0) {
+    eventos = await prisma.evento.findMany({
+      where: { estado: "APROBADO", categoria: { slug } },
+      include: { categoria: true, zona: true },
+      orderBy: { fecha: "desc" },
+      take: 4,
+    });
+  }
 
   const meta = CAT_META[slug] ?? { emoji: "🎭", color: "#7c3aed", bg: "from-purple-500/20 to-violet-500/10" };
 
@@ -201,7 +221,7 @@ async function SeccionCategoria({
 
         {eventos.length === 0 ? (
           <p className="text-sm text-[var(--color-muted)]">
-            No hay eventos próximos en esta categoría por el momento.
+            No hay eventos registrados en esta categoría por el momento.
           </p>
         ) : (
           <div className="relative my-4">
@@ -231,9 +251,17 @@ async function SeccionCategoria({
    PAGE — Homepage Magazine
 ══════════════════════════════════════════════════ */
 export default async function Home() {
-  // Próximos eventos ordenados por fecha (hasta 12 para el carrusel)
+  const hoyLoja = inicioDelDiaLojaUTC();
+
+  // Próximos eventos ordenados por fecha (desde hoy hacia adelante, orden ascendente)
   const destacados = await prisma.evento.findMany({
-    where: { estado: "APROBADO", fecha: { gte: ahoraUTC() } },
+    where: {
+      estado: "APROBADO",
+      OR: [
+        { fechaFin: { gte: hoyLoja } },
+        { fecha: { gte: hoyLoja } },
+      ],
+    },
     include: { categoria: true, zona: true },
     orderBy: { fecha: "asc" },
     take: 12,
@@ -246,12 +274,30 @@ export default async function Home() {
     orderBy: { fecha: "asc" },
   });
 
-  // Últimos eventos publicados (ordenados por fecha de creación descendente)
-  const ultimosEventos = await prisma.evento.findMany({
-    where: { estado: "APROBADO" },
+  // Cartelera activa y próximos eventos ordenados cronológicamente desde hoy
+  let ultimosEventos = await prisma.evento.findMany({
+    where: {
+      estado: "APROBADO",
+      OR: [
+        { fechaFin: { gte: hoyLoja } },
+        { fecha: { gte: hoyLoja } },
+      ],
+    },
     include: { categoria: true, zona: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: { fecha: "asc" },
+    take: 16,
   });
+
+  // Fallback si la cartelera futura fuera muy pequeña
+  if (ultimosEventos.length < 4) {
+    const eventosPasadosRecientes = await prisma.evento.findMany({
+      where: { estado: "APROBADO" },
+      include: { categoria: true, zona: true },
+      orderBy: { fecha: "desc" },
+      take: 12,
+    });
+    ultimosEventos = eventosPasadosRecientes;
+  }
 
   // Marcado estructurado JSON-LD (Schema.org) para la Home
   const jsonLdHome = {
