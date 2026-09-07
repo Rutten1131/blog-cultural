@@ -611,18 +611,27 @@ export default async function Home() {
             </div>
 
             {/* Bottom bar */}
-            <div className="mt-10 flex flex-col items-center justify-center gap-2 border-t border-white/10 pt-6 text-center">
+            <div className="mt-10 flex flex-col items-center justify-center gap-2.5 border-t border-white/10 pt-6 text-center">
+              <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-white/70">
+                <Link href="/sobre-el-creador" className="hover:text-white transition-colors underline-offset-4 hover:underline">
+                  Sobre el Creador (César Reyes Jaramillo)
+                </Link>
+                <span>•</span>
+                <Link href="/publicar" className="hover:text-white transition-colors underline-offset-4 hover:underline">
+                  Publicar un Evento
+                </Link>
+              </div>
               <p className="text-[12px] text-white/50">
-                Diseñado por{" "}
+                Iniciativa tecnológica creada y desarrollada por{" "}
                 <a
                   href="https://www.cesarreyesjaramillo.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-bold text-white/80 transition-colors hover:text-white hover:underline"
                 >
-                  Cesar Reyes
+                  César Reyes Jaramillo
                 </a>{" "}
-                | Agenda cultural Loja {new Date().getFullYear()}
+                | Agenda Cultural Loja {new Date().getFullYear()}
               </p>
             </div>
           </div>
