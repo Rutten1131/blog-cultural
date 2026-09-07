@@ -33,25 +33,55 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [abierto]);
 
+  // Escuchar evento personalizado 'abrir-calendario'
+  useEffect(() => {
+    const handleAbrir = () => setAbierto(true);
+    window.addEventListener("abrir-calendario", handleAbrir);
+    return () => window.removeEventListener("abrir-calendario", handleAbrir);
+  }, []);
+
+  // Detectar scroll para mostrar el botón flotante lateral SOLO cuando se sale del Hero
+  const [mostrarFlotante, setMostrarFlotante] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // El hero mide aprox 500-600px; cuando el scroll supera los 350px mostramos el botón lateral
+      if (window.scrollY > 350) {
+        setMostrarFlotante(true);
+      } else {
+        setMostrarFlotante(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll(); // Chequeo inicial
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <>
-      {/* ── BOTÓN FLOTANTE ANCLADO A LA DERECHA ── */}
-      <div className="fixed right-0 top-[28%] sm:top-1/2 -translate-y-1/2 z-40 flex items-center">
+      {/* ── BOTÓN FLOTANTE ANCLADO A LA DERECHA (aparece al scrollear fuera del Hero, tanto en desktop como móvil) ── */}
+      <div
+        className={`fixed right-0 top-[35%] sm:top-1/2 -translate-y-1/2 z-40 flex items-center transition-all duration-300 ${
+          mostrarFlotante
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-full opacity-0 pointer-events-none"
+        }`}
+      >
         <button
           type="button"
           onClick={() => setAbierto(true)}
-          className="group relative flex items-center gap-1.5 bg-gradient-to-b from-[var(--color-purple-1)] to-[var(--color-purple-2)] text-white px-2 py-2.5 sm:py-3 rounded-l-xl shadow-[0_6px_20px_rgba(124,58,237,0.35)] hover:shadow-[0_10px_25px_rgba(124,58,237,0.5)] transition-all duration-300 hover:pr-3 border-y border-l border-white/25 active:scale-95 cursor-pointer"
+          className="group relative flex items-center gap-2 bg-gradient-to-b from-[var(--color-purple-1)] via-indigo-600 to-[var(--color-coral)] text-white px-2.5 sm:px-3 py-3.5 sm:py-4 rounded-l-2xl shadow-[0_8px_25px_rgba(124,58,237,0.45)] hover:shadow-[0_12px_32px_rgba(236,72,153,0.6)] transition-all duration-300 hover:pr-4 border-y border-l border-white/30 active:scale-95 cursor-pointer"
           style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
           aria-label="Abrir calendario interactivo de eventos"
         >
-          <span className="flex items-center gap-1.5 rotate-180">
-            {/* Ícono de Calendario */}
+          <span className="flex items-center gap-2 rotate-180">
+            {/* Ícono de Calendario con rotación al hover */}
             <svg
-              className="w-3.5 h-3.5 transition-transform group-hover:scale-110"
+              className="w-4 h-4 transition-transform group-hover:scale-125"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
-              strokeWidth="2.2"
+              strokeWidth="2.4"
             >
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
@@ -59,23 +89,23 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
 
-            {/* Texto vertical */}
-            <span className="font-display font-bold tracking-wider text-[11px] uppercase">
-              Calendario
+            {/* Texto vertical ampliado: Ver Calendario */}
+            <span className="font-display font-black tracking-wider text-xs sm:text-[13px] uppercase">
+              Ver Calendario
             </span>
           </span>
 
           {/* Indicador de pulso llamativo */}
-          <span className="absolute -left-1 -top-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-coral)] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--color-coral)]"></span>
+          <span className="absolute -left-1.5 -top-1.5 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-coral)] opacity-85"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[var(--color-coral)] border border-white"></span>
           </span>
         </button>
       </div>
 
-      {/* ── MODAL / DRAWER POPUP ── */}
+      {/* ── MODAL CENTRADO (en ordenador está centrado en pantalla, en móvil como drawer de pantalla completa) ── */}
       {abierto && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 sm:py-6">
           {/* Backdrop con clic para cerrar */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fadeIn"
@@ -83,9 +113,9 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
             aria-hidden="true"
           />
 
-          {/* Contenedor del Drawer / Panel lateral */}
+          {/* Contenedor del Modal Centrado */}
           <aside
-            className="relative w-full max-w-2xl bg-white h-full shadow-2xl z-10 flex flex-col overflow-hidden border-l border-stone-200"
+            className="relative w-full max-w-2xl bg-white h-full sm:h-auto sm:max-h-[90vh] sm:rounded-3xl shadow-2xl z-10 flex flex-col overflow-hidden border border-stone-200 animate-fadeIn"
             role="dialog"
             aria-modal="true"
             aria-label="Calendario de Eventos"

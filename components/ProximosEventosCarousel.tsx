@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { formatFechaLojaCliente } from "@/lib/fechasCliente";
@@ -25,55 +25,77 @@ interface Props {
 }
 
 export function ProximosEventosCarousel({ eventos }: Props) {
-  const [stack, setStack] = useState(eventos);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [dragY, setDragY] = useState(0);
-  const [gone, setGone] = useState(false); // animación de salida
+  const [animating, setAnimating] = useState<"next" | "prev" | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const topEvent = stack[0];
-  const shown = stack.slice(0, 4); // máximo 4 visibles en el stack
+  const total = eventos.length;
+
+  // Si no hay eventos, no renderizar
+  if (total === 0) return null;
+
+  // Obtener los siguientes 4 eventos en el orden cíclico a partir de currentIndex
+  const shown = Array.from({ length: Math.min(4, total) }, (_, i) => {
+    const idx = (currentIndex + i) % total;
+    return eventos[idx];
+  });
+
+  const topEvent = shown[0];
 
   // ── Iniciar drag ──
   const onDragStart = (clientX: number, clientY: number) => {
+    if (animating) return;
     startRef.current = { x: clientX, y: clientY };
     setDragging(true);
-    setGone(false);
   };
 
   // ── Mover ──
   const onDragMove = (clientX: number, clientY: number) => {
-    if (!startRef.current || !dragging) return;
+    if (!startRef.current || !dragging || animating) return;
     setDragX(clientX - startRef.current.x);
     setDragY((clientY - startRef.current.y) * 0.2);
   };
 
-  // ── Función de salida fluida ──
-  const dismissCard = (direction: "left" | "right") => {
-    if (gone) return;
-    setGone(true);
-    setDragX(direction === "right" ? 500 : -500);
+  // ── Siguiente (Adelante) ──
+  const goNext = () => {
+    if (animating || total <= 1) return;
+    setAnimating("next");
+    setDragX(500);
     setTimeout(() => {
-      setStack((prev) => prev.slice(1));
+      setCurrentIndex((prev) => (prev + 1) % total);
       setDragX(0);
       setDragY(0);
-      setGone(false);
+      setAnimating(null);
+    }, 280);
+  };
+
+  // ── Anterior (Atrás) ──
+  const goPrev = () => {
+    if (animating || total <= 1) return;
+    setAnimating("prev");
+    setDragX(-500);
+    setTimeout(() => {
+      setCurrentIndex((prev) => (prev - 1 + total) % total);
+      setDragX(0);
+      setDragY(0);
+      setAnimating(null);
     }, 280);
   };
 
   // ── Soltar ──
   const onDragEnd = () => {
-    if (!dragging) return;
+    if (!dragging || animating) return;
     setDragging(false);
-    const threshold = 80;
+    const threshold = 70;
     if (dragX > threshold) {
-      dismissCard("right");
+      goNext();
     } else if (dragX < -threshold) {
-      dismissCard("left");
+      goPrev();
     } else {
-      // Volver al centro con muelle suave
       setDragX(0);
       setDragY(0);
     }
@@ -98,37 +120,15 @@ export function ProximosEventosCarousel({ eventos }: Props) {
   };
   const onTouchEnd = () => onDragEnd();
 
-  // ── Reset (volver a ver todos) ──
-  const reset = () => {
-    setStack(eventos);
-    setDragX(0);
-    setDragY(0);
-    setGone(false);
-  };
-
-  if (stack.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-[var(--color-muted)] text-sm font-semibold">¡Viste todos los eventos! 🎉</p>
-        <button
-          onClick={reset}
-          className="rounded-full border-2 border-[var(--color-purple-1)] px-6 py-2 text-sm font-bold text-[var(--color-purple-1)] hover:bg-[var(--color-purple-1)] hover:text-white transition-all"
-        >
-          Ver de nuevo
-        </button>
-      </div>
-    );
-  }
-
   // Rotación según arrastre
   const rotation = dragX / 18;
   const swipeDirection = dragX > 60 ? "right" : dragX < -60 ? "left" : null;
 
   return (
-    <div className="relative flex flex-col items-center gap-8">
+    <div className="relative flex flex-col items-center gap-4 sm:gap-5 pt-3 sm:pt-4">
       {/* ── Stack de cartas ── */}
       <div
-        className="relative w-full max-w-full sm:max-w-[440px] mx-auto mt-1 sm:mt-6 h-[465px] sm:h-[480px]"
+        className="relative w-full max-w-full sm:max-w-[440px] mx-auto mt-2 sm:mt-4 h-[465px] sm:h-[480px]"
       >
         {/* Cartas del fondo (de atrás hacia adelante) */}
         {shown.slice(1).reverse().map((ev, revIdx) => {
@@ -179,10 +179,12 @@ export function ProximosEventosCarousel({ eventos }: Props) {
             ref={cardRef}
             className="absolute inset-0 rounded-2xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl cursor-grab active:cursor-grabbing"
             style={{
-              transform: gone
-                ? `translateX(${dragX > 0 ? 600 : -600}px) rotate(${dragX > 0 ? 30 : -30}deg)`
+              transform: animating === "next"
+                ? "translateX(600px) rotate(25deg)"
+                : animating === "prev"
+                ? "translateX(-600px) rotate(-25deg)"
                 : `translateX(${dragX}px) translateY(${dragY}px) rotate(${rotation}deg)`,
-              transition: gone || !dragging ? "transform 0.3s cubic-bezier(.25,.46,.45,.94)" : "none",
+              transition: animating || !dragging ? "transform 0.28s cubic-bezier(.25,.46,.45,.94)" : "none",
               zIndex: shown.length + 1,
               willChange: "transform",
               userSelect: "none",
@@ -198,15 +200,15 @@ export function ProximosEventosCarousel({ eventos }: Props) {
             {/* Indicador de dirección */}
             {swipeDirection === "right" && (
               <div className="absolute inset-0 z-20 flex items-start justify-start p-5 pointer-events-none">
-                <span className="rounded-xl border-4 border-emerald-400 text-emerald-500 text-xl font-black uppercase px-4 py-1 rotate-[-12deg] bg-white/80 backdrop-blur-sm shadow-lg">
-                  ✓ Ver
+                <span className="rounded-xl border-4 border-purple-400 text-purple-600 text-xl font-black uppercase px-4 py-1 rotate-[-12deg] bg-white/90 backdrop-blur-sm shadow-lg">
+                  Siguiente →
                 </span>
               </div>
             )}
             {swipeDirection === "left" && (
               <div className="absolute inset-0 z-20 flex items-start justify-end p-5 pointer-events-none">
-                <span className="rounded-xl border-4 border-rose-400 text-rose-500 text-xl font-black uppercase px-4 py-1 rotate-[12deg] bg-white/80 backdrop-blur-sm shadow-lg">
-                  Omitir
+                <span className="rounded-xl border-4 border-zinc-400 text-zinc-600 text-xl font-black uppercase px-4 py-1 rotate-[12deg] bg-white/90 backdrop-blur-sm shadow-lg">
+                  ← Anterior
                 </span>
               </div>
             )}
@@ -267,34 +269,40 @@ export function ProximosEventosCarousel({ eventos }: Props) {
         )}
       </div>
 
-      {/* ── Botones de acción y contador ── */}
-      <div className="flex items-center gap-6">
-        {/* Omitir */}
+      {/* ── Botones de acción (Atrás / Adelante) y contador pegados a la card ── */}
+      <div className="flex items-center gap-5 -mt-3 sm:-mt-2 z-10">
+        {/* Botón Anterior (Flecha Izquierda) */}
         <button
-          onClick={() => dismissCard("left")}
-          aria-label="Omitir evento"
-          className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-rose-300 bg-white text-rose-400 shadow-md transition-all hover:bg-rose-50 hover:scale-110 hover:shadow-lg"
+          onClick={goPrev}
+          aria-label="Evento anterior"
+          title="Anterior"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-dark)] shadow-md transition-all hover:bg-purple-50 hover:text-[var(--color-purple-1)] hover:scale-110 active:scale-95 cursor-pointer"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
         </button>
 
         {/* Contador */}
-        <span className="text-xs font-bold text-[var(--color-muted)]">
-          {eventos.length - stack.length + 1}/{eventos.length}
+        <span className="text-xs font-bold text-[var(--color-muted)] bg-[var(--color-surface)]/80 px-2.5 py-1 rounded-full border border-[var(--color-border)]/50">
+          {currentIndex + 1}/{total}
         </span>
 
-        {/* Ver evento (swipe derecha) */}
+        {/* Botón Siguiente (Flecha Derecha) */}
         <button
-          onClick={() => dismissCard("right")}
-          aria-label="Me interesa"
-          className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-emerald-300 bg-white text-emerald-500 shadow-md transition-all hover:bg-emerald-50 hover:scale-110 hover:shadow-lg"
+          onClick={goNext}
+          aria-label="Siguiente evento"
+          title="Siguiente"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-dark)] shadow-md transition-all hover:bg-purple-50 hover:text-[var(--color-purple-1)] hover:scale-110 active:scale-95 cursor-pointer"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
         </button>
       </div>
 
       {/* ── Hint swipe (solo primera vez) ── */}
-      <p className="text-center text-[11px] text-[var(--color-muted)]/60 -mt-4">
+      <p className="text-center text-[11px] text-[var(--color-muted)]/70 -mt-2">
         Deslizá la carta o usá las flechas para explorar
       </p>
     </div>

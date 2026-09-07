@@ -7,6 +7,7 @@ import {
   formatFechaLojaCliente,
   formatRangoFechasLojaCliente,
 } from "@/lib/fechasCliente";
+import { EventosDiaCardStack } from "./EventosDiaCardStack";
 
 export interface EventoCalendario {
   id: number;
@@ -57,8 +58,8 @@ export function CalendarioCulturalHome({ eventos }: Props) {
     return (parseInt(parts[1], 10) || 9) - 1; // 0-indexed
   });
 
-  // Día seleccionado (por defecto hoy o null)
-  const [selectedDay, setSelectedDay] = useState<string | null>(hoyLoja);
+  // Día seleccionado (por defecto null para que se vea el calendario completo; al hacer clic se esconde y muestra actividades)
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   // Mapear eventos a días (un evento multi-día cubre desde su inicio hasta su fin)
   const eventosPorDia = useMemo(() => {
@@ -244,205 +245,161 @@ export function CalendarioCulturalHome({ eventos }: Props) {
 
   return (
     <div className="w-full rounded-3xl border border-zinc-200/80 bg-white/90 p-4 sm:p-6 shadow-sm backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/90">
-      {/* ── Cabecera del Calendario ── */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
-            Agenda por fecha
-          </span>
-          <h2 className="font-display text-xl font-black uppercase tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-2xl">
-            {NOMBRES_MESES[currentMonth]} {currentYear}
-          </h2>
-        </div>
-
-        {/* Accesos rápidos y cambio de mes */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={irAFinDeSemana}
-            className="rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700 hover:bg-purple-100 dark:bg-purple-950/50 dark:text-purple-300 transition-colors"
-          >
-            🍿 Fin de semana
-          </button>
-          <button
-            type="button"
-            onClick={irAHoy}
-            className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 transition-colors"
-          >
-            Hoy
-          </button>
-          <div className="flex items-center rounded-full border border-zinc-200 dark:border-zinc-700">
-            <button
-              type="button"
-              onClick={mesAnterior}
-              aria-label="Mes anterior"
-              className="flex h-7 w-7 items-center justify-center rounded-l-full text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              onClick={mesSiguiente}
-              aria-label="Mes siguiente"
-              className="flex h-7 w-7 items-center justify-center rounded-r-full text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            >
-              ›
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Cuadrícula del Calendario Limpia y Minimalista ── */}
-      <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-2 dark:border-zinc-800 dark:bg-zinc-950/40">
-        {/* Cabecera Lun - Dom */}
-        <div className="grid grid-cols-7 gap-1 pb-1 text-center text-xs font-semibold text-zinc-400">
-          {DIAS_SEMANA.map((dia, idx) => (
-            <div
-              key={dia}
-              className={`py-0.5 ${idx >= 5 ? "text-purple-600 font-bold dark:text-purple-400" : ""}`}
-            >
-              {dia}
-            </div>
-          ))}
-        </div>
-
-        {/* Grilla de Días */}
-        <div className="grid grid-cols-7 gap-1">
-          {gridDias.map((item, index) => {
-            const isSelected = selectedDay === item.ymd;
-            const isToday = item.ymd === hoyLoja;
-            const hasEvents = item.eventosCount > 0;
-
-            return (
+      {/* ── CASO 1: SE SELECCIONÓ UN DÍA -> SE ESCONDE EL CALENDARIO Y SE MUESTRAN SOLO LAS ACTIVIDADES ── */}
+      {selectedDay ? (
+        <div className="animate-fadeIn">
+          {eventosSeleccionados.length > 0 ? (
+            <EventosDiaCardStack
+              eventos={eventosSeleccionados}
+              diaTexto={formatFechaLojaCliente(selectedDay, "largo")}
+              onVolverCalendario={() => setSelectedDay(null)}
+            />
+          ) : (
+            <div className="py-10 text-center space-y-4">
+              <span className="text-4xl">📅</span>
+              <div className="space-y-1">
+                <h3 className="font-display text-lg font-black uppercase text-zinc-900 dark:text-zinc-100">
+                  {formatFechaLojaCliente(selectedDay, "largo")}
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                  No hay actividades culturales programadas para esta fecha.
+                </p>
+              </div>
               <button
-                key={`${item.ymd}-${index}`}
                 type="button"
-                onClick={() => setSelectedDay(item.ymd)}
-                className={`relative flex h-11 sm:h-13 flex-col items-center justify-center rounded-xl transition-all ${
-                  !item.isCurrentMonth
-                    ? "opacity-25 hover:opacity-50"
-                    : item.isWeekend
-                    ? "bg-purple-50/40 dark:bg-purple-950/20"
-                    : "hover:bg-white dark:hover:bg-zinc-800/60"
-                } ${
-                  isSelected
-                    ? "!bg-purple-600 !text-white shadow-sm ring-2 ring-purple-600/30"
-                    : ""
-                }`}
+                onClick={() => setSelectedDay(null)}
+                className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-purple-700 transition-all cursor-pointer"
               >
-                {/* Número del día */}
-                <span
-                  className={`text-xs sm:text-sm font-semibold ${
-                    isSelected
-                      ? "text-white font-bold"
-                      : isToday
-                      ? "text-purple-600 font-bold dark:text-purple-400"
-                      : item.isWeekend && item.isCurrentMonth
-                      ? "text-purple-900 font-medium dark:text-purple-300"
-                      : "text-zinc-800 dark:text-zinc-200"
-                  }`}
-                >
-                  {item.diaNumero}
-                </span>
-
-                {/* Indicador limpio: 1 solo punto si hay eventos (o blanco si está seleccionado) */}
-                {hasEvents && (
-                  <span
-                    className={`mt-0.5 h-1.5 w-1.5 rounded-full ${
-                      isSelected
-                        ? "bg-white"
-                        : "bg-purple-600 dark:bg-purple-400"
-                    }`}
-                  />
-                )}
+                ← Volver al calendario
               </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Eventos del día seleccionado ── */}
-      <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-            {selectedDay
-              ? `${formatFechaLojaCliente(selectedDay, "largo")}`
-              : "Selecciona un día para ver eventos"}
-          </span>
-
-          {selectedDay && (
-            <button
-              type="button"
-              onClick={() => setSelectedDay(null)}
-              className="text-xs text-purple-600 hover:underline dark:text-purple-400"
-            >
-              Cerrar filtro
-            </button>
+            </div>
           )}
         </div>
+      ) : (
+        /* ── CASO 2: VISTA PRINCIPAL DEL CALENDARIO COMPLETO ── */
+        <div className="animate-fadeIn">
+          {/* Cabecera del Calendario */}
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                Agenda por fecha
+              </span>
+              <h2 className="font-display text-xl font-black uppercase tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-2xl">
+                {NOMBRES_MESES[currentMonth]} {currentYear}
+              </h2>
+            </div>
 
-        {/* Lista limpia de eventos */}
-        {eventosSeleccionados.length > 0 ? (
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {eventosSeleccionados.map((ev) => {
-              const fechaTexto = ev.fechaFin
-                ? formatRangoFechasLojaCliente(ev.fecha, ev.fechaFin)
-                : formatFechaLojaCliente(ev.fecha, "corto");
-
-              return (
-                <Link
-                  key={ev.id}
-                  href={`/eventos/${ev.slug}`}
-                  className="group flex items-center gap-3 rounded-xl border border-zinc-200/70 bg-white p-2.5 shadow-sm transition-all hover:border-purple-300 hover:shadow dark:border-zinc-800 dark:bg-zinc-900"
+            {/* Accesos rápidos y cambio de mes */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={irAFinDeSemana}
+                className="rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700 hover:bg-purple-100 dark:bg-purple-950/50 dark:text-purple-300 transition-colors"
+              >
+                🍿 Fin de semana
+              </button>
+              <button
+                type="button"
+                onClick={irAHoy}
+                className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 transition-colors"
+              >
+                Hoy
+              </button>
+              <div className="flex items-center rounded-full border border-zinc-200 dark:border-zinc-700">
+                <button
+                  type="button"
+                  onClick={mesAnterior}
+                  aria-label="Mes anterior"
+                  className="flex h-7 w-7 items-center justify-center rounded-l-full text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                 >
-                  {/* Imagen o icono miniatura */}
-                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-purple-100 dark:bg-purple-950">
-                    {ev.imagenUrl ? (
-                      <Image
-                        src={ev.imagenUrl}
-                        alt={ev.nombre}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-base">
-                        🎭
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info principal */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      {ev.categoria && (
-                        <span className="text-[10px] font-bold uppercase text-purple-600 dark:text-purple-400">
-                          {ev.categoria.nombre}
-                        </span>
-                      )}
-                      {ev.fechaFin && (
-                        <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                          • Varios días
-                        </span>
-                      )}
-                    </div>
-                    <h4 className="truncate text-xs font-bold text-zinc-900 group-hover:text-purple-600 dark:text-zinc-100 dark:group-hover:text-purple-400">
-                      {ev.nombre}
-                    </h4>
-                    <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-                      📍 {ev.lugar}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={mesSiguiente}
+                  aria-label="Mes siguiente"
+                  className="flex h-7 w-7 items-center justify-center rounded-r-full text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
           </div>
-        ) : (
-          <p className="py-2 text-center text-xs text-zinc-400">
-            No hay actividades programadas para este día.
+
+          {/* Cuadrícula del Calendario Limpia y Minimalista */}
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-2 dark:border-zinc-800 dark:bg-zinc-950/40">
+            {/* Cabecera Lun - Dom */}
+            <div className="grid grid-cols-7 gap-1 pb-1 text-center text-xs font-semibold text-zinc-400">
+              {DIAS_SEMANA.map((dia, idx) => (
+                <div
+                  key={dia}
+                  className={`py-0.5 ${idx >= 5 ? "text-purple-600 font-bold dark:text-purple-400" : ""}`}
+                >
+                  {dia}
+                </div>
+              ))}
+            </div>
+
+            {/* Grilla de Días */}
+            <div className="grid grid-cols-7 gap-1">
+              {gridDias.map((item, index) => {
+                const isSelected = selectedDay === item.ymd;
+                const isToday = item.ymd === hoyLoja;
+                const hasEvents = item.eventosCount > 0;
+
+                return (
+                  <button
+                    key={`${item.ymd}-${index}`}
+                    type="button"
+                    onClick={() => setSelectedDay(item.ymd)}
+                    className={`relative flex h-11 sm:h-13 flex-col items-center justify-center rounded-xl transition-all ${
+                      !item.isCurrentMonth
+                        ? "opacity-25 hover:opacity-50"
+                        : item.isWeekend
+                        ? "bg-purple-50/40 dark:bg-purple-950/20"
+                        : "hover:bg-white dark:hover:bg-zinc-800/60"
+                    } ${
+                      isSelected
+                        ? "!bg-purple-600 !text-white shadow-sm ring-2 ring-purple-600/30"
+                        : ""
+                    }`}
+                  >
+                    {/* Número del día */}
+                    <span
+                      className={`text-xs sm:text-sm font-semibold ${
+                        isSelected
+                          ? "text-white font-bold"
+                          : isToday
+                          ? "text-purple-600 font-bold dark:text-purple-400"
+                          : item.isWeekend && item.isCurrentMonth
+                          ? "text-purple-900 font-medium dark:text-purple-300"
+                          : "text-zinc-800 dark:text-zinc-200"
+                      }`}
+                    >
+                      {item.diaNumero}
+                    </span>
+
+                    {/* Indicador limpio: 1 solo punto si hay eventos */}
+                    {hasEvents && (
+                      <span
+                        className={`mt-0.5 h-1.5 w-1.5 rounded-full ${
+                          isSelected
+                            ? "bg-white"
+                            : "bg-purple-600 dark:bg-purple-400"
+                        }`}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <p className="mt-3 text-center text-xs text-zinc-400">
+            Toca cualquier día para ver sus eventos en pantalla completa
           </p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
