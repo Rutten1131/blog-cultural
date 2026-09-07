@@ -21,6 +21,9 @@ export const metadata: Metadata = {
     description:
       "Descubre qué está pasando en Loja. Cartelera cultural y turística actualizada: música, teatro, arte y actividades de fin de semana.",
   },
+  verification: {
+    google: "ilvHfsZcm1kuc1swQuoah0i94RLuK2xBvIhprtqOIo8",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
