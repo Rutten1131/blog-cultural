@@ -88,14 +88,32 @@ model Recomendacion {
 }
 
 // ─── Números de WhatsApp para notificaciones de admin ────────
-// Gestionados desde el panel /admin. Se notifica a todos cuando
-// un nuevo evento es enviado para revisión.
+// Gestionados desde el panel /admin. Se notifica cuando
+// un nuevo evento es enviado para revisión (al superadmin o a la institución).
 model NumeroNotificacion {
-  id        Int      @id @default(autoincrement())
-  nombre    String   @db.VarChar(100)   // Etiqueta descriptiva (Ej: "César - Admin")
-  numero    String   @unique @db.VarChar(20) // Formato internacional sin + (Ej: 593987654321)
-  activo    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id            Int          @id @default(autoincrement())
+  nombre        String       @db.VarChar(100)   // Etiqueta descriptiva (Ej: "César - Admin")
+  numero        String       @unique @db.VarChar(20) // Formato internacional sin + (Ej: 593987654321)
+  activo        Boolean      @default(true)
+  institucionId Int?         @map("institucion_id")
+  institucion   Institucion? @relation(fields: [institucionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
 
+  @@index([institucionId])
   @@map("numeros_notificacion")
 }
+
+// ─── Instituciones asociadas / Cuentas de Acceso ───────────────
+model Institucion {
+  id          Int      @id @default(autoincrement())
+  nombre      String   @unique @db.VarChar(150)
+  slug        String   @unique @db.VarChar(100)
+  password    String   @db.VarChar(255)
+  activa      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  numerosNotificacion NumeroNotificacion[]
+
+  @@map("instituciones")
+}
+

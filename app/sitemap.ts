@@ -52,21 +52,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const eventoRoutes: MetadataRoute.Sitemap = eventosAprobados.map((evento) => ({
     url: `${baseUrl}/eventos/${evento.slug}`,
     lastModified: evento.createdAt,
+    changeFrequency: "weekly" as const,
     priority: 0.9,
   }));
 
-  // 5. Página estática institucional del Creador
+  // 5. Página estática institucional del Proyecto
   const staticRoutes: MetadataRoute.Sitemap = [
     {
-      url: `${baseUrl}/sobre-el-creador`,
+      url: `${baseUrl}/eventos`,
       lastModified: new Date(),
-      changeFrequency: "monthly",
+      changeFrequency: "daily" as const,
+      priority: 0.95,
+    },
+    {
+      url: `${baseUrl}/sobre-el-proyecto`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
       priority: 0.8,
     },
     {
       url: `${baseUrl}/publicar`,
       lastModified: new Date(),
-      changeFrequency: "monthly",
+      changeFrequency: "monthly" as const,
       priority: 0.7,
     },
   ];

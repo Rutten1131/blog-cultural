@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { prisma } from "@/lib/prisma";
 import { PublicarForm } from "./publicar-form";
 
 export const metadata: Metadata = {
@@ -7,7 +8,15 @@ export const metadata: Metadata = {
     "Publicá tu evento cultural en la Agenda Cultural de Loja. Completá el formulario y será revisado antes de aparecer en la agenda pública.",
 };
 
-export default function PublicarPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PublicarPage() {
+  const instituciones = await prisma.institucion.findMany({
+    where: { activa: true },
+    orderBy: { nombre: "asc" },
+    select: { id: true, nombre: true },
+  });
+
   return (
     <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
       <main className="w-full max-w-5xl px-6 py-16">
@@ -28,7 +37,7 @@ export default function PublicarPage() {
           </p>
         </div>
 
-        <PublicarForm />
+        <PublicarForm instituciones={instituciones} />
       </main>
     </div>
   );

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { EventoCard } from "./evento-card";
 import { EventoAdminRow } from "./evento-admin-row";
 import { AdminNotificaciones } from "./admin-notificaciones";
+import { AdminInstituciones } from "./admin-instituciones";
 import { logoutAdmin } from "@/lib/actions/authAdmin";
 
 interface Categoria {
@@ -49,25 +50,51 @@ interface NumeroNotificacionItem {
   nombre: string;
   numero: string;
   activo: boolean;
+  institucionId?: number | null;
+  institucion?: { nombre: string } | null;
   createdAt: Date;
 }
 
+interface InstitucionItem {
+  id: number;
+  nombre: string;
+  slug: string;
+  password: string;
+  activa: boolean;
+  createdAt: Date;
+}
+
+interface SessionData {
+  role: "SUPERADMIN" | "INSTITUCION";
+  nombre: string;
+  institucionId?: number;
+  slug?: string;
+}
+
 export function AdminDashboardClient({
+  session,
   eventosPendientes,
   todosLosEventos,
   recomendaciones,
   numerosNotificacion,
+  instituciones,
   categorias,
   zonas,
 }: {
+  session: SessionData;
   eventosPendientes: EventoItem[];
   todosLosEventos: EventoItem[];
   recomendaciones: RecomendacionItem[];
   numerosNotificacion: NumeroNotificacionItem[];
+  instituciones: InstitucionItem[];
   categorias: Categoria[];
   zonas: Zona[];
 }) {
-  const [activeTab, setActiveTab] = useState<"pendientes" | "todos" | "buzon" | "notificaciones">("pendientes");
+  const esSuperadmin = session.role === "SUPERADMIN";
+
+  const [activeTab, setActiveTab] = useState<
+    "pendientes" | "todos" | "buzon" | "notificaciones" | "instituciones"
+  >("pendientes");
 
   // Filtros para la pestaña "Todos los Eventos"
   const [searchTerm, setSearchTerm] = useState("");
@@ -117,14 +144,25 @@ export function AdminDashboardClient({
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md text-lg">
-              🛡️
+              {esSuperadmin ? "🛡️" : "🏛️"}
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-black text-zinc-900 dark:text-zinc-50 tracking-tight">
-                Panel de Administración
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-black text-zinc-900 dark:text-zinc-50 tracking-tight">
+                  Panel de Administración
+                </h1>
+                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
+                  esSuperadmin
+                    ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                }`}>
+                  {esSuperadmin ? "Superadmin General" : session.nombre}
+                </span>
+              </div>
               <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">
-                Agenda Cultural Loja · Control y Moderación Total
+                {esSuperadmin
+                  ? "Control Total · Agenda Cultural de Loja"
+                  : `Gestión exclusiva asignada a: ${session.nombre}`}
               </p>
             </div>
           </div>
@@ -194,25 +232,28 @@ export function AdminDashboardClient({
             </span>
           </button>
 
-          <button
-            onClick={() => setActiveTab("buzon")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-              activeTab === "buzon"
-                ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
-                : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            }`}
-          >
-            <span>📬 Buzón de Sugerencias</span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+          {/* Buzón de Sugerencias: SOLO SUPERADMIN GENERAL */}
+          {esSuperadmin && (
+            <button
+              onClick={() => setActiveTab("buzon")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
                 activeTab === "buzon"
-                  ? "bg-white/20 text-white"
-                  : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
-              {recomendaciones.length}
-            </span>
-          </button>
+              <span>📬 Buzón de Sugerencias</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  activeTab === "buzon"
+                    ? "bg-white/20 text-white"
+                    : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                }`}
+              >
+                {recomendaciones.length}
+              </span>
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab("notificaciones")}
@@ -233,6 +274,29 @@ export function AdminDashboardClient({
               {numerosNotificacion.length}
             </span>
           </button>
+
+          {/* Gestión de Instituciones y Contraseñas: SOLO SUPERADMIN */}
+          {esSuperadmin && (
+            <button
+              onClick={() => setActiveTab("instituciones")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                activeTab === "instituciones"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              <span>🏛️ Cuentas Institucionales</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  activeTab === "instituciones"
+                    ? "bg-white/20 text-white"
+                    : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                }`}
+              >
+                {instituciones.length}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -247,23 +311,29 @@ export function AdminDashboardClient({
                   Eventos Pendientes de Aprobación
                 </h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                  Revisa los aportes enviados por la comunidad, ajusta su categoría/zona y publícalos o descártalos.
+                  {esSuperadmin
+                    ? "Revisa los aportes enviados por la comunidad, clasifícalos y publícalos o descártalos."
+                    : `Revisa los eventos enviados para ${session.nombre}.`}
                 </p>
               </div>
+              <span className="self-start sm:self-auto rounded-full bg-purple-100 dark:bg-purple-950/60 px-3 py-1 text-xs font-bold text-purple-700 dark:text-purple-300">
+                {eventosPendientes.length}{" "}
+                {eventosPendientes.length === 1 ? "pendiente" : "pendientes"}
+              </span>
             </div>
 
             {eventosPendientes.length === 0 ? (
-              <div className="rounded-3xl border border-zinc-200 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
-                <div className="text-5xl mb-3">🎉</div>
-                <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                  ¡Bandeja al día!
+              <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+                <span className="text-3xl">✨</span>
+                <h3 className="mt-2 text-base font-bold text-zinc-800 dark:text-zinc-200">
+                  Todo al día
                 </h3>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                  No hay publicaciones pendientes de revisión en este momento.
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  No hay eventos pendientes de revisión en este momento.
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {eventosPendientes.map((evento) => (
                   <EventoCard
                     key={evento.id}
@@ -280,126 +350,103 @@ export function AdminDashboardClient({
         {/* ===================== TAB 2: TODOS LOS EVENTOS ===================== */}
         {activeTab === "todos" && (
           <div className="space-y-6 animate-fadeIn">
-            <div>
-              <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">
-                Gestor Completo de Eventos
-              </h2>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                Busca, filtra, edita detalles o elimina cualquier evento registrado en la plataforma.
-              </p>
-
-              {/* Badges de conteo */}
-              <div className="flex flex-wrap gap-2.5 mt-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                  ✅ {totalAprobados} aprobados
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">
+                  Gestor de Eventos
+                </h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                  {esSuperadmin
+                    ? "Edición integral de todos los eventos, fechas, descripciones y estados."
+                    : `Historial y edición de los eventos correspondientes a ${session.nombre}.`}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs font-semibold">
+                <span className="rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 border border-emerald-200 dark:border-emerald-800">
+                  🟢 {totalAprobados} Aprobados
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
-                  ⏳ {eventosPendientes.length} pendientes
+                <span className="rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 px-3 py-1.5 border border-amber-200 dark:border-amber-800">
+                  ⏳ {eventosPendientes.length} Pendientes
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 px-3 py-1 text-xs font-bold text-rose-700 dark:text-rose-300">
-                  ❌ {totalRechazados} rechazados
+                <span className="rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 px-3 py-1.5 border border-rose-200 dark:border-rose-800">
+                  🔴 {totalRechazados} Rechazados
                 </span>
               </div>
             </div>
 
-            {/* Barra de Búsqueda y Filtros */}
-            <div className="p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Buscador */}
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
-                    🔍 Buscar
-                  </label>
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Título, lugar, organizador..."
-                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                {/* Filtro Estado */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
-                    Estado
-                  </label>
-                  <select
-                    value={filterEstado}
-                    onChange={(e) => setFilterEstado(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="TODOS">Todos los estados</option>
-                    <option value="APROBADO">Aprobados</option>
-                    <option value="PENDIENTE">Pendientes</option>
-                    <option value="RECHAZADO">Rechazados</option>
-                  </select>
-                </div>
-
-                {/* Filtro Categoría */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
-                    Categoría
-                  </label>
-                  <select
-                    value={filterCategoria}
-                    onChange={(e) => setFilterCategoria(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="TODOS">Todas las categorías</option>
-                    {categorias.map((c) => (
-                      <option key={c.id} value={String(c.id)}>
-                        {c.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Filtro Zona */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
-                    Zona
-                  </label>
-                  <select
-                    value={filterZona}
-                    onChange={(e) => setFilterZona(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="TODOS">Todas las zonas</option>
-                    {zonas.map((z) => (
-                      <option key={z.id} value={String(z.id)}>
-                        {z.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {/* Barra de Filtros y Búsqueda */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                  Buscar
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nombre, lugar o gestor..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
               </div>
 
-              {/* Botón reset filtros si hay alguno aplicado */}
-              {(searchTerm || filterEstado !== "TODOS" || filterCategoria !== "TODOS" || filterZona !== "TODOS") && (
-                <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800/60 text-xs">
-                  <span className="text-zinc-500 dark:text-zinc-400">
-                    Mostrando <strong className="text-zinc-900 dark:text-zinc-100">{eventosFiltrados.length}</strong> de {todosLosEventos.length} eventos
-                  </span>
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setFilterEstado("TODOS");
-                      setFilterCategoria("TODOS");
-                      setFilterZona("TODOS");
-                    }}
-                    className="text-purple-600 hover:text-purple-700 dark:text-purple-400 font-bold"
-                  >
-                    ✕ Limpiar filtros
-                  </button>
-                </div>
-              )}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                  Estado
+                </label>
+                <select
+                  value={filterEstado}
+                  onChange={(e) => setFilterEstado(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="TODOS">Todos los Estados</option>
+                  <option value="APROBADO">Aprobados</option>
+                  <option value="PENDIENTE">Pendientes</option>
+                  <option value="RECHAZADO">Rechazados</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                  Categoría
+                </label>
+                <select
+                  value={filterCategoria}
+                  onChange={(e) => setFilterCategoria(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="TODOS">Todas las Categorías</option>
+                  {categorias.map((cat) => (
+                    <option key={cat.id} value={String(cat.id)}>
+                      {cat.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                  Zona / Parroquia
+                </label>
+                <select
+                  value={filterZona}
+                  onChange={(e) => setFilterZona(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="TODOS">Todas las Zonas</option>
+                  {zonas.map((z) => (
+                    <option key={z.id} value={String(z.id)}>
+                      {z.nombre} ({z.tipo})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            {/* Listado de eventos */}
+            {/* Listado de Filas de Eventos */}
             {eventosFiltrados.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
-                <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                <span className="text-3xl">🔍</span>
+                <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                   No se encontraron eventos con los filtros seleccionados.
                 </p>
               </div>
@@ -418,8 +465,8 @@ export function AdminDashboardClient({
           </div>
         )}
 
-        {/* ===================== TAB 3: BUZÓN ===================== */}
-        {activeTab === "buzon" && (
+        {/* ===================== TAB 3: BUZÓN (SOLO SUPERADMIN) ===================== */}
+        {esSuperadmin && activeTab === "buzon" && (
           <div className="space-y-6 animate-fadeIn">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
@@ -474,7 +521,18 @@ export function AdminDashboardClient({
         {/* ===================== TAB 4: ALERTAS NOTIFICACIONES ===================== */}
         {activeTab === "notificaciones" && (
           <div className="animate-fadeIn">
-            <AdminNotificaciones numeros={numerosNotificacion} />
+            <AdminNotificaciones
+              numeros={numerosNotificacion}
+              instituciones={instituciones}
+              esSuperadmin={esSuperadmin}
+            />
+          </div>
+        )}
+
+        {/* ===================== TAB 5: INSTITUCIONES Y CONTRASEÑAS (SOLO SUPERADMIN) ===================== */}
+        {esSuperadmin && activeTab === "instituciones" && (
+          <div className="animate-fadeIn">
+            <AdminInstituciones instituciones={instituciones} />
           </div>
         )}
       </main>

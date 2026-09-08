@@ -40,20 +40,33 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
     return () => window.removeEventListener("abrir-calendario", handleAbrir);
   }, []);
 
-  // Detectar scroll para mostrar el botón flotante lateral SOLO cuando se sale del Hero
+  // Detectar cuándo mostrar el botón flotante lateral
+  // Desktop: aparece cuando el calendario del hero sale de vista (IntersectionObserver)
+  // Móvil: aparece al scrollear más de 350px (scroll position)
   const [mostrarFlotante, setMostrarFlotante] = useState(false);
 
   useEffect(() => {
+    const isDesktop = window.innerWidth >= 640;
+    const heroCalendar = document.getElementById("hero-calendario-desktop");
+
+    // Desktop: usar IntersectionObserver sobre el calendario del hero
+    if (isDesktop && heroCalendar) {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          setMostrarFlotante(!entry.isIntersecting);
+        },
+        { threshold: 0 }
+      );
+      observer.observe(heroCalendar);
+      return () => observer.disconnect();
+    }
+
+    // Móvil: fallback con scroll position
     const handleScroll = () => {
-      // El hero mide aprox 500-600px; cuando el scroll supera los 350px mostramos el botón lateral
-      if (window.scrollY > 350) {
-        setMostrarFlotante(true);
-      } else {
-        setMostrarFlotante(false);
-      }
+      setMostrarFlotante(window.scrollY > 350);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll(); // Chequeo inicial
+    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 

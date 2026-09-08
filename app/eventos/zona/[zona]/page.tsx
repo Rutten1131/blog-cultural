@@ -35,17 +35,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!zonaInfo) return { title: "Zona no encontrada" };
 
+  const tipoLabel = zonaInfo.tipo === "URBANA" ? "parroquia urbana" : "parroquia rural";
+
   return {
-    title: `Eventos en ${zonaInfo.nombre}`,
-    description: `Eventos culturales en ${zonaInfo.nombre}, Loja, Ecuador. ${SITE_CONFIG.nombre}.`,
+    title: `Eventos Culturales en ${zonaInfo.nombre} — Agenda Cultural Loja`,
+    description: `Cartelera de eventos culturales en ${zonaInfo.nombre}, ${tipoLabel} de Loja, Ecuador. Música, teatro, arte y actividades cercanas a ti.`,
+    keywords: [
+      `eventos en ${zonaInfo.nombre}`,
+      `qué hacer en ${zonaInfo.nombre}`,
+      `actividades culturales ${zonaInfo.nombre}`,
+      `agenda cultural ${zonaInfo.nombre} Loja`,
+      `eventos ${tipoLabel} Loja`,
+    ],
     alternates: {
       canonical: `${SITE_CONFIG.url}/eventos/zona/${zonaSlug}`,
     },
     openGraph: {
-      title: `Eventos en ${zonaInfo.nombre}, Loja`,
-      description: `Eventos culturales en la parroquia ${zonaInfo.nombre}`,
+      title: `Eventos en ${zonaInfo.nombre}, Loja — Agenda Cultural`,
+      description: `Eventos culturales en la ${tipoLabel} ${zonaInfo.nombre}. Música, teatro, arte y más.`,
+      url: `${SITE_CONFIG.url}/eventos/zona/${zonaSlug}`,
       siteName: SITE_CONFIG.nombre,
       locale: SITE_CONFIG.locale,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Eventos en ${zonaInfo.nombre} — Agenda Cultural Loja`,
+      description: `Cartelera de eventos culturales en ${zonaInfo.nombre}, Loja, Ecuador.`,
     },
   };
 }
@@ -97,9 +113,44 @@ export default async function ZonaPage({ params }: PageProps) {
     : [];
 
   const tipoLabel = zonaInfo.tipo === "URBANA" ? "Parroquia Urbana" : "Parroquia Rural";
+  const zonaSlugStr = zonaToSlug(zonaInfo.nombre);
+
+  // JSON-LD Schema.org
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": `${SITE_CONFIG.url}/eventos/zona/${zonaSlugStr}/#webpage`,
+        url: `${SITE_CONFIG.url}/eventos/zona/${zonaSlugStr}`,
+        name: `Eventos Culturales en ${zonaInfo.nombre}`,
+        description: `Cartelera de eventos culturales en ${zonaInfo.nombre}, Loja, Ecuador.`,
+        inLanguage: "es-EC",
+        isPartOf: { "@id": `${SITE_CONFIG.url}/#website` },
+        publisher: {
+          "@type": "Person",
+          name: "César Reyes Jaramillo",
+          url: "https://www.cesarreyesjaramillo.com/",
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_CONFIG.url },
+          { "@type": "ListItem", position: 2, name: "Eventos", item: `${SITE_CONFIG.url}/eventos` },
+          { "@type": "ListItem", position: 3, name: zonaInfo.nombre, item: `${SITE_CONFIG.url}/eventos/zona/${zonaSlugStr}` },
+        ],
+      },
+    ],
+  };
 
   return (
-    <div className="flex min-h-screen flex-col font-sans" style={{ background: "var(--color-bg)" }}>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <div className="flex min-h-screen flex-col font-sans" style={{ background: "var(--color-bg)" }}>
       <Navbar />
 
       <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16 flex-1">
@@ -172,5 +223,6 @@ export default async function ZonaPage({ params }: PageProps) {
         </div>
       </main>
     </div>
+    </>
   );
 }

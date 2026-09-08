@@ -13,12 +13,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const eventoId = Number(searchParams.get("id"));
   const token = searchParams.get("token") || "";
+  const accion = searchParams.get("accion")?.toLowerCase() || "aprobar"; // "aprobar" o "rechazar"
 
   // Validar parámetros básicos
   if (!eventoId || !token) {
     return respuestaHTML({
       titulo: "Enlace inválido",
-      mensaje: "El enlace de aprobación no contiene los parámetros necesarios.",
+      mensaje: "El enlace no contiene los parámetros necesarios.",
       emoji: "❌",
       tipo: "error",
     });
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
   if (!tokenValido) {
     return respuestaHTML({
       titulo: "Acceso denegado",
-      mensaje: "El token de aprobación no es válido. Este enlace puede haber sido alterado.",
+      mensaje: "El token de autorización no es válido. Este enlace puede haber sido alterado.",
       emoji: "🔒",
       tipo: "error",
     });
@@ -54,6 +55,36 @@ export async function GET(request: NextRequest) {
   let appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.agendaculturalloja.com";
   if (appUrl.includes("agendacultural-loja.com")) {
     appUrl = appUrl.replace("agendacultural-loja.com", "agendaculturalloja.com");
+  }
+
+  // Si la acción solicitada es RECHAZAR
+  if (accion === "rechazar") {
+    if (evento.estado === "RECHAZADO") {
+      return respuestaHTML({
+        titulo: "Evento ya rechazado",
+        mensaje: `El evento "${evento.nombre}" ya había sido marcado como rechazado previamente.`,
+        emoji: "ℹ️",
+        tipo: "info",
+        linkAdmin: `${appUrl}/admin`,
+      });
+    }
+
+    await prisma.evento.update({
+      where: { id: evento.id },
+      data: { estado: "RECHAZADO" },
+    });
+
+    revalidateAll();
+
+    return respuestaHTML({
+      titulo: "Evento Rechazado",
+      mensaje: `El evento "${evento.nombre}" ha sido rechazado y no se publicará en la agenda.`,
+      emoji: "🚫",
+      tipo: "error",
+      linkAdmin: `${appUrl}/admin`,
+      nombreEvento: evento.nombre,
+      lugarEvento: evento.lugar,
+    });
   }
 
   // Si ya está aprobado, informar

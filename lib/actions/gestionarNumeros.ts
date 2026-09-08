@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getAdminSession } from "./authAdmin";
 
 export interface NumeroNotificacionState {
   success: boolean;
@@ -13,8 +14,19 @@ export async function agregarNumero(
   _prevState: NumeroNotificacionState,
   formData: FormData
 ): Promise<NumeroNotificacionState> {
+  const session = await getAdminSession();
   const nombre = formData.get("nombre")?.toString().trim() ?? "";
   const numeroRaw = formData.get("numero")?.toString().trim() ?? "";
+
+  // Si se envió institucionId desde form (ej: Superadmin asignando a una institución específica)
+  const institucionIdRaw = formData.get("institucionId")?.toString().trim();
+  let institucionId: number | null = null;
+
+  if (session?.role === "INSTITUCION" && session.institucionId) {
+    institucionId = session.institucionId;
+  } else if (institucionIdRaw && institucionIdRaw !== "GENERAL") {
+    institucionId = parseInt(institucionIdRaw, 10) || null;
+  }
 
   if (!nombre || !numeroRaw) {
     return { success: false, error: "El nombre y el número son obligatorios." };
@@ -31,7 +43,11 @@ export async function agregarNumero(
 
   try {
     await prisma.numeroNotificacion.create({
-      data: { nombre, numero },
+      data: {
+        nombre,
+        numero,
+        institucionId,
+      },
     });
     revalidatePath("/admin");
     return { success: true };

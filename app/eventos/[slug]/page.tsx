@@ -167,7 +167,6 @@ export default async function EventoDetailPage({ params }: PageProps) {
   const parsedEndDate = evento.fechaFin ? new Date(evento.fechaFin) : null;
   const isoEndDate = parsedEndDate && !isNaN(parsedEndDate.getTime()) ? parsedEndDate.toISOString() : undefined;
 
-  // Schema.org Event (JSON-LD) totalmente enriquecido para Google Rich Snippets
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -197,6 +196,16 @@ export default async function EventoDetailPage({ params }: PageProps) {
     performer: {
       "@type": "PerformingGroup",
       name: evento.nombreGestor,
+    },
+    publisher: {
+      "@type": "Person",
+      name: "César Reyes Jaramillo",
+      url: `${SITE_CONFIG.url}/sobre-el-proyecto`,
+    },
+    creator: {
+      "@type": "Person",
+      name: "César Reyes Jaramillo",
+      url: `${SITE_CONFIG.url}/sobre-el-proyecto`,
     },
   };
 

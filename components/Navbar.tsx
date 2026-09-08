@@ -36,7 +36,7 @@ const NAV_LINKS = [
   { href: "/eventos/categoria/musica",              label: "Música" },
   { href: "/eventos/categoria/ferias",              label: "Ferias" },
   { href: "/eventos/categoria/artes-vivas",         label: "Artes Vivas" },
-  { href: "/sobre-el-creador",                      label: "El Creador" },
+  { href: "/sobre-el-proyecto",                      label: "Sobre el proyecto" },
 ];
 
 export function Navbar() {

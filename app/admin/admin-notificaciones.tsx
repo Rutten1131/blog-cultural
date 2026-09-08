@@ -3,17 +3,32 @@
 import { useActionState, useState } from "react";
 import { agregarNumero, eliminarNumero, toggleNumero, type NumeroNotificacionState } from "@/lib/actions/gestionarNumeros";
 
+interface InstitucionInfo {
+  id: number;
+  nombre: string;
+}
+
 interface Numero {
   id: number;
   nombre: string;
   numero: string;
   activo: boolean;
+  institucionId?: number | null;
+  institucion?: { nombre: string } | null;
   createdAt: Date;
 }
 
 const initialState: NumeroNotificacionState = { success: false };
 
-export function AdminNotificaciones({ numeros }: { numeros: Numero[] }) {
+export function AdminNotificaciones({
+  numeros,
+  instituciones = [],
+  esSuperadmin = false,
+}: {
+  numeros: Numero[];
+  instituciones?: InstitucionInfo[];
+  esSuperadmin?: boolean;
+}) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [state, formAction, isPending] = useActionState(agregarNumero, initialState);
   const [pendingId, setPendingId] = useState<number | null>(null);
@@ -69,7 +84,7 @@ export function AdminNotificaciones({ numeros }: { numeros: Numero[] }) {
                 name="nombre"
                 type="text"
                 required
-                placeholder="Ej: César Admin"
+                placeholder="Ej: César Admin / Resp. Cultura"
                 className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
               />
             </div>
@@ -86,6 +101,26 @@ export function AdminNotificaciones({ numeros }: { numeros: Numero[] }) {
               />
             </div>
           </div>
+
+          {esSuperadmin && instituciones.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Asignar Notificaciones a:
+              </label>
+              <select
+                name="institucionId"
+                defaultValue="GENERAL"
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              >
+                <option value="GENERAL">🛡️ General (Recibe alertas de TODAS las instituciones)</option>
+                {instituciones.map((inst) => (
+                  <option key={inst.id} value={inst.id}>
+                    🏛️ {inst.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -119,10 +154,21 @@ export function AdminNotificaciones({ numeros }: { numeros: Numero[] }) {
               <div className="flex items-center gap-3 min-w-0">
                 <span className="text-lg">{n.activo ? "🟢" : "⭕"}</span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                    {n.nombre}
-                  </p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                      {n.nombre}
+                    </p>
+                    {n.institucion ? (
+                      <span className="rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 px-2 py-0.5 text-[10px] font-medium border border-purple-200 dark:border-purple-800">
+                        🏛️ {n.institucion.nombre}
+                      </span>
+                    ) : (
+                      <span className="rounded-md bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 px-2 py-0.5 text-[10px] font-medium">
+                        🛡️ Alertas Generales
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">
                     +{n.numero}
                   </p>
                 </div>

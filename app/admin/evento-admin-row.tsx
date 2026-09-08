@@ -247,7 +247,7 @@ export function EventoAdminRow({
               {/* Institución */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Institución (opcional)
+                  Institución / Entidad Responsable
                 </label>
                 <input
                   type="text"

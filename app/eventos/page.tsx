@@ -14,8 +14,32 @@ export const metadata: Metadata = {
   title: "Todos los Eventos Culturales en Loja — Cartelera y Calendario",
   description:
     "Explorá el catálogo completo y calendario interactivo de eventos culturales en Loja, Ecuador: música, teatro, arte, ferias y artes vivas.",
+  keywords: [
+    "eventos culturales Loja",
+    "qué hacer en Loja",
+    "agenda cultural Loja Ecuador",
+    "cartelera Loja",
+    "actividades culturales Loja",
+    "eventos este fin de semana Loja",
+    "música teatro arte Loja",
+  ],
   alternates: {
     canonical: `${SITE_CONFIG.url}/eventos`,
+  },
+  openGraph: {
+    title: "Todos los Eventos Culturales en Loja — Cartelera y Calendario",
+    description:
+      "Catálogo completo de eventos culturales en Loja: música, teatro, arte, ferias y artes vivas. Actualizado diariamente.",
+    url: `${SITE_CONFIG.url}/eventos`,
+    siteName: SITE_CONFIG.nombre,
+    locale: "es_EC",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Eventos Culturales en Loja — Agenda Cultural",
+    description:
+      "Cartelera completa de eventos en Loja, Ecuador. Música, teatro, arte y más.",
   },
 };
 
@@ -52,8 +76,52 @@ export default async function EventosPage() {
   // Para el calendario se pasan todos
   const todosLosEventos = [...eventosProximos, ...eventosPasados];
 
+  // JSON-LD Schema.org para la página de listado de eventos
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": `${SITE_CONFIG.url}/eventos/#webpage`,
+        url: `${SITE_CONFIG.url}/eventos`,
+        name: "Todos los Eventos Culturales en Loja",
+        description:
+          "Catálogo completo y actualizado de eventos culturales en Loja, Ecuador.",
+        inLanguage: "es-EC",
+        isPartOf: { "@id": `${SITE_CONFIG.url}/#website` },
+        publisher: {
+          "@type": "Person",
+          name: "César Reyes Jaramillo",
+          url: "https://www.cesarreyesjaramillo.com/",
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Inicio",
+            item: SITE_CONFIG.url,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Eventos",
+            item: `${SITE_CONFIG.url}/eventos`,
+          },
+        ],
+      },
+    ],
+  };
+
   return (
-    <div className="flex min-h-screen flex-col" style={{ background: "var(--color-bg)" }}>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <div className="flex min-h-screen flex-col" style={{ background: "var(--color-bg)" }}>
       <Navbar />
 
       <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16 flex-1">
@@ -116,5 +184,6 @@ export default async function EventosPage() {
         />
       </main>
     </div>
+    </>
   );
 }

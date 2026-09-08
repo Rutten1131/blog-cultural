@@ -61,6 +61,13 @@ export async function crearEvento(
     };
   }
 
+  if (!institucionRelacionada) {
+    return {
+      success: false,
+      error: "Debes seleccionar la institución o entidad con la que está relacionado tu evento.",
+    };
+  }
+
   // Validar fecha vía lib/fechas.ts (parsea formato YYYY-MM-DD o YYYY-MM-DDTHH:mm)
   const fechaDate = parseFechaInputLocal(fechaInput);
   if (!fechaDate) {

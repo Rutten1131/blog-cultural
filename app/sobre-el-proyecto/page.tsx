@@ -7,33 +7,36 @@ import { SITE_CONFIG } from "@/lib/utils";
 export const revalidate = 3600; // 1 hora
 
 export const metadata: Metadata = {
-  title: "César Reyes Jaramillo — Creador de Agenda Cultural Loja",
-  description:
-    "Conoce a César Reyes Jaramillo, especialista en posicionamiento SEO, automatización y desarrollo web en Loja. Fundador y arquitecto tecnológico de Agenda Cultural Loja.",
+  title: "Sobre el proyecto – César Reyes Jaramillo",
+  description: "Conoce el proyecto Agenda Cultural Loja, su visión y trayectoria al servicio de la cultura en Loja.",
   keywords: [
     "César Reyes Jaramillo",
+    "Agenda Cultural",
+    "Cultura Loja",
+    "Proyecto",
+    "Sobre el proyecto",
     "Cesar Reyes",
     "Creador Agenda Cultural Loja",
     "Consultor SEO Loja",
     "Posicionamiento web Loja",
     "Automatización digital Loja",
-    "Desarrollo web Loja",
+    "Desarrollo web Loja"
   ],
   alternates: {
-    canonical: `${SITE_CONFIG.url}/sobre-el-creador`,
+    canonical: `${SITE_CONFIG.url}/sobre-el-proyecto`,
   },
   openGraph: {
-    title: "César Reyes Jaramillo — Creador de Agenda Cultural Loja",
+    title: "César Reyes Jaramillo — Proyecto Agenda Cultural Loja",
     description:
       "La historia, propósito y arquitectura tecnológica detrás de Agenda Cultural Loja. Conoce a su fundador César Reyes Jaramillo.",
-    url: `${SITE_CONFIG.url}/sobre-el-creador`,
+    url: `${SITE_CONFIG.url}/sobre-el-proyecto`,
     siteName: SITE_CONFIG.nombre,
     locale: "es_EC",
     type: "profile",
   },
 };
 
-export default function SobreElCreadorPage() {
+export default function SobreElProyectoPage() {
   // Schema.org estructurado para entidades Google y LLMs (Person + WebSite + Initiative)
   const jsonLd = {
     "@context": "https://schema.org",
@@ -90,7 +93,7 @@ export default function SobreElCreadorPage() {
             <nav className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
               <Link href="/" className="hover:text-purple-600 transition-colors">Inicio</Link>
               <span>›</span>
-              <span className="text-zinc-800 dark:text-zinc-200">Sobre el Creador</span>
+              <span className="text-zinc-800 dark:text-zinc-200">Sobre el proyecto</span>
             </nav>
           </div>
 
@@ -160,7 +163,7 @@ export default function SobreElCreadorPage() {
                 </h2>
               </div>
               <p className="text-sm sm:text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
-                Loja es reconocida históricamente como la <strong className="text-purple-700 dark:text-purple-400">Capital Musical y Cultural del Ecuador</strong>. Sin embargo, existía un problema común: la cartelera de eventos estaba dispersa en carteles en la calle, publicaciones aisladas de Facebook, PDFs institucionales y chats de WhatsApp.
+                Agenda Cultural Loja nació para reunir en un solo lugar toda la información de eventos culturales de la ciudad, facilitando que la comunidad descubra y participe en la vida cultural local.
               </p>
               <p className="text-sm sm:text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
                 Como ciudadano y profesional de la tecnología, <strong>César Reyes Jaramillo</strong> concibió este proyecto como una <strong>iniciativa cívica y digital independiente</strong> para centralizar, organizar y dar visibilidad abierta a los artistas, colectivos, teatros y gestores culturales de Loja de forma totalmente gratuita y accesible para toda la ciudadanía.
@@ -171,22 +174,14 @@ export default function SobreElCreadorPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="rounded-3xl border border-white/60 bg-white/90 p-6 shadow-sm backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/90">
                 <span className="text-2xl">⚡</span>
-                <h3 className="font-display text-lg font-black uppercase tracking-tight text-[var(--color-dark)] dark:text-white mt-2">
-                  Velocidad & Accesibilidad
-                </h3>
-                <p className="mt-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  Construido sobre Next.js con arquitectura moderna, carga ultrarrápida en dispositivos móviles, calendario interactivo sin fricciones y navegación adaptada a la velocidad de la ciudad.
-                </p>
+                <h3 className="font-display text-lg font-black uppercase tracking-tight text-[var(--color-dark)] dark:text-white mt-2">Rápida y accesible</h3>
+                <p className="mt-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">Diseñada para cargar rápidamente en cualquier dispositivo, ofreciendo una experiencia fluida y sin complicaciones al explorar la agenda cultural de Loja.</p>
               </div>
 
               <div className="rounded-3xl border border-white/60 bg-white/90 p-6 shadow-sm backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/90">
                 <span className="text-2xl">🌐</span>
-                <h3 className="font-display text-lg font-black uppercase tracking-tight text-[var(--color-dark)] dark:text-white mt-2">
-                  SEO & Búsqueda Semántica
-                </h3>
-                <p className="mt-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  Optimizado para que cada evento lojano aparezca en Google y en los motores de búsqueda de Inteligencia Artificial (ChatGPT, Copilot, Gemini), maximizando el alcance de los creadores.
-                </p>
+                <h3 className="font-display text-lg font-black uppercase tracking-tight text-[var(--color-dark)] dark:text-white mt-2">Visibilidad y difusión</h3>
+                <p className="mt-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">Nuestro objetivo es que cada evento llegue a la mayor audiencia posible, facilitando que la gente descubra y participe en la vida cultural de la ciudad.</p>
               </div>
             </div>
 

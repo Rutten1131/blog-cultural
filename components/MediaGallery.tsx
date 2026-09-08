@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { parseVideoUrl } from "@/lib/mediaUtils";
+import { parseVideoUrl, extractVideoUrls } from "@/lib/mediaUtils";
 
 interface MediaGalleryProps {
   multimedia?: string[] | string | null | any;
@@ -52,10 +52,14 @@ export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: M
     addedUrls.add(imagenUrl.trim());
   }
 
-  // Agregar video enlazado si existe
-  if (videoUrl && typeof videoUrl === "string" && videoUrl.trim().length > 0) {
-    items.push({ type: "video", url: videoUrl.trim() });
-  }
+  // Agregar videos enlazados (soporta string único, JSON array o múltiples URLs)
+  const videoList = extractVideoUrls(videoUrl);
+  videoList.forEach((vUrl) => {
+    if (vUrl && !addedUrls.has(vUrl)) {
+      items.push({ type: "video", url: vUrl });
+      addedUrls.add(vUrl);
+    }
+  });
 
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -267,14 +271,38 @@ export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: M
                     : "border-transparent opacity-70 hover:opacity-100"
                 }`}
               >
-                {isVideo ? (
-                  <div className="flex h-full w-full flex-col items-center justify-center bg-zinc-900 text-white p-1 text-center">
-                    <span className="text-xl">▶️</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5 truncate w-full">
-                      Video
-                    </span>
-                  </div>
-                ) : (
+                {isVideo ? (() => {
+                  const vInfo = parseVideoUrl(item.url);
+                  return vInfo?.thumbnailUrl ? (
+                    <div className="relative h-full w-full bg-zinc-950">
+                      <Image
+                        src={vInfo.thumbnailUrl}
+                        alt={`Miniatura video ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <span className="text-lg drop-shadow">▶️</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center bg-zinc-900 text-white p-1 text-center">
+                      <span className="text-xl">
+                        {vInfo?.provider === "facebook"
+                          ? "📘"
+                          : vInfo?.provider === "instagram"
+                          ? "📸"
+                          : vInfo?.provider === "tiktok"
+                          ? "🎵"
+                          : "▶️"}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5 truncate w-full">
+                        {vInfo?.provider || "Video"}
+                      </span>
+                    </div>
+                  );
+                })() : (
                   <Image
                     src={item.url}
                     alt={`Miniatura ${idx + 1}`}

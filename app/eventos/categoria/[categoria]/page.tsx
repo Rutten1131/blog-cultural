@@ -204,6 +204,20 @@ export default async function CategoriaPage({ params }: PageProps) {
         name: seoInfo.tituloH1,
         description: seoInfo.descripcionSeo,
         inLanguage: "es-EC",
+        isPartOf: { "@id": `${SITE_CONFIG.url}/#website` },
+        publisher: {
+          "@type": "Person",
+          name: "César Reyes Jaramillo",
+          url: "https://www.cesarreyesjaramillo.com/",
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_CONFIG.url },
+          { "@type": "ListItem", position: 2, name: "Eventos", item: `${SITE_CONFIG.url}/eventos` },
+          { "@type": "ListItem", position: 3, name: cat.nombre, item: `${SITE_CONFIG.url}/eventos/categoria/${cat.slug}` },
+        ],
       },
       {
         "@type": "ItemList",

@@ -37,7 +37,8 @@ export async function notificarNuevoEventoAdmin(datos: NotificacionEventoData): 
 
   const { generarTokenAprobacion } = await import("@/lib/tokensAprobacion");
   const token = generarTokenAprobacion(datos.id, datos.slug);
-  const linkAprobacionDirecta = `${appUrl}/api/eventos/aprobar?id=${datos.id}&token=${token}`;
+  const linkAprobacionDirecta = `${appUrl}/api/eventos/aprobar?id=${datos.id}&token=${token}&accion=aprobar`;
+  const linkRechazoDirecto = `${appUrl}/api/eventos/aprobar?id=${datos.id}&token=${token}&accion=rechazar`;
 
   const mensaje = `🔔 *NUEVO EVENTO PENDIENTE DE REVISIÓN*
 
@@ -48,10 +49,13 @@ export async function notificarNuevoEventoAdmin(datos: NotificacionEventoData): 
 🏛️ *Ámbito/Institución:* ${datos.institucionRelacionada || "No especificada"}
 🏷️ *Categoría sugerida:* ${datos.categoriaSugerida || "Por clasificar"}
 
-⚡ *APROBAR Y PUBLICAR (1 CLIC):*
+✅ *APROBAR Y PUBLICAR (1 CLIC):*
 ${linkAprobacionDirecta}
 
-🔍 *O revisar detalles en el Panel Admin:*
+❌ *RECHAZAR EVENTO (1 CLIC):*
+${linkRechazoDirecto}
+
+🔍 *O gestionar en el Panel Admin:*
 ${appUrl}/admin`;
 
   // Si no están configuradas las credenciales de Evolution, loguear y salir
@@ -61,11 +65,28 @@ ${appUrl}/admin`;
     return;
   }
 
-  // Obtener números activos desde la base de datos
+  // Obtener números activos desde la base de datos:
+  // 1. Números generales (institucionId === null)
+  // 2. Números vinculados a la institución relacionada al evento
   let destinatarios: { numero: string; nombre: string }[] = [];
   try {
+    let targetInstitucionId: number | null = null;
+    if (datos.institucionRelacionada) {
+      const inst = await prisma.institucion.findFirst({
+        where: { nombre: datos.institucionRelacionada },
+        select: { id: true },
+      });
+      if (inst) targetInstitucionId = inst.id;
+    }
+
     destinatarios = await prisma.numeroNotificacion.findMany({
-      where: { activo: true },
+      where: {
+        activo: true,
+        OR: [
+          { institucionId: null }, // Superadmin / General
+          ...(targetInstitucionId ? [{ institucionId: targetInstitucionId }] : []),
+        ],
+      },
       select: { numero: true, nombre: true },
     });
   } catch (err) {

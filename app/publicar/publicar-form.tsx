@@ -7,14 +7,23 @@ import { PublicarPreviewCard } from "@/components/PublicarPreviewCard";
 
 const initialState: CrearEventoState = { success: false };
 
-export function PublicarForm() {
+interface InstitucionOption {
+  id: number;
+  nombre: string;
+}
+
+export function PublicarForm({
+  instituciones = [],
+}: {
+  instituciones?: InstitucionOption[];
+}) {
   const [nombre, setNombre] = useState("");
   const [fecha, setFecha] = useState(""); // datetime-local: "YYYY-MM-DDTHH:mm"
   const [fechaFin, setFechaFin] = useState(""); // datetime-local: "YYYY-MM-DDTHH:mm"
   const [lugar, setLugar] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [imagenes, setImagenes] = useState<string[]>([]);
-  const [videoUrl, setVideoUrl] = useState("");
+  const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [nombreGestor, setNombreGestor] = useState("");
 
   const [state, formAction, isPending] = useActionState(
@@ -169,15 +178,15 @@ export function PublicarForm() {
           />
         </div>
 
-        {/* Multimedia del evento (Galería de imágenes + Enlace de Video) */}
+        {/* Multimedia del evento (Galería de imágenes + Enlaces de Video/Redes) */}
         <MultiMediaUploader
           imagenes={imagenes}
           onImagenesChange={setImagenes}
-          videoUrl={videoUrl}
-          onVideoUrlChange={setVideoUrl}
+          videoUrls={videoUrls}
+          onVideoUrlsChange={setVideoUrls}
         />
         <input type="hidden" name="multimedia" value={JSON.stringify(imagenes)} />
-        <input type="hidden" name="videoUrl" value={videoUrl} />
+        <input type="hidden" name="videoUrl" value={JSON.stringify(videoUrls)} />
         <input type="hidden" name="imagenUrl" value={imagenes[0] || ""} />
 
         {/* Nombre del gestor */}
@@ -208,27 +217,24 @@ export function PublicarForm() {
             className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
             ¿Con qué institución o sector está relacionado tu evento?{" "}
-            <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">(Opcional)</span>
+            <span className="text-red-500 font-bold">*</span>
           </label>
           <select
             id="institucionRelacionada"
             name="institucionRelacionada"
+            required
+            defaultValue=""
             className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 shadow-sm transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
           >
-            <option value="">Seleccionar sector o institución...</option>
-            <option value="Municipio de Loja">Municipio de Loja</option>
-            <option value="Casa de la Cultura">Casa de la Cultura</option>
-            <option value="Turismo">Turismo</option>
-            <option value="Cultura y Patrimonio">Cultura y Patrimonio</option>
-            <option value="Teatro / Artes Escénicas">Teatro / Artes Escénicas</option>
-            <option value="Música / Orquesta">Música / Orquesta</option>
-            <option value="Artes Plásticas / Visuales">Artes Plásticas / Visuales</option>
-            <option value="Organización Independiente">Organización Independiente</option>
-            <option value="Academia / Universidad">Academia / Universidad</option>
-            <option value="Otro">Otro</option>
+            <option value="" disabled>Selecciona una institución...</option>
+            {instituciones.map((inst) => (
+              <option key={inst.id} value={inst.nombre}>
+                {inst.nombre}
+              </option>
+            ))}
           </select>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Nos ayuda a clasificar y enrutar tu evento en la red cultural de la ciudad.
+            Obligatorio. Notifica y asigna la revisión directamente a los encargados oficiales de la institución.
           </p>
         </div>
 

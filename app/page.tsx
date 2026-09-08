@@ -9,6 +9,7 @@ import { CategoryTicker } from "@/components/CategoryTicker";
 import { UltimosEventosSection } from "@/components/UltimosEventosSection";
 import { ProximosEventosCarousel } from "@/components/ProximosEventosCarousel";
 import { CalendarioBotonFlotante } from "@/components/CalendarioBotonFlotante";
+import { CalendarioCulturalHome } from "@/components/CalendarioCulturalHome";
 import { BotonVerCalendarioHero } from "@/components/BotonVerCalendarioHero";
 
 import { BuzonRecomendaciones } from "@/components/BuzonRecomendaciones";
@@ -370,43 +371,53 @@ export default async function Home() {
           />
 
           <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 w-full flex flex-col justify-between flex-1 sm:block">
-            {/* ── EN DESKTOP: TEXTOS ARRIBA ── */}
-            <div className="hidden sm:block">
-              {/* Eyebrow */}
-              <div className="mb-2 flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-coral)] opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-coral)]" />
-                </span>
-                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
-                  Descubre qué está pasando en Loja
-                </span>
+            {/* ── EN DESKTOP: LAYOUT 2 COLUMNAS (Textos + Calendario desplegado) ── */}
+            <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-[42%_58%] gap-6 lg:gap-10 items-start">
+              {/* Columna izquierda: Textos y CTA */}
+              <div className="flex flex-col justify-center gap-5 pt-2">
+                {/* Eyebrow */}
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-coral)] opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-coral)]" />
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
+                    Descubre qué está pasando en Loja
+                  </span>
+                </div>
+
+                {/* Título hero H1 */}
+                <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] fade-up">
+                  ¿Qué hacer{" "}
+                  <span className="text-gradient-purple">en Loja?</span>
+                  <span className="block text-sm md:text-base lg:text-lg font-bold text-[var(--color-muted)] normal-case tracking-normal mt-2">
+                    Eventos, arte y actividades culturales en la ciudad
+                  </span>
+                </h1>
+
+                {/* CTAs */}
+                <div className="flex flex-wrap gap-3 mt-2">
+                  <Link
+                    href="/eventos"
+                    className="inline-flex items-center gap-2 rounded-full bg-[var(--color-dark)] px-6 py-3 text-sm font-bold text-white shadow-lg transition-all duration-300 hover:bg-[var(--color-purple-1)] hover:shadow-[0_12px_28px_-8px_rgba(109,40,217,0.5)]"
+                  >
+                    Ver todos los eventos
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
+                    </svg>
+                  </Link>
+                  <Link
+                    href="/publicar"
+                    className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--color-purple-1)] px-6 py-3 text-sm font-bold text-[var(--color-purple-1)] transition-all duration-300 hover:bg-[var(--color-purple-1)] hover:text-white"
+                  >
+                    Publicar evento
+                  </Link>
+                </div>
               </div>
 
-              {/* Título hero H1 */}
-              <h1 className="font-display mb-2 text-2xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] sm:text-3xl md:text-4xl fade-up">
-                ¿Qué hacer{" "}
-                <span className="text-gradient-purple">en Loja?</span>
-                <span className="block text-sm sm:text-base md:text-lg font-bold text-[var(--color-muted)] normal-case tracking-normal mt-1">
-                  Eventos, arte y actividades culturales en la ciudad
-                </span>
-              </h1>
-
-              {/* Header de la cartelera en desktop */}
-              <div className="mt-6 mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-[var(--color-purple-1)]">
-                    Cartelera Destacada
-                  </span>
-                  <h2 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-                    Próximas Actividades
-                  </h2>
-                </div>
-                
-                {/* Botón llamativo Ver Calendario */}
-                <div>
-                  <BotonVerCalendarioHero className="!py-2.5 !px-5 text-xs shadow-md" />
-                </div>
+              {/* Columna derecha: Calendario Cultural desplegado */}
+              <div id="hero-calendario-desktop" className="w-full fade-up fade-up-delay-1">
+                <CalendarioCulturalHome eventos={eventosCalendario} />
               </div>
             </div>
 
@@ -422,8 +433,8 @@ export default async function Home() {
               </div>
             </div>
 
-            {/* ── SEGUNDO: CARRUSEL DE CARTAS (EVENTOS DESTACADOS) ── */}
-            <div className="w-full pt-4 sm:pt-1">
+            {/* ── CARRUSEL DE CARTAS (solo móvil; en desktop el calendario ocupa el hero) ── */}
+            <div className="w-full pt-4 sm:hidden">
               {destacados.length > 0 ? (
                 <div className="relative w-full px-0 sm:px-1">
                   <ProximosEventosCarousel eventos={destacados} />
@@ -449,18 +460,7 @@ export default async function Home() {
               </p>
             </div>
 
-            {/* CTA en desktop */}
-            <div className="hidden sm:flex mt-8 flex-wrap gap-3 justify-start">
-              <Link
-                href="/eventos"
-                className="inline-flex items-center gap-2 rounded-full bg-[var(--color-dark)] px-6 py-3 text-sm font-bold text-white shadow-lg transition-all duration-300 hover:bg-[var(--color-purple-1)] hover:shadow-[0_12px_28px_-8px_rgba(109,40,217,0.5)]"
-              >
-                Ver todos los eventos
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
-                </svg>
-              </Link>
-            </div>
+
           </div>
         </section>
 
@@ -613,9 +613,7 @@ export default async function Home() {
             {/* Bottom bar */}
             <div className="mt-10 flex flex-col items-center justify-center gap-2.5 border-t border-white/10 pt-6 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-white/70">
-                <Link href="/sobre-el-creador" className="hover:text-white transition-colors underline-offset-4 hover:underline">
-                  Sobre el Creador (César Reyes Jaramillo)
-                </Link>
+                <Link href="/sobre-el-proyecto" className="hover:text-white transition-colors underline-offset-4 hover:underline">Sobre el proyecto</Link>
                 <span>•</span>
                 <Link href="/publicar" className="hover:text-white transition-colors underline-offset-4 hover:underline">
                   Publicar un Evento
