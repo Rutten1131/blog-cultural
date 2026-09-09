@@ -93,13 +93,14 @@ model Recomendacion {
 model NumeroNotificacion {
   id            Int          @id @default(autoincrement())
   nombre        String       @db.VarChar(100)   // Etiqueta descriptiva (Ej: "César - Admin")
-  numero        String       @unique @db.VarChar(20) // Formato internacional sin + (Ej: 593987654321)
+  numero        String       @db.VarChar(20)    // Formato internacional sin + (Ej: 593987654321)
   activo        Boolean      @default(true)
   institucionId Int?         @map("institucion_id")
   institucion   Institucion? @relation(fields: [institucionId], references: [id], onDelete: Cascade)
   createdAt     DateTime     @default(now())
 
   @@index([institucionId])
+  @@index([numero])
   @@map("numeros_notificacion")
 }
 

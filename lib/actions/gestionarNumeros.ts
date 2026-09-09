@@ -42,6 +42,18 @@ export async function agregarNumero(
   }
 
   try {
+    // Validar solo si ya existe en este mismo perfil / institución
+    const yaExisteEnPerfil = await prisma.numeroNotificacion.findFirst({
+      where: {
+        numero,
+        institucionId: institucionId ?? null,
+      },
+    });
+
+    if (yaExisteEnPerfil) {
+      return { success: false, error: "Ese número ya está registrado en este perfil." };
+    }
+
     await prisma.numeroNotificacion.create({
       data: {
         nombre,
@@ -52,9 +64,6 @@ export async function agregarNumero(
     revalidatePath("/admin");
     return { success: true };
   } catch (error: unknown) {
-    if (error instanceof Error && error.message.includes("Unique constraint")) {
-      return { success: false, error: "Ese número ya está registrado." };
-    }
     console.error("Error agregando número:", error);
     return { success: false, error: "Error al guardar el número. Intenta de nuevo." };
   }
