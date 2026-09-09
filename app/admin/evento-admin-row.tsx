@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { editarEvento, eliminarEvento } from "@/lib/actions/moderacionEvento";
 
 interface Categoria {
@@ -17,6 +18,7 @@ interface Zona {
 
 interface EventoItem {
   id: number;
+  slug: string;
   nombre: string;
   fecha: Date;
   fechaFin?: Date | null;
@@ -145,6 +147,18 @@ export function EventoAdminRow({
 
         {/* Acciones */}
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          {evento.slug && (
+            <Link
+              href={`/eventos/${evento.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400 transition-all flex items-center gap-1.5 shadow-sm"
+              title="Ver cómo se ve en la agenda pública"
+            >
+              <span>👁️ Ver</span>
+            </Link>
+          )}
+
           <button
             onClick={() => {
               setOpen(!open);

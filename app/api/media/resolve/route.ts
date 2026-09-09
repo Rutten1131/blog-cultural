@@ -64,24 +64,72 @@ export async function POST(req: NextRequest) {
       finalUrl = finalUrl.split("?")[0].replace(/\/$/, "");
     }
 
-    // Intentar leer el HTML para obtener og:image y og:title
+    // Si es TikTok, consultar primero su oEmbed oficial que devuelve thumbnail_url directamente y sin bloqueo
+    if (trimmed.includes("tiktok.com")) {
+      try {
+        const oembedRes = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(trimmed)}`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (oembedRes.ok) {
+          const oData = await oembedRes.json();
+          if (oData.thumbnail_url) {
+            thumbnailUrl = oData.thumbnail_url;
+          }
+          if (oData.title) {
+            title = oData.title;
+          }
+        }
+      } catch {
+        // Fallback a scraper standard
+      }
+    }
+
+    let description: string | undefined;
+
+    // Intentar leer el HTML para obtener og:image, og:title, og:description
     try {
       const html = await fetchResponse.text();
       const ogImageMatch =
         html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i) ||
-        html.match(/content=["']([^"']+)["']\s+property=["']og:image["']/i);
+        html.match(/content=["']([^"']+)["']\s+property=["']og:image["']/i) ||
+        html.match(/name=["']twitter:image["']\s+content=["']([^"']+)["']/i) ||
+        html.match(/content=["']([^"']+)["']\s+name=["']twitter:image["']/i);
+
       const ogTitleMatch =
         html.match(/property=["']og:title["']\s+content=["']([^"']+)["']/i) ||
-        html.match(/content=["']([^"']+)["']\s+property=["']og:title["']/i);
+        html.match(/content=["']([^"']+)["']\s+property=["']og:title["']/i) ||
+        html.match(/name=["']twitter:title["']\s+content=["']([^"']+)["']/i) ||
+        html.match(/<title[^>]*>([^<]+)<\/title>/i);
 
-      if (ogImageMatch) {
-        thumbnailUrl = ogImageMatch[1].replace(/&amp;/g, "&");
+      const ogDescMatch =
+        html.match(/property=["']og:description["']\s+content=["']([^"']+)["']/i) ||
+        html.match(/content=["']([^"']+)["']\s+property=["']og:description["']/i) ||
+        html.match(/name=["']description["']\s+content=["']([^"']+)["']/i);
+
+      if (!thumbnailUrl && ogImageMatch) {
+        let img = ogImageMatch[1].replace(/&amp;/g, "&");
+        // Si es relativa, convertir a absoluta
+        if (img.startsWith("/")) {
+          try {
+            const parsedBase = new URL(finalUrl);
+            img = `${parsedBase.origin}${img}`;
+          } catch {}
+        }
+        thumbnailUrl = img;
       }
-      if (ogTitleMatch) {
+      if (!title && ogTitleMatch) {
         title = ogTitleMatch[1]
           .replace(/&amp;/g, "&")
           .replace(/&#xb7;/g, "·")
-          .replace(/&#xa0;/g, " ");
+          .replace(/&#xa0;/g, " ")
+          .trim();
+      }
+      if (ogDescMatch) {
+        description = ogDescMatch[1]
+          .replace(/&amp;/g, "&")
+          .replace(/&#xb7;/g, "·")
+          .replace(/&#xa0;/g, " ")
+          .trim();
       }
     } catch {
       // Ignorar error al parsear HTML
@@ -128,6 +176,7 @@ export async function POST(req: NextRequest) {
       embedUrl,
       thumbnailUrl,
       title,
+      description,
       provider,
       format,
     });

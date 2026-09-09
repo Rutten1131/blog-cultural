@@ -21,6 +21,7 @@ interface Zona {
 
 interface EventoItem {
   id: number;
+  slug: string;
   nombre: string;
   fecha: Date;
   fechaFin?: Date | null;
@@ -95,6 +96,11 @@ export function AdminDashboardClient({
   const [activeTab, setActiveTab] = useState<
     "pendientes" | "todos" | "buzon" | "notificaciones" | "instituciones"
   >("pendientes");
+
+  // Control de acordeón único para moderar pendientes (uno a la vez)
+  const [openPendienteId, setOpenPendienteId] = useState<number | null>(
+    eventosPendientes[0]?.id ?? null
+  );
 
   // Filtros para la pestaña "Todos los Eventos"
   const [searchTerm, setSearchTerm] = useState("");
@@ -340,6 +346,12 @@ export function AdminDashboardClient({
                     evento={evento}
                     categorias={categorias}
                     zonas={zonas}
+                    isOpen={openPendienteId === evento.id}
+                    onToggle={() =>
+                      setOpenPendienteId((prev) =>
+                        prev === evento.id ? null : evento.id
+                      )
+                    }
                   />
                 ))}
               </div>

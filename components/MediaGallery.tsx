@@ -63,6 +63,48 @@ export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: M
 
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Cache de metadatos resueltos dinámicamente para enlaces externos y videos (og:image, og:title, etc.)
+  const [resolvedMediaMeta, setResolvedMediaMeta] = useState<Record<string, { thumbnailUrl?: string; title?: string; description?: string }>>({});
+
+  useEffect(() => {
+    const videoItems = items.filter((it) => it.type === "video");
+    if (videoItems.length === 0) return;
+
+    let isMounted = true;
+    videoItems.forEach(async (it) => {
+      const vInfo = parseVideoUrl(it.url);
+      // Si ya tiene thumbnail estático (ej. YouTube), omitir consulta innecesaria
+      if (vInfo?.thumbnailUrl) return;
+
+      try {
+        const res = await fetch("/api/media/resolve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: it.url }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && (data.thumbnailUrl || data.title || data.description)) {
+            setResolvedMediaMeta((prev) => ({
+              ...prev,
+              [it.url]: {
+                thumbnailUrl: data.thumbnailUrl,
+                title: data.title,
+                description: data.description,
+              },
+            }));
+          }
+        }
+      } catch {
+        // En caso de fallo o timeout, se mantiene el fallback
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [items]);
+
   // Estados para el Lightbox
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -187,6 +229,64 @@ export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: M
               <span>Ver ampliado</span>
             </div>
           </div>
+        ) : videoInfo?.provider === "web" ? (
+          /* Enlace a Página Web: Tarjeta elegante OpenGraph con vista previa de imagen, título y enlace */
+          (() => {
+            const meta = resolvedMediaMeta[currentItem.url];
+            const displayThumb = meta?.thumbnailUrl;
+            const displayTitle = meta?.title || videoInfo.title || "Sitio Web";
+            const displayDesc = meta?.description;
+
+            return (
+              <div className="relative w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-zinc-900 via-purple-950/40 to-zinc-950 text-white select-none">
+                <div className="w-full max-w-lg bg-zinc-900/90 border border-purple-500/20 rounded-2xl p-5 sm:p-6 shadow-2xl backdrop-blur-md flex flex-col items-center text-center group/card transition-transform hover:scale-[1.01]">
+                  {displayThumb ? (
+                    <div className="relative w-full h-44 sm:h-52 rounded-xl overflow-hidden mb-4 border border-white/10 bg-zinc-950">
+                      <Image
+                        src={displayThumb}
+                        alt={displayTitle}
+                        fill
+                        className="object-cover group-hover/card:scale-105 transition-transform duration-500"
+                        unoptimized
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      <span className="absolute bottom-2.5 left-2.5 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-semibold text-purple-300 backdrop-blur-sm flex items-center gap-1">
+                        🌐 Vista previa
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-3xl mb-4 text-purple-400">
+                      🌐
+                    </div>
+                  )}
+
+                  <h3 className="font-bold text-base sm:text-lg text-zinc-100 line-clamp-2 mb-1.5">
+                    {displayTitle}
+                  </h3>
+
+                  {displayDesc && (
+                    <p className="text-xs text-zinc-400 line-clamp-2 mb-4 leading-relaxed max-w-md">
+                      {displayDesc}
+                    </p>
+                  )}
+
+                  <p className="text-[11px] text-zinc-500 font-mono truncate max-w-full mb-4">
+                    {currentItem.url}
+                  </p>
+
+                  <a
+                    href={currentItem.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-500 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    <span>Visitar sitio web oficial</span>
+                    <span>↗</span>
+                  </a>
+                </div>
+              </div>
+            );
+          })()
         ) : videoInfo ? (
           <div className="relative w-full h-full flex items-center justify-center">
             <iframe
@@ -273,33 +373,39 @@ export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: M
               >
                 {isVideo ? (() => {
                   const vInfo = parseVideoUrl(item.url);
-                  return vInfo?.thumbnailUrl ? (
+                  const meta = resolvedMediaMeta[item.url];
+                  const thumb = meta?.thumbnailUrl || vInfo?.thumbnailUrl;
+
+                  const iconEmoji = !vInfo ? "▶️" : ({
+                    facebook: "📘", instagram: "📸", tiktok: "🎵",
+                    youtube: "▶️", vimeo: "📹", web: "🌐",
+                  }[vInfo.provider] || "▶️");
+
+                  const iconBgColor = !vInfo ? "from-zinc-800 to-zinc-950" : ({
+                    facebook: "from-blue-900 to-blue-950",
+                    instagram: "from-purple-900 to-pink-900",
+                    tiktok: "from-zinc-800 to-zinc-950",
+                    youtube: "from-red-950 to-zinc-950",
+                    vimeo: "from-cyan-900 to-zinc-950",
+                    web: "from-purple-950 to-zinc-950",
+                  }[vInfo.provider] || "from-zinc-800 to-zinc-950");
+
+                  return thumb ? (
                     <div className="relative h-full w-full bg-zinc-950">
                       <Image
-                        src={vInfo.thumbnailUrl}
-                        alt={`Miniatura video ${idx + 1}`}
+                        src={thumb}
+                        alt={`Miniatura ${idx + 1}`}
                         fill
                         className="object-cover"
                         unoptimized
                       />
                       <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <span className="text-lg drop-shadow">▶️</span>
+                        <span className="text-lg drop-shadow">{vInfo?.provider === "web" ? "🌐" : "▶️"}</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center bg-zinc-900 text-white p-1 text-center">
-                      <span className="text-xl">
-                        {vInfo?.provider === "facebook"
-                          ? "📘"
-                          : vInfo?.provider === "instagram"
-                          ? "📸"
-                          : vInfo?.provider === "tiktok"
-                          ? "🎵"
-                          : "▶️"}
-                      </span>
-                      <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5 truncate w-full">
-                        {vInfo?.provider || "Video"}
-                      </span>
+                    <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${iconBgColor} text-white`}>
+                      <span className="text-xl">{iconEmoji}</span>
                     </div>
                   );
                 })() : (
@@ -432,6 +538,59 @@ export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: M
                   className="max-h-[82vh] max-w-[92vw] sm:max-w-[85vw] object-contain rounded-xl shadow-2xl pointer-events-auto"
                 />
               </div>
+            ) : videoInfo?.provider === "web" ? (
+              /* Modal Lightbox: Vista expandida del enlace web */
+              (() => {
+                const meta = resolvedMediaMeta[currentItem.url];
+                const displayThumb = meta?.thumbnailUrl;
+                const displayTitle = meta?.title || videoInfo.title || "Sitio Web";
+                const displayDesc = meta?.description;
+
+                return (
+                  <div
+                    className="w-full max-w-xl bg-zinc-900 border border-purple-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center text-center text-white"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {displayThumb ? (
+                      <div className="relative w-full h-56 sm:h-72 rounded-2xl overflow-hidden mb-5 border border-white/10 bg-zinc-950">
+                        <img
+                          src={displayThumb}
+                          alt={displayTitle}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-3xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-4xl mb-5 text-purple-400">
+                        🌐
+                      </div>
+                    )}
+
+                    <h2 className="font-bold text-lg sm:text-2xl text-white mb-2 line-clamp-2">
+                      {displayTitle}
+                    </h2>
+
+                    {displayDesc && (
+                      <p className="text-xs sm:text-sm text-zinc-300 line-clamp-3 mb-6 leading-relaxed max-w-md">
+                        {displayDesc}
+                      </p>
+                    )}
+
+                    <p className="text-xs text-zinc-400 font-mono truncate max-w-full mb-6">
+                      {currentItem.url}
+                    </p>
+
+                    <a
+                      href={currentItem.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-purple-600 hover:bg-purple-500 px-6 py-3 text-sm font-bold text-white shadow-xl shadow-purple-600/40 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    >
+                      <span>Abrir sitio web oficial</span>
+                      <span>↗</span>
+                    </a>
+                  </div>
+                );
+              })()
             ) : videoInfo ? (
               <div
                 className={`relative w-full shadow-2xl rounded-2xl overflow-hidden ${

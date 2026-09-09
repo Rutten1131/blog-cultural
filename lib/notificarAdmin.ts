@@ -66,8 +66,7 @@ ${appUrl}/admin`;
   }
 
   // Obtener números activos desde la base de datos:
-  // 1. Números generales (institucionId === null)
-  // 2. Números vinculados a la institución relacionada al evento
+  // Si el evento tiene una institución asignada, se notifica ÚNICAMENTE a los números de esa institución
   let destinatarios: { numero: string; nombre: string }[] = [];
   try {
     let targetInstitucionId: number | null = null;
@@ -79,16 +78,28 @@ ${appUrl}/admin`;
       if (inst) targetInstitucionId = inst.id;
     }
 
-    destinatarios = await prisma.numeroNotificacion.findMany({
-      where: {
-        activo: true,
-        OR: [
-          { institucionId: null }, // Superadmin / General
-          ...(targetInstitucionId ? [{ institucionId: targetInstitucionId }] : []),
-        ],
-      },
-      select: { numero: true, nombre: true },
-    });
+    // Si el evento tiene una institución asignada, se notifica ÚNICAMENTE a los números de esa institución
+    // Solo si NO tiene institución asignada o la institución no tiene números, se notifica a los generales/superadmin
+    if (targetInstitucionId) {
+      destinatarios = await prisma.numeroNotificacion.findMany({
+        where: {
+          activo: true,
+          institucionId: targetInstitucionId,
+        },
+        select: { numero: true, nombre: true },
+      });
+    }
+
+    // Si no hubo destinatarios de la institución o no tenía institución relacionada, usar números generales
+    if (destinatarios.length === 0) {
+      destinatarios = await prisma.numeroNotificacion.findMany({
+        where: {
+          activo: true,
+          institucionId: null,
+        },
+        select: { numero: true, nombre: true },
+      });
+    }
   } catch (err) {
     console.error("Error obteniendo números de notificación:", err);
     return;
