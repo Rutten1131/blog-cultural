@@ -103,11 +103,11 @@ export function PublicarPreviewCard({
             </span>
           </div>
 
-          <h4 className="font-display text-xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)]">
+          <h4 className="font-display text-xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] break-words [overflow-wrap:anywhere]">
             {nombre || "Título de tu evento cultural"}
           </h4>
 
-          <p className="text-sm leading-relaxed text-[var(--color-muted)]">
+          <p className="text-sm leading-relaxed text-[var(--color-muted)] break-words [overflow-wrap:anywhere]">
             {descripcionCorta}
           </p>
 

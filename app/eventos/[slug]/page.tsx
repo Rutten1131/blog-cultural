@@ -270,7 +270,7 @@ export default async function EventoDetailPage({ params }: PageProps) {
               </div>
 
               {/* Título */}
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 mb-6 leading-tight">
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 mb-6 leading-tight break-words [overflow-wrap:anywhere]">
                 {evento.nombre}
               </h1>
 
@@ -298,7 +298,7 @@ export default async function EventoDetailPage({ params }: PageProps) {
                   <span className="block text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">
                     Lugar / Recinto
                   </span>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200 break-words [overflow-wrap:anywhere]">
                     {evento.lugar}
                   </span>
                 </div>
@@ -306,7 +306,7 @@ export default async function EventoDetailPage({ params }: PageProps) {
                   <span className="block text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">
                     Organizador / Gestor
                   </span>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200 break-words [overflow-wrap:anywhere]">
                     {evento.nombreGestor}
                   </span>
                 </div>
@@ -325,7 +325,7 @@ export default async function EventoDetailPage({ params }: PageProps) {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">
                   Sobre este evento
                 </h2>
-                <div className="whitespace-pre-line text-base">
+                <div className="whitespace-pre-line text-base break-words [overflow-wrap:anywhere]">
                   {evento.descripcion}
                 </div>
               </div>

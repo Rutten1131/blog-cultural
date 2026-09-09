@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { crearEvento, type CrearEventoState } from "@/lib/actions/crearEvento";
 import { MultiMediaUploader } from "@/components/MultiMediaUploader";
 import { PublicarPreviewCard } from "@/components/PublicarPreviewCard";
 
 const initialState: CrearEventoState = { success: false };
+const STORAGE_KEY = "agenda_cultural_publicar_draft_v1";
 
 interface InstitucionOption {
   id: number;
@@ -25,11 +26,104 @@ export function PublicarForm({
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [nombreGestor, setNombreGestor] = useState("");
+  const [institucionRelacionada, setInstitucionRelacionada] = useState("");
+  const [hasLoadedDraft, setHasLoadedDraft] = useState(false);
 
   const [state, formAction, isPending] = useActionState(
     crearEvento,
     initialState
   );
+
+  // 1. Cargar borrador desde localStorage al montar el componente
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.nombre) setNombre(parsed.nombre);
+        if (parsed.fecha) setFecha(parsed.fecha);
+        if (parsed.fechaFin) setFechaFin(parsed.fechaFin);
+        if (parsed.lugar) setLugar(parsed.lugar);
+        if (parsed.descripcion) setDescripcion(parsed.descripcion);
+        if (Array.isArray(parsed.imagenes)) setImagenes(parsed.imagenes);
+        if (Array.isArray(parsed.videoUrls)) setVideoUrls(parsed.videoUrls);
+        if (parsed.nombreGestor) setNombreGestor(parsed.nombreGestor);
+        if (parsed.institucionRelacionada) setInstitucionRelacionada(parsed.institucionRelacionada);
+      }
+    } catch (err) {
+      console.error("Error cargando borrador de localStorage:", err);
+    } finally {
+      setHasLoadedDraft(true);
+    }
+  }, []);
+
+  // 2. Guardar automáticamente en localStorage cuando cualquier campo cambie
+  useEffect(() => {
+    if (!hasLoadedDraft) return;
+
+    try {
+      const dataToSave = {
+        nombre,
+        fecha,
+        fechaFin,
+        lugar,
+        descripcion,
+        imagenes,
+        videoUrls,
+        nombreGestor,
+        institucionRelacionada,
+      };
+
+      // Si todos los campos están vacíos, no hace falta guardar
+      const hasAnyContent =
+        nombre || fecha || fechaFin || lugar || descripcion ||
+        imagenes.length > 0 || videoUrls.length > 0 || nombreGestor || institucionRelacionada;
+
+      if (hasAnyContent) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      }
+    } catch (err) {
+      console.error("Error guardando borrador en localStorage:", err);
+    }
+  }, [
+    nombre,
+    fecha,
+    fechaFin,
+    lugar,
+    descripcion,
+    imagenes,
+    videoUrls,
+    nombreGestor,
+    institucionRelacionada,
+    hasLoadedDraft,
+  ]);
+
+  // 3. Limpiar borrador al enviar con éxito
+  useEffect(() => {
+    if (state.success) {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {}
+    }
+  }, [state.success]);
+
+  // Función para reiniciar/limpiar borrador manualmente si el usuario lo desea
+  const handleLimpiarBorrador = () => {
+    if (window.confirm("¿Seguro que deseas borrar el borrador y limpiar el formulario?")) {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {}
+      setNombre("");
+      setFecha("");
+      setFechaFin("");
+      setLugar("");
+      setDescripcion("");
+      setImagenes([]);
+      setVideoUrls([]);
+      setNombreGestor("");
+      setInstitucionRelacionada("");
+    }
+  };
 
   // Pantalla de confirmación
   if (state.success) {
@@ -59,6 +153,23 @@ export function PublicarForm({
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 items-start">
       {/* Formulario */}
       <form action={formAction} className="space-y-6 lg:col-span-7">
+        {/* Barra de estado de borrador */}
+        {hasLoadedDraft && (nombre || descripcion || imagenes.length > 0) && (
+          <div className="flex items-center justify-between gap-2 rounded-xl bg-purple-50/80 border border-purple-200/80 px-3.5 py-2 text-xs text-purple-900 dark:bg-purple-950/30 dark:border-purple-900/50 dark:text-purple-200">
+            <span className="flex items-center gap-1.5 font-medium">
+              <span className="h-2 w-2 rounded-full bg-purple-600 animate-pulse" />
+              Borrador guardado automáticamente en tu navegador
+            </span>
+            <button
+              type="button"
+              onClick={handleLimpiarBorrador}
+              className="text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline cursor-pointer shrink-0"
+            >
+              Limpiar borrador
+            </button>
+          </div>
+        )}
+
         {/* Error global */}
         {state.error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
@@ -223,7 +334,8 @@ export function PublicarForm({
             id="institucionRelacionada"
             name="institucionRelacionada"
             required
-            defaultValue=""
+            value={institucionRelacionada}
+            onChange={(e) => setInstitucionRelacionada(e.target.value)}
             className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 shadow-sm transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
           >
             <option value="" disabled>Selecciona una institución...</option>

@@ -78,9 +78,11 @@ export async function editarEvento(formData: FormData) {
 
   if (!nombre || !lugar || !descripcion || !nombreGestor || !fechaStr) return;
 
-  // Parsear fecha — Loja está en UTC-5
-  const fecha = new Date(fechaStr + "T05:00:00.000Z");
-  const fechaFin = fechaFinStr ? new Date(fechaFinStr + "T05:00:00.000Z") : null;
+  // Parsear fecha usando helper canónico de fechas de Loja (UTC-5)
+  const { parseFechaInputLocal } = await import("@/lib/fechas");
+  const fecha = parseFechaInputLocal(fechaStr);
+  if (!fecha) return;
+  const fechaFin = fechaFinStr ? parseFechaInputLocal(fechaFinStr) : null;
 
   await prisma.evento.update({
     where: { id: eventoId },

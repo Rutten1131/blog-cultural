@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { aprobarEvento, rechazarEvento } from "@/lib/actions/moderacionEvento";
+import { aprobarEvento, rechazarEvento, editarEvento } from "@/lib/actions/moderacionEvento";
 import { formatFechaLojaCliente } from "@/lib/fechasCliente";
 import { parseVideoUrl, extractVideoUrls } from "@/lib/mediaUtils";
 
@@ -36,6 +36,15 @@ interface EventoItem {
   createdAt: Date;
 }
 
+function toLocalDateInput(date: Date | null | undefined): string {
+  if (!date) return "";
+  const d = new Date(date);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function EventoCard({
   evento,
   categorias,
@@ -52,6 +61,10 @@ export function EventoCard({
   const [internalOpen, setInternalOpen] = useState(false);
   const isExpanded = onToggle ? isOpen : internalOpen;
   const toggle = onToggle ? onToggle : () => setInternalOpen(!internalOpen);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [previewImg, setPreviewImg] = useState<string>(evento.imagenUrl || "");
 
   const [selectedCategoria, setSelectedCategoria] = useState<string>(
     evento.categoriaId ? String(evento.categoriaId) : ""
@@ -162,7 +175,7 @@ export function EventoCard({
             <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
               Descripción del Evento
             </label>
-            <p className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-line leading-relaxed bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+            <p className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-line leading-relaxed bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 break-words [overflow-wrap:anywhere]">
               {evento.descripcion}
             </p>
           </div>
@@ -304,86 +317,324 @@ export function EventoCard({
             </div>
           )}
 
-          {/* Datos de Lugar y Fecha */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <div>
-              📍 <span className="font-semibold text-zinc-900 dark:text-zinc-100">Lugar:</span> {evento.lugar}
-            </div>
-            <div>
-              📅 <span className="font-semibold text-zinc-900 dark:text-zinc-100">Fecha:</span>{" "}
-              {formatFechaLojaCliente(evento.fecha, "largo")}
-              {evento.fechaFin && (
-                <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                  🏁 Hasta: {formatFechaLojaCliente(evento.fechaFin, "largo")}
+          {/* Formulario de Edición Completa para Administradores */}
+          {isEditing ? (
+            <form
+              action={async (formData) => {
+                setSavingEdit(true);
+                await editarEvento(formData);
+                setSavingEdit(false);
+                setIsEditing(false);
+              }}
+              className="rounded-2xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/40 dark:bg-purple-950/20 p-5 sm:p-6 space-y-6"
+            >
+              <input type="hidden" name="eventoId" value={evento.id} />
+              <input type="hidden" name="estado" value="PENDIENTE" />
+
+              <div className="flex items-center justify-between pb-3 border-b border-purple-200/60 dark:border-purple-800/40">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">✏️</span>
+                  <h3 className="text-sm font-bold text-purple-950 dark:text-purple-200 uppercase tracking-wider">
+                    Editar Datos del Evento Pendiente
+                  </h3>
                 </div>
-              )}
-            </div>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="rounded-lg px-3 py-1 text-xs font-semibold text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800"
+                >
+                  ✕ Cancelar
+                </button>
+              </div>
 
-          {/* Selects de Categoría y Zona */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1">
-                Categoría asignada:
-              </label>
-              <select
-                value={selectedCategoria}
-                onChange={(e) => setSelectedCategoria(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">-- Sin categoría --</option>
-                {categorias.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Campos principales */}
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Nombre */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                      Nombre del evento
+                    </label>
+                    <input
+                      type="text"
+                      name="nombre"
+                      defaultValue={evento.nombre}
+                      required
+                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1">
-                Zona asignada:
-              </label>
-              <select
-                value={selectedZona}
-                onChange={(e) => setSelectedZona(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">-- Sin zona --</option>
-                {zonas.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.nombre} ({z.tipo})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+                  {/* Lugar */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                      Lugar
+                    </label>
+                    <input
+                      type="text"
+                      name="lugar"
+                      defaultValue={evento.lugar}
+                      required
+                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
 
-          {/* Botones de acción */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-            <form action={rechazarEvento}>
-              <input type="hidden" name="eventoId" value={evento.id} />
-              <button
-                type="submit"
-                className="rounded-xl border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-bold text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900 cursor-pointer transition-all active:scale-95"
-              >
-                ✕ Rechazar Evento
-              </button>
+                  {/* Gestor / Organizador */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                      Organizador / Gestor
+                    </label>
+                    <input
+                      type="text"
+                      name="nombreGestor"
+                      defaultValue={evento.nombreGestor}
+                      required
+                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  {/* Institución */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                      Institución / Entidad Relacionada
+                    </label>
+                    <input
+                      type="text"
+                      name="institucionRelacionada"
+                      defaultValue={evento.institucionRelacionada ?? ""}
+                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  {/* Fecha inicio */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                      Fecha Inicio
+                    </label>
+                    <input
+                      type="date"
+                      name="fecha"
+                      defaultValue={toLocalDateInput(evento.fecha)}
+                      required
+                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  {/* Fecha fin */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                      Fecha Fin (opcional)
+                    </label>
+                    <input
+                      type="date"
+                      name="fechaFin"
+                      defaultValue={toLocalDateInput(evento.fechaFin)}
+                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  {/* Categoría */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                      Categoría
+                    </label>
+                    <select
+                      name="categoriaId"
+                      value={selectedCategoria}
+                      onChange={(e) => setSelectedCategoria(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">-- Sin categoría --</option>
+                      {categorias.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Zona */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                      Zona / Parroquia
+                    </label>
+                    <select
+                      name="zonaId"
+                      value={selectedZona}
+                      onChange={(e) => setSelectedZona(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">-- Sin zona --</option>
+                      {zonas.map((z) => (
+                        <option key={z.id} value={z.id}>
+                          {z.nombre} ({z.tipo})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Columna derecha: Imagen */}
+                <div className="flex flex-col gap-3">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                    Imagen Principal
+                  </label>
+                  <div className="relative aspect-video w-full rounded-2xl overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/60 flex items-center justify-center">
+                    {previewImg ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={previewImg}
+                        alt="Previsualización"
+                        className="h-full w-full object-cover"
+                        onError={() => setPreviewImg("")}
+                      />
+                    ) : (
+                      <div className="text-center p-4 text-zinc-400">
+                        <span className="text-2xl block mb-1">🖼️</span>
+                        <span className="text-xs">Sin imagen o enlace roto</span>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    name="imagenUrl"
+                    value={previewImg}
+                    onChange={(e) => setPreviewImg(e.target.value)}
+                    placeholder="https://ejemplo.com/imagen.jpg"
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <p className="text-[11px] text-zinc-500">
+                    Puedes pegar un enlace directo a la imagen afiche.
+                  </p>
+                </div>
+
+                {/* Descripción a ancho completo */}
+                <div className="lg:col-span-3">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Descripción Completa
+                  </label>
+                  <textarea
+                    name="descripcion"
+                    defaultValue={evento.descripcion}
+                    required
+                    rows={4}
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-y"
+                  />
+                </div>
+              </div>
+
+              {/* Botones de guardar edición */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-purple-200/60 dark:border-purple-800/40">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="rounded-xl bg-purple-600 hover:bg-purple-700 px-5 py-2 text-sm font-bold text-white shadow transition-all disabled:opacity-60 flex items-center gap-2"
+                >
+                  {savingEdit ? "Guardando..." : "💾 Guardar Cambios"}
+                </button>
+              </div>
             </form>
+          ) : (
+            <>
+              {/* Datos de Lugar y Fecha */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                <div>
+                  📍 <span className="font-semibold text-zinc-900 dark:text-zinc-100">Lugar:</span> {evento.lugar}
+                </div>
+                <div>
+                  📅 <span className="font-semibold text-zinc-900 dark:text-zinc-100">Fecha:</span>{" "}
+                  {formatFechaLojaCliente(evento.fecha, "largo")}
+                  {evento.fechaFin && (
+                    <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                      🏁 Hasta: {formatFechaLojaCliente(evento.fechaFin, "largo")}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-            <form action={aprobarEvento}>
-              <input type="hidden" name="eventoId" value={evento.id} />
-              <input type="hidden" name="categoriaId" value={selectedCategoria} />
-              <input type="hidden" name="zonaId" value={selectedZona} />
-              <button
-                type="submit"
-                className="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:bg-emerald-700 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
-              >
-                <span>✓</span>
-                <span>Aprobar y Publicar</span>
-              </button>
-            </form>
-          </div>
+              {/* Selects de Categoría y Zona */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1">
+                    Categoría asignada:
+                  </label>
+                  <select
+                    value={selectedCategoria}
+                    onChange={(e) => setSelectedCategoria(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">-- Sin categoría --</option>
+                    {categorias.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1">
+                    Zona asignada:
+                  </label>
+                  <select
+                    value={selectedZona}
+                    onChange={(e) => setSelectedZona(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">-- Sin zona --</option>
+                    {zonas.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.nombre} ({z.tipo})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Botones de acción (Editar, Rechazar, Aprobar) */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-bold text-purple-700 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/60 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>✏️</span>
+                  <span>Editar Evento</span>
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <form action={rechazarEvento}>
+                    <input type="hidden" name="eventoId" value={evento.id} />
+                    <button
+                      type="submit"
+                      className="rounded-xl border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-bold text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900 cursor-pointer transition-all active:scale-95"
+                    >
+                      ✕ Rechazar Evento
+                    </button>
+                  </form>
+
+                  <form action={aprobarEvento}>
+                    <input type="hidden" name="eventoId" value={evento.id} />
+                    <input type="hidden" name="categoriaId" value={selectedCategoria} />
+                    <input type="hidden" name="zonaId" value={selectedZona} />
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:bg-emerald-700 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
+                    >
+                      <span>✓</span>
+                      <span>Aprobar y Publicar</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

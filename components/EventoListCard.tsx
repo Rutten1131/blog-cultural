@@ -93,11 +93,11 @@ export function EventoCardFeatured({ evento }: { evento: EventoCardProps }) {
           )}
         </div>
 
-        <h3 className="font-display text-xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] transition-colors group-hover:text-[var(--color-purple-1)]">
+        <h3 className="font-display text-xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] transition-colors group-hover:text-[var(--color-purple-1)] break-words [overflow-wrap:anywhere]">
           {evento.nombre}
         </h3>
 
-        <p className="text-sm leading-relaxed text-[var(--color-muted)]">
+        <p className="text-sm leading-relaxed text-[var(--color-muted)] break-words [overflow-wrap:anywhere]">
           {descripcionCorta}
         </p>
 
