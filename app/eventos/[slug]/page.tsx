@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { SITE_CONFIG } from "@/lib/utils";
-import { formatFechaHoraLoja } from "@/lib/fechas";
+import { formatFechaHoraLoja, formatFechaLoja } from "@/lib/fechas";
 import { BackButton } from "@/components/BackButton";
 import { EventoListCard } from "@/components/EventoListCard";
 import { Navbar } from "@/components/Navbar";
@@ -63,23 +63,43 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const title = `${evento.nombre} — Evento Cultural en Loja`;
-  const desc = evento.descripcion || "";
-  const description =
-    desc.length > 155
-      ? `${desc.slice(0, 152)}...`
-      : desc;
-
-  const url = `${SITE_CONFIG.url}/eventos/${evento.slug}`;
   const categoriaNombre = evento.categoria?.nombre || "Cultural";
   const zonaNombre = evento.zona?.nombre || "Loja";
 
+  // Formatear fechas para SEO ("Qué hacer en Loja...")
+  const fechaInicioStr = formatFechaLoja(evento.fecha, "largo");
+  const fechaInicioCorta = formatFechaLoja(evento.fecha, "corto");
+  let rangoTexto = fechaInicioStr;
+  let fechaKeyword = `que hacer en Loja el ${fechaInicioCorta}`;
+
+  if (evento.fechaFin) {
+    const mismaFecha =
+      new Date(evento.fecha).toDateString() === new Date(evento.fechaFin).toDateString();
+    if (!mismaFecha) {
+      const fechaFinStr = formatFechaLoja(evento.fechaFin, "largo");
+      const fechaFinCorta = formatFechaLoja(evento.fechaFin, "corto");
+      rangoTexto = `del ${fechaInicioCorta} al ${fechaFinCorta}`;
+      fechaKeyword = `que hacer en Loja del ${fechaInicioCorta} al ${fechaFinCorta}`;
+    }
+  }
+
+  // Título enfocado en intención de búsqueda directa
+  const title = `${evento.nombre} (${rangoTexto}) — Qué hacer en Loja`;
+
+  // Descripción optimizada para CTR en buscadores
+  const baseDesc = evento.descripcion ? `${evento.descripcion.trim().slice(0, 100)}...` : "";
+  const description = `¿Qué hacer en Loja? Descubre ${evento.nombre} (${rangoTexto}) en ${evento.lugar}. ${baseDesc}`.slice(0, 160);
+
+  const url = `${SITE_CONFIG.url}/eventos/${evento.slug}`;
+
   const keywords = [
     evento.nombre,
-    `evento ${categoriaNombre}`,
+    fechaKeyword,
+    `que hacer en Loja ${fechaInicioStr}`,
     `que hacer en Loja ${zonaNombre}`,
-    `cultura Loja`,
+    `evento ${categoriaNombre} Loja`,
     `agenda cultural Loja`,
+    `cultura Loja`,
     evento.lugar,
     evento.nombreGestor,
   ].filter(Boolean) as string[];
@@ -167,50 +187,135 @@ export default async function EventoDetailPage({ params }: PageProps) {
   const parsedEndDate = evento.fechaFin ? new Date(evento.fechaFin) : null;
   const isoEndDate = parsedEndDate && !isNaN(parsedEndDate.getTime()) ? parsedEndDate.toISOString() : undefined;
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    name: evento.nombre,
-    startDate: isoStartDate,
-    ...(isoEndDate && { endDate: isoEndDate }),
-    description: evento.descripcion || "",
-    eventStatus: "https://schema.org/EventScheduled",
-    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-    inLanguage: "es-EC",
-    category: evento.categoria?.nombre || "Cultura",
-    location: {
-      "@type": "Place",
-      name: evento.lugar,
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: "Loja",
-        addressRegion: evento.zona?.nombre ?? "Loja",
-        addressCountry: "EC",
-      },
-    },
-    ...(evento.imagenUrl && { image: [evento.imagenUrl] }),
-    organizer: {
-      "@type": "Organization",
-      name: evento.nombreGestor,
-    },
-    performer: {
-      "@type": "PerformingGroup",
-      name: evento.nombreGestor,
-    },
-    publisher: {
-      "@type": "Person",
-      name: "César Reyes Jaramillo",
-      url: `${SITE_CONFIG.url}/sobre-el-proyecto`,
-    },
-    creator: {
-      "@type": "Person",
-      name: "César Reyes Jaramillo",
-      url: `${SITE_CONFIG.url}/sobre-el-proyecto`,
-    },
-  };
-
   const fechaInicioFormateada = formatFechaHoraLoja(evento.fecha, "largo");
   const fechaFinFormateada = evento.fechaFin ? formatFechaHoraLoja(evento.fechaFin, "largo") : null;
+  const fechaRangoTexto = fechaFinFormateada
+    ? `${fechaInicioFormateada} hasta ${fechaFinFormateada}`
+    : fechaInicioFormateada;
+
+  // Schema múltiple (@graph) con Event, BreadcrumbList y FAQPage
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Event",
+        "@id": `${SITE_CONFIG.url}/eventos/${evento.slug}#event`,
+        name: evento.nombre,
+        startDate: isoStartDate,
+        ...(isoEndDate && { endDate: isoEndDate }),
+        description: evento.descripcion || `Evento ${evento.nombre} en Loja, Ecuador`,
+        eventStatus: "https://schema.org/EventScheduled",
+        eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+        inLanguage: "es-EC",
+        category: evento.categoria?.nombre || "Cultura",
+        location: {
+          "@type": "Place",
+          name: evento.lugar,
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: "Loja",
+            addressRegion: evento.zona?.nombre ?? "Loja",
+            addressCountry: "EC",
+          },
+        },
+        ...(evento.imagenUrl && { image: [evento.imagenUrl] }),
+        organizer: {
+          "@type": "Organization",
+          name: evento.nombreGestor,
+        },
+        performer: {
+          "@type": "PerformingGroup",
+          name: evento.nombreGestor,
+        },
+        publisher: {
+          "@type": "Person",
+          name: "César Reyes Jaramillo",
+          url: `${SITE_CONFIG.url}/sobre-el-proyecto`,
+        },
+        creator: {
+          "@type": "Person",
+          name: "César Reyes Jaramillo",
+          url: `${SITE_CONFIG.url}/sobre-el-proyecto`,
+        },
+        author: {
+          "@type": "Person",
+          name: "César Reyes Jaramillo",
+          url: `${SITE_CONFIG.url}/sobre-el-proyecto`,
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${SITE_CONFIG.url}/eventos/${evento.slug}#breadcrumb`,
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Inicio",
+            item: SITE_CONFIG.url,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Eventos",
+            item: `${SITE_CONFIG.url}/eventos`,
+          },
+          ...(evento.categoria
+            ? [
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: evento.categoria.nombre,
+                  item: `${SITE_CONFIG.url}/eventos/categoria/${evento.categoria.slug}`,
+                },
+                {
+                  "@type": "ListItem",
+                  position: 4,
+                  name: evento.nombre,
+                  item: `${SITE_CONFIG.url}/eventos/${evento.slug}`,
+                },
+              ]
+            : [
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: evento.nombre,
+                  item: `${SITE_CONFIG.url}/eventos/${evento.slug}`,
+                },
+              ]),
+        ],
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${SITE_CONFIG.url}/eventos/${evento.slug}#faq`,
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: `¿Qué se puede hacer en Loja el día de este evento?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `En esta fecha puedes asistir a "${evento.nombre}", un evento cultural de categoría ${evento.categoria?.nombre || "Cultura"} en ${evento.lugar}, Loja.`,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `¿Cuándo y a qué hora es ${evento.nombre}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `El evento inicia el ${fechaRangoTexto} en horario de Loja, Ecuador.`,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `¿Dónde se realizará ${evento.nombre}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Se llevará a cabo en ${evento.lugar}, sector ${evento.zona?.nombre ?? "Loja"}, Loja, Ecuador. Organizado por ${evento.nombreGestor}.`,
+            },
+          },
+        ],
+      },
+    ],
+  };
 
   return (
     <>
