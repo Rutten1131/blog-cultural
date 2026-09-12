@@ -48,8 +48,9 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
   useEffect(() => {
     const isDesktop = window.innerWidth >= 640;
     const heroCalendar = document.getElementById("hero-calendario-desktop");
+    const heroBanner = document.getElementById("hero-banner-main");
 
-    // Desktop: usar IntersectionObserver sobre el calendario del hero
+    // En Desktop: observar el mini-calendario del hero
     if (isDesktop && heroCalendar) {
       const observer = new IntersectionObserver(
         ([entry]) => {
@@ -61,9 +62,21 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
       return () => observer.disconnect();
     }
 
-    // Móvil: fallback con scroll position
+    // En Móvil: observar cuando el hero banner sale de pantalla
+    if (!isDesktop && heroBanner) {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          setMostrarFlotante(!entry.isIntersecting);
+        },
+        { threshold: 0.1 }
+      );
+      observer.observe(heroBanner);
+      return () => observer.disconnect();
+    }
+
+    // Fallback con scroll
     const handleScroll = () => {
-      setMostrarFlotante(window.scrollY > 350);
+      setMostrarFlotante(window.scrollY > (window.innerHeight * 0.75));
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();

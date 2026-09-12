@@ -118,3 +118,20 @@ model Institucion {
   @@map("instituciones")
 }
 
+// ─── Banners del Hero Principal ──────────────────────────────
+model BannerHero {
+  id            Int      @id @default(autoincrement())
+  titulo        String   @db.VarChar(200)
+  subtitulo     String?  @db.VarChar(255)
+  link          String   @default("/eventos") @db.VarChar(500)
+  botonTexto    String   @default("Ver evento") @db.VarChar(50)
+  imagenDesktop String   @db.VarChar(500)
+  imagenMobile  String?  @db.VarChar(500)
+  orden         Int      @default(0)
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([activo, orden])
+  @@map("banners_hero")
+}
+

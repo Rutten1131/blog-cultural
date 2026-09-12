@@ -10,7 +10,9 @@ import { UltimosEventosSection } from "@/components/UltimosEventosSection";
 import { ProximosEventosCarousel } from "@/components/ProximosEventosCarousel";
 import { CalendarioBotonFlotante } from "@/components/CalendarioBotonFlotante";
 import { CalendarioCulturalHome } from "@/components/CalendarioCulturalHome";
+import { CalendarioHeroWidget } from "@/components/CalendarioHeroWidget";
 import { BotonVerCalendarioHero } from "@/components/BotonVerCalendarioHero";
+import { HeroBannerCarousel, BannerHeroItem } from "@/components/HeroBannerCarousel";
 
 import { BuzonRecomendaciones } from "@/components/BuzonRecomendaciones";
 
@@ -301,6 +303,42 @@ export default async function Home() {
     ultimosEventos = eventosPasadosRecientes;
   }
 
+  // Banners del Hero (Panorámico estilo Hyundai)
+  const bannersDB = await prisma.bannerHero.findMany({
+    where: { activo: true },
+    orderBy: [{ orden: "asc" }, { createdAt: "desc" }],
+  });
+
+  let bannersParaHero: BannerHeroItem[] = bannersDB.map((b) => ({
+    id: b.id,
+    titulo: b.titulo,
+    subtitulo: b.subtitulo,
+    link: b.link,
+    botonTexto: b.botonTexto,
+    imagenDesktop: b.imagenDesktop,
+    imagenMobile: b.imagenMobile,
+  }));
+
+  // Si no hay banners manuales configurados en el panel, usamos los eventos más nuevos con imagen
+  if (bannersParaHero.length === 0) {
+    const eventosConImagen = ultimosEventos
+      .filter((ev) => Boolean(ev.imagenUrl))
+      .slice(0, 5);
+
+    bannersParaHero = eventosConImagen.map((ev) => ({
+      id: ev.id,
+      titulo: ev.nombre,
+      subtitulo: `${new Date(ev.fecha).toLocaleDateString("es-EC", {
+        day: "numeric",
+        month: "long",
+      })} • ${ev.lugar}`,
+      link: `/eventos/${ev.slug}`,
+      botonTexto: "Ver evento",
+      imagenDesktop: ev.imagenUrl!,
+      imagenMobile: ev.imagenUrl!,
+    }));
+  }
+
   // Marcado estructurado JSON-LD (Schema.org) para la Home
   const jsonLdHome = {
     "@context": "https://schema.org",
@@ -354,10 +392,19 @@ export default async function Home() {
       <main className="flex flex-1 flex-col" id="main-content">
 
         {/* ═══════════════════════════════
-            HERO — Eventos destacados
+            HERO BANNERS CINEMATOGRÁFICO — ESTILO HYUNDAI (FADE SLIDER)
+        ═══════════════════════════════ */}
+        {bannersParaHero.length > 0 && (
+          <div id="hero-banner-main" className="w-full pt-0 sm:pt-20">
+            <HeroBannerCarousel banners={bannersParaHero} intervalMs={5000} />
+          </div>
+        )}
+
+        {/* ═══════════════════════════════
+            HERO — Eventos destacados & Calendario (Inmediatamente después del Hero Banner)
         ═══════════════════════════════ */}
         <section
-          className="relative w-full overflow-hidden pb-10 sm:pb-12 pt-24 sm:pt-32 min-h-screen sm:min-h-0 flex flex-col justify-between"
+          className="relative w-full overflow-hidden pb-8 sm:pb-12 pt-6 sm:pt-8 flex flex-col justify-between"
           aria-label="Eventos destacados"
         >
           {/* Blob de fondo hero */}
@@ -372,7 +419,7 @@ export default async function Home() {
 
           <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 w-full flex flex-col justify-between flex-1 sm:block">
             {/* ── EN DESKTOP: LAYOUT 2 COLUMNAS (Textos + Calendario desplegado) ── */}
-            <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-[42%_58%] gap-6 lg:gap-10 items-start">
+            <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-[50%_50%] gap-6 lg:gap-8 items-center">
               {/* Columna izquierda: Textos y CTA */}
               <div className="flex flex-col justify-center gap-5 pt-2">
                 {/* Eyebrow */}
@@ -415,26 +462,24 @@ export default async function Home() {
                 </div>
               </div>
 
-              {/* Columna derecha: Calendario Cultural desplegado */}
+              {/* Columna derecha: Mini Calendario con popup al clic */}
               <div id="hero-calendario-desktop" className="w-full fade-up fade-up-delay-1">
-                <CalendarioCulturalHome eventos={eventosCalendario} />
+                <CalendarioHeroWidget eventos={eventosCalendario} />
               </div>
             </div>
 
-            {/* ── EN MODO CELULAR: PRIMERA VISTA CON TÍTULO Y BOTÓN VER EL CALENDARIO ── */}
-            <div className="sm:hidden mb-6 flex flex-col items-center gap-4 text-center">
-              <h1 className="font-display text-2xl sm:text-3xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)]">
+            {/* ── EN MODO CELULAR: TÍTULO INFORMATIVO (el botón principal está en el hero banner fullscreen) ── */}
+            <div className="sm:hidden mb-4 flex flex-col items-center gap-2 text-center">
+              <h2 className="font-display text-2xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)]">
                 ¿Qué hacer <span className="text-gradient-purple">en Loja?</span>
-              </h1>
-
-              {/* Botón Ver el Calendario llamativo */}
-              <div className="w-full flex flex-col items-center pt-1">
-                <BotonVerCalendarioHero className="w-full max-w-xs" />
-              </div>
+              </h2>
+              <p className="text-xs font-semibold text-[var(--color-muted)]">
+                Eventos, arte y actividades culturales en la ciudad
+              </p>
             </div>
 
             {/* ── CARRUSEL DE CARTAS (solo móvil; en desktop el calendario ocupa el hero) ── */}
-            <div className="w-full pt-4 sm:hidden">
+            <div className="w-full pt-2 sm:hidden">
               {destacados.length > 0 ? (
                 <div className="relative w-full px-0 sm:px-1">
                   <ProximosEventosCarousel eventos={destacados} />

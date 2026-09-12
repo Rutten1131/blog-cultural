@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { parseVideoUrl, VideoEmbedInfo } from "@/lib/mediaUtils";
+import { uploadDirectToBunny } from "@/lib/uploadDirect";
 
 interface MultiMediaUploaderProps {
   imagenes: string[];
@@ -24,7 +25,7 @@ export function MultiMediaUploader({
   const [videoThumbnails, setVideoThumbnails] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Subir archivos de imágenes a Bunny CDN
+  // Subir archivos de imágenes directo a Bunny CDN (bypass Vercel limits)
   const handleUploadFiles = async (files: FileList | File[]) => {
     setError(null);
     setIsUploading(true);
@@ -40,22 +41,34 @@ export function MultiMediaUploader({
           continue;
         }
 
-        if (file.size > 20 * 1024 * 1024) {
-          setError(`El archivo ${file.name} supera los 20MB.`);
+        if (file.size > 50 * 1024 * 1024) {
+          setError(`El archivo ${file.name} supera los 50MB.`);
           continue;
         }
 
-        const formData = new FormData();
-        formData.append("file", file);
+        // 1. Intentar subida directa a Bunny.net
+        let url: string | null = null;
+        try {
+          url = await uploadDirectToBunny(file);
+        } catch (directErr) {
+          console.warn("Subida directa falló, intentando por API Vercel:", directErr);
+          // 2. Fallback a /api/upload
+          const formData = new FormData();
+          formData.append("file", file);
 
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
 
-        const data = await res.json();
-        if (res.ok && data.url) {
-          uploadedUrls.push(data.url);
+          const data = await res.json();
+          if (res.ok && data.url) {
+            url = data.url;
+          }
+        }
+
+        if (url) {
+          uploadedUrls.push(url);
         }
       }
 

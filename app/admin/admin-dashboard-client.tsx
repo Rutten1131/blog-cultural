@@ -5,6 +5,7 @@ import { EventoCard } from "./evento-card";
 import { EventoAdminRow } from "./evento-admin-row";
 import { AdminNotificaciones } from "./admin-notificaciones";
 import { AdminInstituciones } from "./admin-instituciones";
+import { AdminBanners, BannerHeroAdminItem } from "./admin-banners";
 import { logoutAdmin } from "@/lib/actions/authAdmin";
 
 interface Categoria {
@@ -81,6 +82,7 @@ export function AdminDashboardClient({
   instituciones,
   categorias,
   zonas,
+  banners = [],
 }: {
   session: SessionData;
   eventosPendientes: EventoItem[];
@@ -90,11 +92,12 @@ export function AdminDashboardClient({
   instituciones: InstitucionItem[];
   categorias: Categoria[];
   zonas: Zona[];
+  banners?: BannerHeroAdminItem[];
 }) {
   const esSuperadmin = session.role === "SUPERADMIN";
 
   const [activeTab, setActiveTab] = useState<
-    "pendientes" | "todos" | "buzon" | "notificaciones" | "instituciones"
+    "pendientes" | "todos" | "banners" | "buzon" | "notificaciones" | "instituciones"
   >("pendientes");
 
   // Control de acordeón único para moderar pendientes (uno a la vez)
@@ -237,6 +240,29 @@ export function AdminDashboardClient({
               {todosLosEventos.length}
             </span>
           </button>
+
+          {/* Banners Hero: SOLO SUPERADMIN */}
+          {esSuperadmin && (
+            <button
+              onClick={() => setActiveTab("banners")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                activeTab === "banners"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              <span>🖼️ Banners del Hero</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  activeTab === "banners"
+                    ? "bg-white/20 text-white"
+                    : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                }`}
+              >
+                {banners.length}
+              </span>
+            </button>
+          )}
 
           {/* Buzón de Sugerencias: SOLO SUPERADMIN GENERAL */}
           {esSuperadmin && (
@@ -527,6 +553,13 @@ export function AdminDashboardClient({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ===================== TAB: BANNERS HERO (SOLO SUPERADMIN) ===================== */}
+        {esSuperadmin && activeTab === "banners" && (
+          <div className="animate-fadeIn">
+            <AdminBanners banners={banners} />
           </div>
         )}
 

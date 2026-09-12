@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, ChangeEvent, DragEvent } from "react";
+import { uploadDirectToBunny } from "@/lib/uploadDirect";
 
 interface ImageUploaderProps {
   value: string;
@@ -10,6 +11,7 @@ interface ImageUploaderProps {
 export function ImageUploader({ value, onChange }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadPercent, setUploadPercent] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -20,16 +22,29 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
       return;
     }
 
-    // Validar tamaño máximo (20MB)
-    if (file.size > 20 * 1024 * 1024) {
-      setError("El archivo supera el tamaño máximo permitido (20MB).");
+    // Validar tamaño máximo (soporta hasta 50MB directo a Bunny.net)
+    if (file.size > 50 * 1024 * 1024) {
+      setError("El archivo supera el tamaño máximo permitido (50MB).");
       return;
     }
 
     setError(null);
     setIsUploading(true);
+    setUploadPercent(0);
 
     try {
+      // 1. Intentar subir directo a Bunny.net (evita límites de Vercel)
+      try {
+        const url = await uploadDirectToBunny(file, (percent) => {
+          setUploadPercent(percent);
+        });
+        onChange(url);
+        return;
+      } catch (directErr) {
+        console.warn("Fallo subida directa a Bunny, usando endpoint servidor como fallback:", directErr);
+      }
+
+      // 2. Fallback a /api/upload si por alguna razón el navegador bloquea la llamada directa
       const formData = new FormData();
       formData.append("file", file);
 
@@ -41,7 +56,7 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
       const data = await res.json();
 
       if (!res.ok || !data.url) {
-        throw new Error(data.error || "Error al subir la imagen");
+        throw new Error(data.error || "Error al subir el archivo");
       }
 
       onChange(data.url);
@@ -52,6 +67,7 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
       );
     } finally {
       setIsUploading(false);
+      setUploadPercent(null);
     }
   };
 

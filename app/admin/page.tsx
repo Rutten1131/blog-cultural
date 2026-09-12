@@ -78,6 +78,12 @@ export default async function AdminPage() {
     orderBy: { nombre: "asc" },
   });
 
+  const banners = esSuperadmin
+    ? await prisma.bannerHero.findMany({
+        orderBy: [{ orden: "asc" }, { createdAt: "desc" }],
+      })
+    : [];
+
   return (
     <AdminDashboardClient
       session={session}
@@ -88,6 +94,7 @@ export default async function AdminPage() {
       instituciones={instituciones}
       categorias={categorias}
       zonas={zonas}
+      banners={banners}
     />
   );
 }
