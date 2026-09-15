@@ -105,6 +105,14 @@ export async function GET(request: NextRequest) {
     data: { estado: "APROBADO" },
   });
 
+  // Notificar a Hermes en el VPS (IA editorial para redes sociales)
+  try {
+    const { despacharEventoAHermes } = await import("@/lib/hermes");
+    await despacharEventoAHermes(evento.id, "evento.aprobado");
+  } catch (err) {
+    console.error("[APROBACION_WHATSAPP] Error al notificar a Hermes:", err);
+  }
+
   // Revalidar todas las rutas para que aparezca en la web pública
   revalidateAll();
 

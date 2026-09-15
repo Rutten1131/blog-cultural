@@ -23,6 +23,14 @@ export async function aprobarEvento(formData: FormData) {
     },
   });
 
+  // Notificar a Hermes en el VPS (IA editorial para redes sociales)
+  try {
+    const { despacharEventoAHermes } = await import("@/lib/hermes");
+    await despacharEventoAHermes(eventoId, "evento.aprobado");
+  } catch (err) {
+    console.error("[MODERACION] Error al notificar a Hermes:", err);
+  }
+
   // Revalidar TODAS las rutas (home, listados, ficha, sitemap, etc.)
   revalidateAll();
 }
