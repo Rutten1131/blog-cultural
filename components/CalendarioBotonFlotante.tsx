@@ -129,9 +129,9 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
         </button>
       </div>
 
-      {/* ── MODAL CENTRADO (en ordenador está centrado en pantalla, en móvil como drawer de pantalla completa) ── */}
+      {/* ── MODAL CENTRADO TIPO POPUP (en desktop es un popup flotante contenido, en móvil drawer adaptado) ── */}
       {abierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 sm:py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-8">
           {/* Backdrop con clic para cerrar */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fadeIn"
@@ -139,17 +139,17 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
             aria-hidden="true"
           />
 
-          {/* Contenedor del Modal Centrado */}
+          {/* Contenedor del Modal Centrado (Popup) */}
           <aside
-            className="relative w-full max-w-2xl bg-white h-full sm:h-auto sm:max-h-[90vh] sm:rounded-3xl shadow-2xl z-10 flex flex-col overflow-hidden border border-stone-200 animate-fadeIn"
+            className="relative w-full max-w-xl lg:max-w-2xl bg-white max-h-[90vh] rounded-2xl sm:rounded-3xl shadow-2xl z-10 flex flex-col overflow-hidden border border-stone-200 animate-fadeIn my-auto"
             role="dialog"
             aria-modal="true"
             aria-label="Calendario de Eventos"
           >
             {/* Header del Panel */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200/80 bg-stone-50/90">
+            <div className="flex items-center justify-between px-5 py-3.5 sm:px-6 sm:py-4 border-b border-stone-200/80 bg-stone-50/90">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700 shadow-sm">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700 shadow-sm shrink-0">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                     <line x1="16" y1="2" x2="16" y2="6" />
@@ -158,10 +158,10 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
                   </svg>
                 </div>
                 <div>
-                  <h2 className="font-display font-black text-lg text-stone-900 leading-tight">
+                  <h2 className="font-display font-black text-base sm:text-lg text-stone-900 leading-tight">
                     Calendario de Eventos
                   </h2>
-                  <p className="text-xs text-stone-500 font-medium">
+                  <p className="text-[11px] sm:text-xs text-stone-500 font-medium">
                     Toca un día para ver los eventos programados en Loja
                   </p>
                 </div>
@@ -171,7 +171,7 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
               <button
                 type="button"
                 onClick={() => setAbierto(false)}
-                className="w-9 h-9 rounded-full bg-stone-200/70 hover:bg-stone-300 text-stone-700 flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-stone-200/70 hover:bg-stone-300 text-stone-700 flex items-center justify-center transition-colors active:scale-95 cursor-pointer shrink-0"
                 aria-label="Cerrar calendario"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
@@ -181,7 +181,7 @@ export function CalendarioBotonFlotante({ eventos }: Props) {
             </div>
 
             {/* Contenido con scroll */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-stone-50/40">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 bg-stone-50/40">
               <CalendarioCulturalHome eventos={eventos} />
             </div>
           </aside>
