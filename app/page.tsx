@@ -607,15 +607,15 @@ export default async function Home() {
             style={{ background: "var(--grad-blob-1)" }}
             aria-hidden="true"
           />
-          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-            <div className="grid grid-cols-1 gap-10 text-center sm:grid-cols-3 sm:text-left">
+          <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12 sm:px-6">
+            <div className="grid grid-cols-1 gap-6 sm:gap-10 text-center sm:grid-cols-3 sm:text-left">
               {/* Brand */}
-              <div className="flex flex-col items-center sm:items-start gap-3">
+              <div className="flex flex-col items-center sm:items-start gap-2 sm:gap-3">
                 <div>
-                  <p className="font-display text-2xl font-black uppercase tracking-tight">
+                  <p className="font-display text-xl sm:text-2xl font-black uppercase tracking-tight">
                     Agenda Cultural
                   </p>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-violet)]">
+                  <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-violet)]">
                     Loja · Ecuador
                   </p>
                 </div>
@@ -626,16 +626,20 @@ export default async function Home() {
               </div>
 
               {/* Categorías */}
-              <div className="flex flex-col items-center sm:items-start">
-                <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+              <div className="flex flex-col items-center sm:items-start w-full sm:w-auto">
+                <p className="mb-2 sm:mb-3 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-white/40">
                   Categorías
                 </p>
-                <ul className="space-y-2 text-center sm:text-left">
-                  {CATEGORIAS.map((cat) => (
-                    <li key={cat.slug}>
+                {/* Distribución 2-2-1 en móvil con grid-cols-2 y el 5to elemento centrado */}
+                <ul className="grid grid-cols-2 sm:flex sm:flex-col gap-x-2 gap-y-1.5 sm:gap-y-2 text-center sm:text-left w-full max-w-xs sm:max-w-none">
+                  {CATEGORIAS.map((cat, idx) => (
+                    <li
+                      key={cat.slug}
+                      className={idx === CATEGORIAS.length - 1 ? "col-span-2 sm:col-span-1 text-center sm:text-left" : ""}
+                    >
                       <Link
                         href={`/eventos/categoria/${cat.slug}`}
-                        className="text-xs font-medium text-white/70 transition-colors hover:text-white"
+                        className="inline-block py-0.5 px-1 sm:p-0 text-xs font-medium text-white/70 transition-colors hover:text-white"
                       >
                         {CAT_META[cat.slug]?.emoji} {cat.nombre}
                       </Link>
@@ -645,8 +649,8 @@ export default async function Home() {
               </div>
 
               {/* Información */}
-              <div className="flex flex-col items-center sm:items-start gap-3">
-                <p className="mb-0 text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+              <div className="flex flex-col items-center sm:items-start gap-1.5 sm:gap-3">
+                <p className="mb-0 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-white/40">
                   Agenda Cultural
                 </p>
                 <p className="text-xs leading-relaxed text-white/60 max-w-xs">
@@ -656,15 +660,15 @@ export default async function Home() {
             </div>
 
             {/* Bottom bar */}
-            <div className="mt-10 flex flex-col items-center justify-center gap-2.5 border-t border-white/10 pt-6 text-center">
-              <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-white/70">
+            <div className="mt-6 sm:mt-10 flex flex-col items-center justify-center gap-2 border-t border-white/10 pt-4 sm:pt-6 text-center">
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-[11px] sm:text-xs text-white/70">
                 <Link href="/sobre-el-proyecto" className="hover:text-white transition-colors underline-offset-4 hover:underline">Sobre el proyecto</Link>
                 <span>•</span>
                 <Link href="/publicar" className="hover:text-white transition-colors underline-offset-4 hover:underline">
                   Publicar un Evento
                 </Link>
               </div>
-              <p className="text-[12px] text-white/50">
+              <p className="text-[11px] sm:text-[12px] text-white/50">
                 Iniciativa tecnológica creada y desarrollada por{" "}
                 <a
                   href="https://www.cesarreyesjaramillo.com/"

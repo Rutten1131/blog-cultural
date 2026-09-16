@@ -68,6 +68,8 @@ export function ChatbotWidget() {
       time: "Ahora",
     },
   ]);
+  // Estado para ocultar el botón al llegar al final de la página en móvil
+  const [btnVisible, setBtnVisible] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +82,32 @@ export function ChatbotWidget() {
       scrollToBottom();
     }
   }, [messages, isOpen]);
+
+  // Ocultar botón en móvil cuando se llega al footer (scroll hacia abajo al final),
+  // y mostrarlo de nuevo al hacer scroll hacia arriba.
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight;
+      const viewportHeight = window.innerHeight;
+      // Umbral: si está a menos de 120px del final de la página
+      const nearBottom = scrollY + viewportHeight >= docHeight - 120;
+      const scrollingDown = scrollY > lastScrollY;
+
+      if (nearBottom && scrollingDown) {
+        setBtnVisible(false);
+      } else if (!scrollingDown) {
+        setBtnVisible(true);
+      }
+
+      lastScrollY = scrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleSend = async (textToSend?: string) => {
     const query = (textToSend || input).trim();
@@ -139,25 +167,25 @@ export function ChatbotWidget() {
   return (
     <>
       {/* Botón Flotante con Branding Morado/Magenta de Agenda Cultural Loja */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+      <div className={`fixed bottom-4 sm:bottom-6 right-3 sm:right-6 z-50 flex flex-col items-end pointer-events-none transition-all duration-300 ${!btnVisible && !isOpen ? "translate-y-24 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"}`}>
         {!isOpen && (
-          <div className="mb-2.5 bg-white/95 text-neutral-800 text-xs font-semibold px-4 py-2 rounded-2xl border border-purple-200 shadow-xl shadow-purple-900/10 backdrop-blur-md flex items-center gap-2.5 animate-bounce">
-            <span className="h-2 w-2 rounded-full bg-purple-600 animate-ping" />
+          <div className="pointer-events-auto mb-1.5 sm:mb-2.5 bg-white/95 text-neutral-800 text-[10px] sm:text-xs font-semibold px-2.5 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl border border-purple-200 shadow-lg shadow-purple-900/10 backdrop-blur-md hidden sm:flex items-center gap-2 animate-bounce">
+            <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-purple-600 animate-ping" />
             <span>¿Buscas qué hacer u hospedaje en Loja?</span>
           </div>
         )}
 
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="relative group px-4 py-3.5 bg-gradient-to-r from-purple-700 via-purple-600 to-pink-600 text-white font-bold rounded-2xl shadow-xl shadow-purple-600/30 hover:shadow-purple-600/50 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2.5 cursor-pointer border border-white/20"
+          className="pointer-events-auto relative group px-3 py-2 sm:px-4 sm:py-3.5 bg-gradient-to-r from-purple-700 via-purple-600 to-pink-600 text-white font-bold rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl shadow-purple-600/30 hover:shadow-purple-600/50 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-1.5 sm:gap-2.5 cursor-pointer border border-white/20"
           aria-label="Abrir asistente qué hacer en Loja"
         >
           {isOpen ? (
-            <span className="text-xl px-1">✕</span>
+            <span className="text-base sm:text-xl px-1">✕</span>
           ) : (
             <>
-              <span className="text-xl">🎭</span>
-              <span className="font-extrabold text-sm tracking-wide">¿Qué hacer en Loja?</span>
+              <span className="text-base sm:text-xl">🎭</span>
+              <span className="font-extrabold text-xs sm:text-sm tracking-wide">¿Qué hacer en Loja?</span>
             </>
           )}
         </button>
