@@ -84,6 +84,10 @@ export default async function AdminPage() {
       })
     : [];
 
+  const aliados = await prisma.aliado.findMany({
+    orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
+  });
+
   return (
     <AdminDashboardClient
       session={session}
@@ -95,6 +99,7 @@ export default async function AdminPage() {
       categorias={categorias}
       zonas={zonas}
       banners={banners}
+      aliados={aliados}
     />
   );
 }

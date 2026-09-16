@@ -1,0 +1,498 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+
+interface Aliado {
+  id: number;
+  nombre: string;
+  tipo: string;
+  descripcion: string;
+  ubicacion: string;
+  mapaUrl?: string | null;
+  rangoPrecio?: string | null;
+  servicios?: string | null;
+  cuartos?: string | null;
+  telefono?: string | null;
+  websiteUrl?: string | null;
+  redesUrl?: string | null;
+  imagenUrl?: string | null;
+}
+
+interface Atractivo {
+  id: number;
+  nombre: string;
+  canton: string;
+  descripcion: string;
+  distancia: string;
+  ruta: string;
+  imagenUrl?: string | null;
+  mapaUrl?: string | null;
+}
+
+interface EventoItem {
+  id: number;
+  nombre: string;
+  fecha: string;
+  lugar: string;
+  slug: string;
+  imagenUrl?: string | null;
+  descripcion?: string;
+}
+
+interface Message {
+  id: string;
+  sender: "user" | "bot";
+  text: string;
+  eventos?: EventoItem[];
+  aliados?: Aliado[];
+  atractivos?: Atractivo[];
+  time: string;
+}
+
+const PREGUNTAS_SUGERIDAS = [
+  "🏨 ¿Dónde me puedo hospedar en Loja?",
+  "🌿 Lugares de naturaleza cerca",
+  "🎭 ¿Qué hacer hoy en la ciudad?",
+  "☕ ¿Dónde tomar un buen café lojano?",
+];
+
+export function ChatbotWidget() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome-1",
+      sender: "bot",
+      text: "¡Hola! 👋 Te doy la bienvenida a Loja. Pregúntame qué hacer en la ciudad, lugares culturales, rutas de naturaleza o dónde hospedarte con nuestros aliados recomendados.",
+      time: "Ahora",
+    },
+  ]);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom();
+    }
+  }, [messages, isOpen]);
+
+  const handleSend = async (textToSend?: string) => {
+    const query = (textToSend || input).trim();
+    if (!query || loading) return;
+
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      sender: "user",
+      text: query,
+      time: new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...messages, userMsg].map((m) => ({
+            sender: m.sender,
+            content: m.text,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+
+      const botMsg: Message = {
+        id: `bot-${Date.now()}`,
+        sender: "bot",
+        text: data.texto || "Aquí tienes la información:",
+        eventos: data.eventos || [],
+        aliados: data.aliados || [],
+        atractivos: data.atractivos || [],
+        time: new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }),
+      };
+
+      setMessages((prev) => [...prev, botMsg]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `bot-err-${Date.now()}`,
+          sender: "bot",
+          text: "Loja siempre te recibe con los brazos abiertos. ¿Deseas información sobre lugares para visitar, eventos u hoteles?",
+          time: new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Botón Flotante con Branding Morado/Magenta de Agenda Cultural Loja */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        {!isOpen && (
+          <div className="mb-2.5 bg-white/95 text-neutral-800 text-xs font-semibold px-4 py-2 rounded-2xl border border-purple-200 shadow-xl shadow-purple-900/10 backdrop-blur-md flex items-center gap-2.5 animate-bounce">
+            <span className="h-2 w-2 rounded-full bg-purple-600 animate-ping" />
+            <span>¿Buscas qué hacer u hospedaje en Loja?</span>
+          </div>
+        )}
+
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="relative group px-4 py-3.5 bg-gradient-to-r from-purple-700 via-purple-600 to-pink-600 text-white font-bold rounded-2xl shadow-xl shadow-purple-600/30 hover:shadow-purple-600/50 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2.5 cursor-pointer border border-white/20"
+          aria-label="Abrir asistente qué hacer en Loja"
+        >
+          {isOpen ? (
+            <span className="text-xl px-1">✕</span>
+          ) : (
+            <>
+              <span className="text-xl">🎭</span>
+              <span className="font-extrabold text-sm tracking-wide">¿Qué hacer en Loja?</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Ventana Flotante del Chatbot con Estilo Coherente al Sitio Web */}
+      {isOpen && (
+        <div className="fixed bottom-24 right-4 sm:right-6 z-50 w-[94vw] sm:w-[420px] max-h-[85vh] h-[640px] bg-white text-neutral-900 border border-purple-100 rounded-3xl shadow-2xl shadow-purple-950/20 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
+          
+          {/* Header con Paleta Oficial Agenda Cultural Loja */}
+          <div className="bg-gradient-to-r from-purple-800 via-purple-700 to-pink-600 p-4 text-white flex items-center justify-between shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="h-10 w-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shadow-inner border border-white/30">
+                  🎭
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-400 border-2 border-purple-800 rounded-full" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-white text-sm tracking-wide flex items-center gap-2">
+                  ¿Qué hacer en Loja?
+                </h3>
+                <p className="text-[11px] text-purple-100/90 font-medium">Turismo, Cartelera Cultural & Aliados</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-white/80 hover:text-white p-1.5 rounded-xl hover:bg-white/15 transition-all text-sm font-bold"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Área de Mensajes */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-purple-50/40 via-white to-white no-scrollbar">
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={`flex flex-col ${m.sender === "user" ? "items-end" : "items-start"}`}
+              >
+                {/* Burbuja de Texto */}
+                <div
+                  className={`max-w-[88%] p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                    m.sender === "user"
+                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-br-none shadow-md shadow-purple-500/20"
+                      : "bg-white border border-purple-100 text-neutral-800 rounded-bl-none shadow-sm"
+                  }`}
+                >
+                  {m.text}
+                </div>
+                <span className="text-[10px] text-neutral-400 mt-1 px-1 font-medium">{m.time}</span>
+
+                {/* TARJETAS DE EVENTOS RECOMENDADOS CON BOTÓN DIRECTO */}
+                {m.eventos && m.eventos.length > 0 && (
+                  <div className="w-full mt-3 space-y-2.5">
+                    <div className="text-[11px] font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1.5 px-1">
+                      <span>🎭 Eventos Destacados en Cartelera:</span>
+                    </div>
+
+                    <div className="flex gap-3 overflow-x-auto pb-2 pt-1 no-scrollbar snap-x">
+                      {m.eventos.map((evento) => (
+                        <div
+                          key={evento.id}
+                          className="min-w-[250px] max-w-[270px] bg-white border border-purple-100 rounded-2xl overflow-hidden shadow-lg shadow-purple-900/5 flex flex-col justify-between snap-start"
+                        >
+                          {evento.imagenUrl ? (
+                            <div className="relative h-28 w-full bg-purple-50">
+                              <img
+                                src={evento.imagenUrl}
+                                alt={evento.nombre}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-16 w-full bg-gradient-to-r from-purple-100 to-pink-50 flex items-center justify-center text-2xl">
+                              🎭
+                            </div>
+                          )}
+
+                          <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
+                            <div>
+                              <h4 className="font-bold text-neutral-900 text-xs leading-snug line-clamp-2">
+                                {evento.nombre}
+                              </h4>
+                              <div className="mt-1.5 space-y-0.5 text-[11px] text-neutral-600">
+                                <p className="flex items-center gap-1 text-purple-700 font-semibold">
+                                  <span>📅</span> {new Date(evento.fecha).toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" })}
+                                </p>
+                                <p className="flex items-center gap-1 text-neutral-500 truncate">
+                                  <span>📍</span> {evento.lugar}
+                                </p>
+                              </div>
+                            </div>
+
+                            <a
+                              href={`/eventos/${evento.slug}`}
+                              className="w-full py-2 bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-600 hover:to-pink-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-purple-600/20"
+                            >
+                              <span>🎟️</span> Ver Evento Completo
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ESCENARIO B2B: TARJETAS ESTILO E-COMMERCE DE ALIADOS */}
+                {m.aliados && m.aliados.length > 0 && (
+                  <div className="w-full mt-3 space-y-3">
+                    <div className="text-[11px] font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1.5 px-1">
+                      <span>⭐ Opciones Recomendadas en Loja:</span>
+                    </div>
+
+                    <div className="flex gap-3 overflow-x-auto pb-2 pt-1 no-scrollbar snap-x">
+                      {m.aliados.map((aliado) => (
+                        <div
+                          key={aliado.id}
+                          className="min-w-[260px] max-w-[280px] bg-white border border-purple-100 rounded-2xl overflow-hidden shadow-lg shadow-purple-900/5 flex flex-col justify-between snap-start"
+                        >
+                          {/* Foto del Hotel/Comercio */}
+                          <div className="relative h-32 w-full bg-purple-50">
+                            {aliado.imagenUrl ? (
+                              <img
+                                src={aliado.imagenUrl}
+                                alt={aliado.nombre}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full flex items-center justify-center text-3xl">
+                                🏨
+                              </div>
+                            )}
+                            <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] text-purple-800 font-bold border border-purple-200 shadow-sm">
+                              ⭐ Patrocinador Oficial
+                            </div>
+                            {aliado.rangoPrecio && (
+                              <div className="absolute bottom-2 right-2 bg-gradient-to-r from-purple-700 to-pink-600 text-white font-bold px-2 py-0.5 rounded-lg text-xs shadow-md">
+                                {aliado.rangoPrecio}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info Detallada */}
+                          <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
+                            <div>
+                              <h4 className="font-bold text-neutral-900 text-sm leading-tight">
+                                {aliado.nombre}
+                              </h4>
+                              <p className="text-[11px] text-neutral-600 mt-1 line-clamp-2">
+                                {aliado.descripcion}
+                              </p>
+
+                              <div className="mt-2 space-y-1 text-[11px] text-neutral-700">
+                                <p className="flex items-center gap-1">
+                                  <span>📍</span>
+                                  <span className="truncate">{aliado.ubicacion}</span>
+                                </p>
+                                {aliado.cuartos && (
+                                  <p className="flex items-center gap-1 text-purple-800 font-medium">
+                                    <span>🛏️</span>
+                                    <span className="truncate">{aliado.cuartos}</span>
+                                  </p>
+                                )}
+                                {aliado.servicios && (
+                                  <p className="flex items-center gap-1 text-neutral-500 truncate">
+                                    <span>✨</span> {aliado.servicios}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Botones de Acción Comercial E-Commerce */}
+                            <div className="pt-2 border-t border-purple-100 flex flex-col gap-1.5">
+                              {aliado.telefono && (
+                                <a
+                                  href={`https://wa.me/${aliado.telefono.replace(
+                                    /\D/g,
+                                    ""
+                                  )}?text=${encodeURIComponent(
+                                    `¡Hola! Vi a ${aliado.nombre} en la Agenda Cultural de Loja. Quisiera consultar disponibilidad y reservar.`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-700/20"
+                                >
+                                  <span>💬</span> Reservar por WhatsApp
+                                </a>
+                              )}
+
+                              <div className="flex flex-wrap gap-1.5">
+                                {aliado.mapaUrl && (
+                                  <a
+                                    href={aliado.mapaUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 min-w-[70px] py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 border border-purple-100 transition-all"
+                                  >
+                                    <span>📍</span> Ubicación
+                                  </a>
+                                )}
+                                {aliado.websiteUrl && (
+                                  <a
+                                    href={aliado.websiteUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 min-w-[70px] py-1.5 bg-pink-50 hover:bg-pink-100 text-pink-700 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 border border-pink-100 transition-all"
+                                  >
+                                    <span>🌐</span> Web
+                                  </a>
+                                )}
+                                {aliado.redesUrl && (
+                                  <a
+                                    href={aliado.redesUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 min-w-[70px] py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 border border-neutral-200 transition-all"
+                                  >
+                                    <span>📱</span> Redes
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ESCENARIO B2G: RECOMENDACIÓN CANTONAL CRUZADA (NATURALEZA / PARROQUIAS) */}
+                {m.atractivos && m.atractivos.length > 0 && (
+                  <div className="w-full mt-3 space-y-3">
+                    <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5 px-1">
+                      <span>🌿 Atractivos Cantonales Sugeridos:</span>
+                    </div>
+
+                    <div className="flex gap-3 overflow-x-auto pb-2 pt-1 no-scrollbar snap-x">
+                      {m.atractivos.map((atractivo) => (
+                        <div
+                          key={atractivo.id}
+                          className="min-w-[260px] max-w-[280px] bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-lg shadow-emerald-950/5 flex flex-col justify-between snap-start"
+                        >
+                          <div className="relative h-32 w-full bg-emerald-50">
+                            {atractivo.imagenUrl ? (
+                              <img
+                                src={atractivo.imagenUrl}
+                                alt={atractivo.nombre}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full flex items-center justify-center text-3xl">
+                                🏞️
+                              </div>
+                            )}
+                            <div className="absolute top-2 left-2 bg-emerald-700 text-white font-bold px-2 py-0.5 rounded-md text-[10px]">
+                              📍 Cantón {atractivo.canton}
+                            </div>
+                          </div>
+
+                          <div className="p-3.5 space-y-2">
+                            <h4 className="font-bold text-neutral-900 text-sm">{atractivo.nombre}</h4>
+                            <p className="text-[11px] text-neutral-600 line-clamp-2">
+                              {atractivo.descripcion}
+                            </p>
+                            <div className="bg-emerald-50/60 p-2 rounded-xl text-[11px] space-y-1 border border-emerald-100/60">
+                              <p className="text-emerald-800 font-bold">
+                                ⏱️ {atractivo.distancia}
+                              </p>
+                              <p className="text-neutral-600">
+                                🚗 <strong className="text-neutral-800">Ruta:</strong> {atractivo.ruta}
+                              </p>
+                            </div>
+
+                            {atractivo.mapaUrl && (
+                              <a
+                                href={atractivo.mapaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 shadow-sm"
+                              >
+                                <span>🗺️</span> Ver Ruta en Google Maps
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {loading && (
+              <div className="flex items-center gap-2 text-neutral-500 text-xs italic bg-purple-50/70 p-3 rounded-2xl w-fit border border-purple-100">
+                <span className="h-2 w-2 rounded-full bg-purple-600 animate-ping" />
+                <span>Consultando información turística y aliados de Loja...</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Sugerencias Rápidas Clickables */}
+          <div className="p-2.5 bg-neutral-50/80 border-t border-purple-100/80 flex gap-1.5 overflow-x-auto no-scrollbar">
+            {PREGUNTAS_SUGERIDAS.map((pregunta, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSend(pregunta)}
+                className="px-3 py-1.5 bg-white hover:bg-purple-50 text-neutral-700 hover:text-purple-700 rounded-full text-[11px] font-medium whitespace-nowrap transition-all border border-purple-200/70 shadow-sm shrink-0 cursor-pointer"
+              >
+                {pregunta}
+              </button>
+            ))}
+          </div>
+
+          {/* Barra de Entrada / Input */}
+          <div className="p-3 bg-white border-t border-purple-100 flex items-center gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              placeholder="Escribe tu pregunta sobre qué hacer u hospedaje..."
+              className="flex-1 bg-neutral-50 border border-neutral-200 focus:bg-white rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-neutral-900 focus:outline-none focus:border-purple-600 placeholder:text-neutral-400 transition-all"
+            />
+            <button
+              onClick={() => handleSend()}
+              disabled={loading || !input.trim()}
+              className="px-4 py-2.5 bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-600 hover:to-pink-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-purple-600/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              ➤
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

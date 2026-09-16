@@ -6,6 +6,7 @@ import { EventoAdminRow } from "./evento-admin-row";
 import { AdminNotificaciones } from "./admin-notificaciones";
 import { AdminInstituciones } from "./admin-instituciones";
 import { AdminBanners, BannerHeroAdminItem } from "./admin-banners";
+import { AdminAliados, AliadoItem } from "./admin-aliados";
 import { logoutAdmin } from "@/lib/actions/authAdmin";
 
 interface Categoria {
@@ -83,6 +84,7 @@ export function AdminDashboardClient({
   categorias,
   zonas,
   banners = [],
+  aliados = [],
 }: {
   session: SessionData;
   eventosPendientes: EventoItem[];
@@ -93,11 +95,12 @@ export function AdminDashboardClient({
   categorias: Categoria[];
   zonas: Zona[];
   banners?: BannerHeroAdminItem[];
+  aliados?: AliadoItem[];
 }) {
   const esSuperadmin = session.role === "SUPERADMIN";
 
   const [activeTab, setActiveTab] = useState<
-    "pendientes" | "todos" | "banners" | "buzon" | "notificaciones" | "instituciones"
+    "pendientes" | "todos" | "aliados" | "banners" | "buzon" | "notificaciones" | "instituciones"
   >("pendientes");
 
   // Control de acordeón único para moderar pendientes (uno a la vez)
@@ -240,6 +243,29 @@ export function AdminDashboardClient({
               {todosLosEventos.length}
             </span>
           </button>
+
+          {/* Aliados Comerciales (Hoteles, Gastronomía, Patrocinadores): SOLO SUPERADMIN */}
+          {esSuperadmin && (
+            <button
+              onClick={() => setActiveTab("aliados")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                activeTab === "aliados"
+                  ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              <span>🤝 Aliados Comerciales</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                  activeTab === "aliados"
+                    ? "bg-black text-amber-400"
+                    : "bg-amber-500/20 text-amber-400"
+                }`}
+              >
+                {aliados.length}
+              </span>
+            </button>
+          )}
 
           {/* Banners Hero: SOLO SUPERADMIN */}
           {esSuperadmin && (
@@ -553,6 +579,13 @@ export function AdminDashboardClient({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ===================== TAB: ALIADOS COMERCIALES (SOLO SUPERADMIN) ===================== */}
+        {esSuperadmin && activeTab === "aliados" && (
+          <div className="animate-fadeIn">
+            <AdminAliados initialAliados={aliados} />
           </div>
         )}
 

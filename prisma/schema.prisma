@@ -135,3 +135,54 @@ model BannerHero {
   @@map("banners_hero")
 }
 
+// ─── Aliados Comerciales (Patrocinadores, Hoteles, Restaurantes) ─
+model Aliado {
+  id          Int         @id @default(autoincrement())
+  nombre      String      @db.VarChar(150)
+  tipo        TipoAliado  @default(HOSPEDAJE)
+  descripcion String      @db.Text
+  ubicacion   String      @db.VarChar(255)
+  mapaUrl     String?     @db.VarChar(500)
+  rangoPrecio String?     @db.VarChar(100) // Ej: "$35 - $65 / noche"
+  servicios   String?     @db.Text         // Ej: "Wifi fibra, Desayuno buffet, Parqueadero privado"
+  cuartos     String?     @db.Text         // Ej: "Matrimoniales, Suites ejecutivas, Familiares"
+  telefono    String?     @db.VarChar(50)  // WhatsApp internacional ej: 593991234567
+  websiteUrl  String?     @db.VarChar(255)
+  redesUrl    String?     @db.VarChar(255) // Instagram / Facebook / TikTok
+  imagenUrl   String?     @db.VarChar(500)
+  destacado   Boolean     @default(true)
+  activo      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  @@index([tipo, activo])
+  @@map("aliados")
+}
+
+enum TipoAliado {
+  HOSPEDAJE
+  GASTRONOMIA
+  EXPERIENCIA
+  TRANSPORTE
+  CANTON_GAD
+  CULTURA_ARTE
+  COMERCIO
+  OTRO
+}
+
+// ─── Atractivos Cantonales (Recomendación B2G Cruzada) ──────────
+model AtractivoCantonal {
+  id          Int      @id @default(autoincrement())
+  nombre      String   @db.VarChar(150)
+  canton      String   @db.VarChar(100) // Ej: "Saraguro", "Vilcabamba", "Catamayo", "Zamora"
+  descripcion String   @db.Text
+  distancia   String   @db.VarChar(100) // Ej: "A 1h 20min de Loja (65 km)"
+  ruta        String   @db.VarChar(255) // Ej: "Vía Panamericana Norte hacia Saraguro"
+  imagenUrl   String?  @db.VarChar(500)
+  mapaUrl     String?  @db.VarChar(500)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([canton, activo])
+  @@map("atractivos_cantonales")
+}
+

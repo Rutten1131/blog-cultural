@@ -81,6 +81,8 @@ const globalJsonLd = {
   ],
 };
 
+import { ChatbotWidget } from "@/components/ChatbotWidget";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es">
@@ -96,6 +98,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Noise overlay cinematográfico */}
         <div className="noise-overlay" aria-hidden="true" />
         {children}
+        {/* Widget Asistente Virtual con Tarjetas E-Commerce de Aliados */}
+        <ChatbotWidget />
       </body>
     </html>
   );
