@@ -355,7 +355,7 @@ export function MediaGallery({ multimedia = [], imagenUrl, videoUrl, nombre }: M
 
       {/* Tiras de Miniaturas (Thumbnails) */}
       {items.length > 1 && (
-        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+        <div className="flex items-center justify-center gap-3 overflow-x-auto pb-2 scrollbar-none flex-wrap">
           {items.map((item, idx) => {
             const isVideo = item.type === "video";
             return (

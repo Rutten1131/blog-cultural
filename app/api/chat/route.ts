@@ -96,7 +96,19 @@ function extraerRangoFecha(query: string): { desde: Date; hasta: Date; etiqueta:
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    const { messages, sessionId, ubicacion } = body as {
+      messages: any[];
+      sessionId?: string;
+      ubicacion?: {
+        lat: number;
+        lng: number;
+        ciudad?: string;
+        zona?: string;
+        provincia?: string;
+        pais?: string;
+      };
+    };
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Mensajes no válidos" }, { status: 400 });
@@ -104,6 +116,50 @@ export async function POST(req: NextRequest) {
 
     const lastUserMessage: string = messages[messages.length - 1]?.content || "";
     const lowerUser = lastUserMessage.toLowerCase();
+
+    // Guardar/actualizar sesión CRM en background (sin bloquear respuesta)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || null;
+    const ua = req.headers.get("user-agent") || null;
+
+    if (sessionId) {
+      // Upsert de la sesión
+      prisma.chatSession.upsert({
+        where: { sessionId },
+        create: {
+          sessionId,
+          ubicacionLat: ubicacion?.lat ?? null,
+          ubicacionLng: ubicacion?.lng ?? null,
+          zonaDetectada: ubicacion?.zona ?? null,
+          ciudad: ubicacion?.ciudad ?? null,
+          provincia: ubicacion?.provincia ?? null,
+          pais: ubicacion?.pais ?? null,
+          userAgent: ua ? ua.slice(0, 500) : null,
+          ipAddress: ip ? ip.slice(0, 60) : null,
+          totalMensajes: 1,
+        },
+        update: {
+          ...(ubicacion?.lat && {
+            ubicacionLat: ubicacion.lat,
+            ubicacionLng: ubicacion.lng,
+            zonaDetectada: ubicacion.zona ?? null,
+            ciudad: ubicacion.ciudad ?? null,
+            provincia: ubicacion.provincia ?? null,
+            pais: ubicacion.pais ?? null,
+          }),
+          totalMensajes: { increment: 1 },
+          updatedAt: new Date(),
+        },
+      }).catch(() => {/* fail silently */});
+
+      // Guardar el mensaje del usuario
+      prisma.chatMessage.create({
+        data: {
+          sessionId,
+          sender: "user",
+          contenido: lastUserMessage.slice(0, 5000),
+        },
+      }).catch(() => {/* fail silently */});
+    }
 
     const aliados = await prisma.aliado.findMany({
       where: { activo: true },
@@ -171,10 +227,65 @@ export async function POST(req: NextRequest) {
       ? (eventosEnFecha.length > 0 ? eventosEnFecha : [])
       : eventosGenerales;
 
-    const aliadosContexto = aliados
+    // Función para calcular distancia en km usando Haversine
+    const calcularDistanciaKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371; // Radio de la Tierra en km
+      const dLat = (lat2 - lat1) * (Math.PI / 180);
+      const dLon = (lon2 - lon1) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) *
+          Math.cos(lat2 * (Math.PI / 180)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    const aliadosConDistancia = aliados.map((a) => {
+      let distanciaTexto = "";
+      let distanciaKm: number | null = null;
+      if (
+        ubicacion?.lat &&
+        ubicacion?.lng &&
+        a.ubicacionLat !== null &&
+        a.ubicacionLng !== null
+      ) {
+        distanciaKm = calcularDistanciaKm(
+          ubicacion.lat,
+          ubicacion.lng,
+          a.ubicacionLat,
+          a.ubicacionLng
+        );
+        if (distanciaKm < 1) {
+          distanciaTexto = ` | 📍 DISTANCIA AL USUARIO: a ${(distanciaKm * 1000).toFixed(0)} metros de distancia (¡MUY CERCA!)`;
+        } else {
+          distanciaTexto = ` | 📍 DISTANCIA AL USUARIO: a ${distanciaKm.toFixed(1)} km de distancia`;
+        }
+      }
+      return {
+        ...a,
+        distanciaKm,
+        distanciaTexto,
+      };
+    });
+
+    // Si el usuario tiene ubicación, ordenar los aliados por cercanía
+    if (ubicacion?.lat && ubicacion?.lng) {
+      aliadosConDistancia.sort((a, b) => {
+        if (a.distanciaKm !== null && b.distanciaKm !== null) {
+          return a.distanciaKm - b.distanciaKm;
+        }
+        if (a.distanciaKm !== null) return -1;
+        if (b.distanciaKm !== null) return 1;
+        return 0;
+      });
+    }
+
+    const aliadosContexto = aliadosConDistancia
       .map(
         (a) =>
-          `[ID:${a.id}] ${a.nombre} | Tipo:${a.tipo} | Ubicación:${a.ubicacion} | Precio:${a.rangoPrecio || "Consultar"} | Cuartos:${a.cuartos || "Disponibles"} | Servicios:${a.servicios || "Todos"} | WhatsApp:${a.telefono || ""} | Web:${a.websiteUrl || ""} | Maps:${a.mapaUrl || ""} | Desc:${a.descripcion}`
+          `[ID:${a.id}] ${a.nombre} | Tipo:${a.tipo} | Dirección:${a.ubicacion}${a.distanciaTexto} | Precio:${a.rangoPrecio || "Consultar"} | Cuartos:${a.cuartos || "Disponibles"} | Servicios:${a.servicios || "Todos"} | WhatsApp:${a.telefono || ""} | Web:${a.websiteUrl || ""} | Maps:${a.mapaUrl || ""} | Desc:${a.descripcion}`
       )
       .join("\n");
 
@@ -196,7 +307,17 @@ export async function POST(req: NextRequest) {
       ? `- El usuario pregunta por: ${rangoFecha.etiqueta} (${rangoFecha.desde.toLocaleDateString("es-EC")} al ${rangoFecha.hasta.toLocaleDateString("es-EC")}).\n- EVENTOS CONFIRMADOS PARA ESA FECHA: ${eventosEnFecha.length > 0 ? eventosEnFecha.length + " evento(s) encontrado(s)." : "NINGUNO. Informa explícitamente al usuario que no hay eventos programados para ese día específico y sugiérele los próximos eventos o actividades fijas (museos, Calle Lourdes, gastronomía)."}`
       : "";
 
+    // Contexto de ubicación del usuario (si compartió su ubicación)
+    const detalleUbicacion = ubicacion?.zona
+      ? `\nUBICACIÓN REAL DEL USUARIO: El usuario se encuentra en "${ubicacion.zona}" (${ubicacion.ciudad || "Loja"}, ${ubicacion.provincia || "Loja"}, ${ubicacion.pais || "Ecuador"}). Coordenadas del usuario: [${ubicacion.lat}, ${ubicacion.lng}].
+REGLA DE CERCANÍA:
+- Se ha calculado la distancia exacta a los Aliados Comerciales registrados.
+- Cuando el usuario pregunte dónde comer, hospedarse o qué hacer, PRIORIZA Y MENCIONA los aliados más cercanos a él destacando la proximidad (ej: "A solo 300 metros de donde estás encuentras...", o "El más cercano a tu ubicación es...").
+- Adapta el lenguaje si el usuario es turista (está fuera de Loja) o si está en el centro/barrios locales.`
+      : "";
+
     const systemPrompt = `Eres el asistente virtual oficial de la "Agenda Cultural Loja" (Ecuador).
+${detalleUbicacion}
 
 FECHA Y HORA ACTUAL EN LOJA (Ecuador, UTC-5):
 - Hoy es: ${fechaHoyStr}
@@ -441,6 +562,20 @@ FORMATO DE RESPUESTA — SOLO JSON válido, sin markdown, sin bloques de código
     const fullAtractivos = atractivos.filter((at) =>
       parsedResult.atractivosRecomendadosIds?.includes(at.id)
     );
+
+    // Guardar mensaje del bot en CRM
+    if (sessionId) {
+      prisma.chatMessage.create({
+        data: {
+          sessionId,
+          sender: "bot",
+          contenido: parsedResult.texto.slice(0, 5000),
+          eventosIds: fullEventos.map((e) => e.id),
+          aliadosIds: fullAliados.map((a) => a.id),
+          atractivosIds: fullAtractivos.map((at) => at.id),
+        },
+      }).catch(() => {/* fail silently */});
+    }
 
     return NextResponse.json({
       texto: parsedResult.texto,

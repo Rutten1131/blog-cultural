@@ -32,6 +32,8 @@ export async function guardarAliado(data: {
   tipo: any;
   descripcion: string;
   ubicacion: string;
+  ubicacionLat?: number | null;
+  ubicacionLng?: number | null;
   mapaUrl?: string | null;
   rangoPrecio?: string | null;
   servicios?: string | null;
@@ -51,6 +53,8 @@ export async function guardarAliado(data: {
     tipo: data.tipo,
     descripcion: data.descripcion.trim(),
     ubicacion: data.ubicacion.trim(),
+    ubicacionLat: data.ubicacionLat !== undefined && data.ubicacionLat !== null && !isNaN(data.ubicacionLat) ? Number(data.ubicacionLat) : null,
+    ubicacionLng: data.ubicacionLng !== undefined && data.ubicacionLng !== null && !isNaN(data.ubicacionLng) ? Number(data.ubicacionLng) : null,
     mapaUrl: data.mapaUrl?.trim() || null,
     rangoPrecio: data.rangoPrecio?.trim() || null,
     servicios: data.servicios?.trim() || null,

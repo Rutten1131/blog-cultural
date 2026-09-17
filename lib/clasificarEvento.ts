@@ -12,10 +12,11 @@ export async function clasificarEvento(datos: {
   lugar: string;
   descripcion: string;
 }): Promise<ClasificacionResultado> {
-  const apiKey = process.env.GROQ_API_KEY;
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
 
-  if (!apiKey) {
-    console.warn("GROQ_API_KEY no configurada. Omitiendo clasificación IA.");
+  if (!deepseekKey && !groqKey) {
+    console.warn("Ni DEEPSEEK_API_KEY ni GROQ_API_KEY están configuradas. Omitiendo clasificación IA.");
     return { categoriaSlug: null, zonaNombre: null, confianza: null };
   }
 
@@ -52,17 +53,19 @@ Nombre: ${datos.nombre}
 Lugar: ${datos.lugar}
 Descripción: ${datos.descripcion}`;
 
-  try {
-    const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
+  let content = "";
+
+  // 1. Intentar con DeepSeek
+  if (deepseekKey) {
+    try {
+      const dsRes = await fetch("https://api.deepseek.com/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${deepseekKey}`,
         },
         body: JSON.stringify({
-          model: "openai/gpt-oss-120b",
+          model: "deepseek-chat",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
@@ -70,21 +73,54 @@ Descripción: ${datos.descripcion}`;
           temperature: 0.1,
           response_format: { type: "json_object" },
         }),
+      });
+
+      if (dsRes.ok) {
+        const dsData = await dsRes.json();
+        content = dsData.choices?.[0]?.message?.content || "";
+      } else {
+        console.warn("[clasificarEvento] DeepSeek error HTTP:", dsRes.status, await dsRes.text());
       }
-    );
-
-    if (!response.ok) {
-      console.error(
-        "Error en llamada a API Groq:",
-        response.status,
-        await response.text()
-      );
-      return { categoriaSlug: null, zonaNombre: null, confianza: null };
+    } catch (dsErr) {
+      console.warn("[clasificarEvento] DeepSeek excepción:", dsErr);
     }
+  }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+  // 2. Fallback a Groq si DeepSeek no devolvió contenido
+  if (!content && groqKey) {
+    try {
+      const groqRes = await fetch(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${groqKey}`,
+          },
+          body: JSON.stringify({
+            model: "openai/gpt-oss-120b",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            temperature: 0.1,
+            response_format: { type: "json_object" },
+          }),
+        }
+      );
 
+      if (groqRes.ok) {
+        const groqData = await groqRes.json();
+        content = groqData.choices?.[0]?.message?.content || "";
+      } else {
+        console.warn("[clasificarEvento] Groq error HTTP:", groqRes.status, await groqRes.text());
+      }
+    } catch (groqErr) {
+      console.warn("[clasificarEvento] Groq excepción:", groqErr);
+    }
+  }
+
+  try {
     if (!content) {
       return { categoriaSlug: null, zonaNombre: null, confianza: null };
     }

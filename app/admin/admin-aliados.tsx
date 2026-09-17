@@ -9,6 +9,8 @@ export interface AliadoItem {
   tipo: string;
   descripcion: string;
   ubicacion: string;
+  ubicacionLat?: number | null;
+  ubicacionLng?: number | null;
   mapaUrl?: string | null;
   rangoPrecio?: string | null;
   servicios?: string | null;
@@ -57,12 +59,17 @@ export function AdminAliados({ initialAliados }: { initialAliados: AliadoItem[] 
     setMsg(null);
 
     const form = new FormData(e.currentTarget);
+    const latVal = form.get("ubicacionLat") as string;
+    const lngVal = form.get("ubicacionLng") as string;
+
     const data = {
       id: editingAliado?.id,
       nombre: form.get("nombre") as string,
       tipo: form.get("tipo") as any,
       descripcion: form.get("descripcion") as string,
       ubicacion: form.get("ubicacion") as string,
+      ubicacionLat: latVal ? parseFloat(latVal) : null,
+      ubicacionLng: lngVal ? parseFloat(lngVal) : null,
       mapaUrl: form.get("mapaUrl") as string,
       rangoPrecio: form.get("rangoPrecio") as string,
       servicios: form.get("servicios") as string,
@@ -210,7 +217,7 @@ export function AdminAliados({ initialAliados }: { initialAliados: AliadoItem[] 
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-1">
-                  Ubicación física *
+                  Ubicación física / Dirección *
                 </label>
                 <input
                   name="ubicacion"
@@ -231,6 +238,44 @@ export function AdminAliados({ initialAliados }: { initialAliados: AliadoItem[] 
                   placeholder="https://maps.google.com/?q=..."
                   className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
                 />
+              </div>
+
+              {/* Coordenadas GPS para Recomendación por Proximidad en Chatbot */}
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-amber-500/5 border border-amber-500/20 p-3.5 rounded-xl">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-amber-300 mb-1 flex items-center justify-between">
+                    <span>📍 Latitud (GPS)</span>
+                    <span className="text-[10px] text-neutral-400 font-normal">Ej: -3.9931</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="ubicacionLat"
+                    defaultValue={editingAliado?.ubicacionLat ?? ""}
+                    placeholder="-3.99313"
+                    className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-amber-300 mb-1 flex items-center justify-between">
+                    <span>📍 Longitud (GPS)</span>
+                    <span className="text-[10px] text-neutral-400 font-normal">Ej: -79.2042</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="ubicacionLng"
+                    defaultValue={editingAliado?.ubicacionLng ?? ""}
+                    placeholder="-79.20422"
+                    className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div className="sm:col-span-2 text-[11px] text-neutral-400 flex items-center gap-1.5">
+                  <span className="text-amber-400">💡</span>
+                  <span>
+                    El <strong>Chatbot IA</strong> usará estas coordenadas para recomendar este aliado comercial a los visitantes que se encuentren cerca de él en tiempo real.
+                  </span>
+                </div>
               </div>
 
               <div>

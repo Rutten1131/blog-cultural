@@ -22,6 +22,7 @@ export function PublicarForm({
   const [fecha, setFecha] = useState(""); // datetime-local: "YYYY-MM-DDTHH:mm"
   const [fechaFin, setFechaFin] = useState(""); // datetime-local: "YYYY-MM-DDTHH:mm"
   const [lugar, setLugar] = useState("");
+  const [mapaUrl, setMapaUrl] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
@@ -44,6 +45,7 @@ export function PublicarForm({
         if (parsed.fecha) setFecha(parsed.fecha);
         if (parsed.fechaFin) setFechaFin(parsed.fechaFin);
         if (parsed.lugar) setLugar(parsed.lugar);
+        if (parsed.mapaUrl) setMapaUrl(parsed.mapaUrl);
         if (parsed.descripcion) setDescripcion(parsed.descripcion);
         if (Array.isArray(parsed.imagenes)) setImagenes(parsed.imagenes);
         if (Array.isArray(parsed.videoUrls)) setVideoUrls(parsed.videoUrls);
@@ -67,6 +69,7 @@ export function PublicarForm({
         fecha,
         fechaFin,
         lugar,
+        mapaUrl,
         descripcion,
         imagenes,
         videoUrls,
@@ -76,7 +79,7 @@ export function PublicarForm({
 
       // Si todos los campos están vacíos, no hace falta guardar
       const hasAnyContent =
-        nombre || fecha || fechaFin || lugar || descripcion ||
+        nombre || fecha || fechaFin || lugar || mapaUrl || descripcion ||
         imagenes.length > 0 || videoUrls.length > 0 || nombreGestor || institucionRelacionada;
 
       if (hasAnyContent) {
@@ -90,6 +93,7 @@ export function PublicarForm({
     fecha,
     fechaFin,
     lugar,
+    mapaUrl,
     descripcion,
     imagenes,
     videoUrls,
@@ -117,6 +121,7 @@ export function PublicarForm({
       setFecha("");
       setFechaFin("");
       setLugar("");
+      setMapaUrl("");
       setDescripcion("");
       setImagenes([]);
       setVideoUrls([]);
@@ -267,6 +272,32 @@ export function PublicarForm({
             placeholder="Ej: Teatro Bolívar, calle Bolívar y Sucre"
             className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
           />
+        </div>
+
+        {/* URL de Google Maps */}
+        <div>
+          <label
+            htmlFor="mapaUrl"
+            className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          >
+            Ubicación en Google Maps{" "}
+            <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">(opcional)</span>
+          </label>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base">📍</span>
+            <input
+              id="mapaUrl"
+              name="mapaUrl"
+              type="url"
+              value={mapaUrl}
+              onChange={(e) => setMapaUrl(e.target.value)}
+              placeholder="Ej: https://maps.app.goo.gl/... o https://www.google.com/maps/..."
+              className="w-full rounded-xl border border-zinc-300 bg-white py-3 pl-9 pr-4 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900"
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+            Abrí Google Maps, buscá el lugar del evento, copiá el link y pegalo aquí. Se mostrará un mapa interactivo en el post.
+          </p>
         </div>
 
         {/* Descripción */}

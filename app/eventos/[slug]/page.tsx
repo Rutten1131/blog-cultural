@@ -12,6 +12,80 @@ import { MediaGallery } from "@/components/MediaGallery";
 // Habilitar ISR (Incremental Static Regeneration) cada 60 segundos
 export const revalidate = 60;
 
+/**
+ * Construye la URL del iframe de Google Maps.
+ * 1° (Opción B): Si la URL tiene @lat,lng las extrae directamente.
+ * 2° Si es un link corto (maps.app.goo.gl, goo.gl), hace un fetch
+ *    siguiendo el redirect y extrae las coordenadas de la URL expandida.
+ * 3° (Fallback): Busca por el texto del lugar + "Loja, Ecuador".
+ */
+async function buildMapEmbedUrl(mapaUrl: string | null, lugarTexto: string): Promise<string> {
+  // Fallback siempre disponible
+  const fallback = `https://maps.google.com/maps?q=${encodeURIComponent(`${lugarTexto}, Loja, Ecuador`)}&hl=es&z=15&output=embed`;
+
+  if (!mapaUrl) return fallback;
+
+  // Intentar extraer @lat,lng directamente (URLs largas ya resueltas)
+  const tryExtractCoords = (url: string): string | null => {
+    const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (coordMatch) {
+      return `https://maps.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}&hl=es&z=17&output=embed`;
+    }
+    // Intentar ?q=lat,lng
+    try {
+      const parsed = new URL(url);
+      const q = parsed.searchParams.get("q");
+      if (q) {
+        const qCoord = q.match(/^(-?\d+\.\d+),(-?\d+\.\d+)$/);
+        if (qCoord) {
+          return `https://maps.google.com/maps?q=${qCoord[1]},${qCoord[2]}&hl=es&z=17&output=embed`;
+        }
+      }
+    } catch { /* ignorar */ }
+    return null;
+  };
+
+  // Paso 1: intentar en la URL original (puede ser URL larga con coordenadas)
+  const directResult = tryExtractCoords(mapaUrl);
+  if (directResult) return directResult;
+
+  // Paso 2: si es link corto, seguir el redirect en el servidor para obtener la URL real
+  try {
+    const parsed = new URL(mapaUrl);
+    const isShort = ["maps.app.goo.gl", "goo.gl", "maps.google.com"].includes(parsed.hostname);
+
+    if (isShort) {
+      // Seguir el redirect manualmente (sin ejecutar JS) para obtener la Location header
+      const res = await fetch(mapaUrl, {
+        method: "HEAD",
+        redirect: "manual",
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; AgendaCultural/1.0)" },
+        // 3 segundos máximo para no bloquear el render
+        signal: AbortSignal.timeout(3000),
+      });
+
+      const location = res.headers.get("location");
+      if (location) {
+        const fromExpanded = tryExtractCoords(location);
+        if (fromExpanded) return fromExpanded;
+      }
+
+      // A veces el redirect es a otra URL corta — hacer un segundo intento con GET
+      const res2 = await fetch(mapaUrl, {
+        redirect: "follow",
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; AgendaCultural/1.0)" },
+        signal: AbortSignal.timeout(4000),
+      });
+      const fromFinal = tryExtractCoords(res2.url);
+      if (fromFinal) return fromFinal;
+    }
+  } catch {
+    // Si falla el fetch (red, timeout, etc.), ir al fallback
+  }
+
+  return fallback;
+}
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
@@ -192,6 +266,15 @@ export default async function EventoDetailPage({ params }: PageProps) {
   const fechaRangoTexto = fechaFinFormateada
     ? `${fechaInicioFormateada} hasta ${fechaFinFormateada}`
     : fechaInicioFormateada;
+
+  // Resolver URL del mapa (async: sigue redirects de links cortos)
+  const mapaUrlRaw = (evento as any).mapaUrl as string | null ?? null;
+  const hasMapa = !!mapaUrlRaw;
+  const embedUrl = await buildMapEmbedUrl(mapaUrlRaw, evento.lugar);
+  const mapaHref = hasMapa
+    ? mapaUrlRaw!
+    : `https://www.google.com/maps/search/${encodeURIComponent(`${evento.lugar}, Loja, Ecuador`)}`;
+
 
   // Schema múltiple (@graph) con Event, BreadcrumbList y FAQPage
   const jsonLd = {
@@ -432,6 +515,53 @@ export default async function EventoDetailPage({ params }: PageProps) {
                 </h2>
                 <div className="whitespace-pre-line text-base break-words [overflow-wrap:anywhere]">
                   {evento.descripcion}
+                </div>
+              </div>
+
+              {/* Mapa de Ubicación */}
+              <div className="mt-8">
+                <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
+                  <span className="text-xl">📍</span>
+                  Ubicación del evento
+                </h2>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
+                  {evento.lugar}
+                  {!hasMapa && (
+                    <span className="ml-2 text-xs text-zinc-400 dark:text-zinc-500">
+                      (ubicación aproximada basada en el nombre del lugar)
+                    </span>
+                  )}
+                </p>
+                <div
+                  className="relative overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-sm"
+                  style={{ paddingBottom: "56.25%", height: 0 }}
+                >
+                  <iframe
+                    src={embedUrl}
+                    title={`Ubicación de ${evento.nombre}`}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="absolute inset-0 h-full w-full"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                  />
+                </div>
+                <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <a
+                    href={mapaHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98] transition-all duration-200"
+                  >
+                    <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Abrir en Google Maps</span>
+                    <svg className="h-4 w-4 opacity-75 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
                 </div>
               </div>
             </div>

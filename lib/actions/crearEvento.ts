@@ -50,6 +50,7 @@ export async function crearEvento(
   }
 
   const nombreGestor = formData.get("nombreGestor")?.toString().trim() ?? "";
+  const mapaUrl = formData.get("mapaUrl")?.toString().trim() || null;
   const institucionRelacionada =
     formData.get("institucionRelacionada")?.toString().trim() || null;
 
@@ -108,6 +109,25 @@ export async function crearEvento(
     }
   }
 
+  // Validar URL del mapa si viene indicada
+  if (mapaUrl) {
+    try {
+      const parsed = new URL(mapaUrl);
+      const validHosts = ["maps.app.goo.gl", "goo.gl", "www.google.com", "google.com", "maps.google.com"];
+      if (!validHosts.some((h) => parsed.hostname === h || parsed.hostname.endsWith(".google.com"))) {
+        return {
+          success: false,
+          error: "La URL de ubicación debe ser un link de Google Maps válido.",
+        };
+      }
+    } catch {
+      return {
+        success: false,
+        error: "La URL de ubicación no es válida.",
+      };
+    }
+  }
+
   // Generar slug determinista (sin IA). Usamos la fecha en formato ISO
   // en zona Loja para que el slug sea estable y refleje la fecha local.
   const fechaParaSlug = fechaInput.split("T")[0]; // "YYYY-MM-DD"
@@ -125,6 +145,7 @@ export async function crearEvento(
         imagenUrl: mainImage,
         multimedia: multimedia.length > 0 ? multimedia : undefined,
         videoUrl,
+        mapaUrl,
         nombreGestor,
         institucionRelacionada,
       },

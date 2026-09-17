@@ -51,6 +51,7 @@ model Evento {
   imagenUrl    String?       @db.VarChar(500)
   multimedia   Json?         // Array de URLs de imágenes para el carrusel
   videoUrl     String?       @db.VarChar(500) // Enlace a video (FB, IG, TikTok, YT)
+  mapaUrl      String?       @db.VarChar(500) // URL de Google Maps del lugar exacto del evento
   estado       EstadoEvento  @default(PENDIENTE)
   nombreGestor          String        @db.VarChar(200)
   confianzaClasificacion Float?
@@ -143,6 +144,8 @@ model Aliado {
   tipo        TipoAliado  @default(HOSPEDAJE)
   descripcion String      @db.Text
   ubicacion   String      @db.VarChar(255)
+  ubicacionLat Float?
+  ubicacionLng Float?
   mapaUrl     String?     @db.VarChar(500)
   rangoPrecio String?     @db.VarChar(100) // Ej: "$35 - $65 / noche"
   servicios   String?     @db.Text         // Ej: "Wifi fibra, Desayuno buffet, Parqueadero privado"
@@ -187,3 +190,38 @@ model AtractivoCantonal {
   @@map("atractivos_cantonales")
 }
 
+
+// --- CRM Chatbot - Sesiones ---
+model ChatSession {
+  id               Int      @id @default(autoincrement())
+  sessionId        String   @unique @db.VarChar(64)
+  ubicacionLat     Float?
+  ubicacionLng     Float?
+  zonaDetectada    String?  @db.VarChar(150)
+  ciudad           String?  @db.VarChar(100)
+  provincia        String?  @db.VarChar(100)
+  pais             String?  @db.VarChar(50)
+  userAgent        String?  @db.VarChar(500)
+  ipAddress        String?  @db.VarChar(60)
+  totalMensajes    Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  mensajes         ChatMessage[]
+  @@index([createdAt])
+  @@index([zonaDetectada])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id               Int         @id @default(autoincrement())
+  sessionId        String      @db.VarChar(64)
+  sesion           ChatSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  sender           String      @db.VarChar(10)
+  contenido        String      @db.Text
+  aliadosIds       Json?
+  eventosIds       Json?
+  atractivosIds    Json?
+  createdAt        DateTime    @default(now())
+  @@index([sessionId])
+  @@map("chat_messages")
+}

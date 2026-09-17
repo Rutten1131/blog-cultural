@@ -56,10 +56,22 @@ const PREGUNTAS_SUGERIDAS = [
   "☕ ¿Dónde tomar un buen café lojano?",
 ];
 
+interface UbicacionData {
+  lat: number;
+  lng: number;
+  ciudad?: string;
+  zona?: string;
+  provincia?: string;
+  pais?: string;
+}
+
 export function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string>("");
+  const [ubicacion, setUbicacion] = useState<UbicacionData | null>(null);
+  const [locationStatus, setLocationStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome-1",
@@ -73,6 +85,81 @@ export function ChatbotWidget() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Inicializar o recuperar sessionId único
+  useEffect(() => {
+    let sid = localStorage.getItem("agenda_chat_session_id");
+    if (!sid) {
+      sid = `ses_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      localStorage.setItem("agenda_chat_session_id", sid);
+    }
+    setSessionId(sid);
+
+    // Si ya teníamos ubicación guardada en sesión local
+    const savedLoc = localStorage.getItem("agenda_chat_user_loc");
+    if (savedLoc) {
+      try {
+        const parsed = JSON.parse(savedLoc);
+        setUbicacion(parsed);
+        setLocationStatus("granted");
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  const solicitarUbicacion = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus("denied");
+      return;
+    }
+
+    setLocationStatus("requesting");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        try {
+          const res = await fetch("/api/geo-decode", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat, lng }),
+          });
+          const geoData = await res.json();
+          const infoLoc: UbicacionData = {
+            lat,
+            lng,
+            ciudad: geoData.ciudad || "Loja",
+            zona: geoData.zona || "Loja",
+            provincia: geoData.provincia || "Loja",
+            pais: geoData.pais || "Ecuador",
+          };
+          setUbicacion(infoLoc);
+          setLocationStatus("granted");
+          localStorage.setItem("agenda_chat_user_loc", JSON.stringify(infoLoc));
+
+          // Agregar mensaje de bienvenida contextualizado
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `geo-welcome-${Date.now()}`,
+              sender: "bot",
+              text: `📍 ¡Ubicación detectada en ${infoLoc.zona || infoLoc.ciudad}! Ahora podré recomendarte planes, sitios turísticos y hospedajes cercanos a tu zona en Loja.`,
+              time: new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }),
+            },
+          ]);
+        } catch {
+          const infoLoc: UbicacionData = { lat, lng, ciudad: "Loja", zona: "Loja", provincia: "Loja" };
+          setUbicacion(infoLoc);
+          setLocationStatus("granted");
+        }
+      },
+      () => {
+        setLocationStatus("denied");
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -80,8 +167,15 @@ export function ChatbotWidget() {
   useEffect(() => {
     if (isOpen) {
       scrollToBottom();
+      // Si abre por primera vez y nunca ha respondido a ubicación, sugerir activar
+      if (locationStatus === "idle") {
+        const dismissed = sessionStorage.getItem("agenda_geo_prompt_dismissed");
+        if (!dismissed) {
+          // Mantener idle para mostrar banner amigable arriba
+        }
+      }
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, locationStatus]);
 
   // Ocultar botón en móvil cuando se llega al footer (scroll hacia abajo al final),
   // y mostrarlo de nuevo al hacer scroll hacia arriba.
@@ -129,6 +223,15 @@ export function ChatbotWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionId,
+          ubicacion: ubicacion ? {
+            lat: ubicacion.lat,
+            lng: ubicacion.lng,
+            ciudad: ubicacion.ciudad,
+            zona: ubicacion.zona,
+            provincia: ubicacion.provincia,
+            pais: ubicacion.pais,
+          } : undefined,
           messages: [...messages, userMsg].map((m) => ({
             sender: m.sender,
             content: m.text,
@@ -218,6 +321,64 @@ export function ChatbotWidget() {
               ✕
             </button>
           </div>
+
+          {/* Banner de Geolocalización Inteligente */}
+          {locationStatus !== "granted" && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200/80 px-3.5 py-2.5 flex items-center justify-between text-xs transition-all">
+              <div className="flex items-center gap-2 text-amber-900 pr-2">
+                <span className="text-base shrink-0">📍</span>
+                <span className="leading-tight text-[11px] sm:text-xs">
+                  {locationStatus === "requesting"
+                    ? "Detectando tu ubicación en Loja..."
+                    : locationStatus === "denied"
+                    ? "Sin ubicación (recomendaciones generales)"
+                    : "¿Quieres recomendaciones según tu zona en Loja?"}
+                </span>
+              </div>
+              {locationStatus === "idle" && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={solicitarUbicacion}
+                    className="px-2.5 py-1 bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-600 hover:to-pink-500 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all"
+                  >
+                    Activar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLocationStatus("denied");
+                      sessionStorage.setItem("agenda_geo_prompt_dismissed", "true");
+                    }}
+                    className="p-1 text-neutral-400 hover:text-neutral-700 text-xs font-bold rounded"
+                    title="Omitir"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {locationStatus === "denied" && (
+                <button
+                  onClick={solicitarUbicacion}
+                  className="text-[10px] font-bold text-purple-700 hover:underline shrink-0"
+                >
+                  Reintentar
+                </button>
+              )}
+            </div>
+          )}
+
+          {locationStatus === "granted" && ubicacion && (
+            <div className="bg-emerald-50 border-b border-emerald-100 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-emerald-800">
+              <div className="flex items-center gap-1.5">
+                <span>📍</span>
+                <span className="font-semibold truncate max-w-[240px]">
+                  Zona: {ubicacion.zona || ubicacion.ciudad || "Loja"}
+                </span>
+              </div>
+              <span className="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded">
+                Activa
+              </span>
+            </div>
+          )}
 
           {/* Área de Mensajes */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-purple-50/40 via-white to-white no-scrollbar">
