@@ -55,6 +55,7 @@ model Evento {
   nombreGestor          String        @db.VarChar(200)
   confianzaClasificacion Float?
   createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   institucionRelacionada String?       @db.VarChar(150)
   categoriaId  Int?
