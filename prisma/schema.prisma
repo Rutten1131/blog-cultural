@@ -52,6 +52,7 @@ model Evento {
   multimedia   Json?         // Array de URLs de imágenes para el carrusel
   videoUrl     String?       @db.VarChar(500) // Enlace a video (FB, IG, TikTok, YT)
   mapaUrl      String?       @db.VarChar(500) // URL de Google Maps del lugar exacto del evento
+  patrocinadores Json?       // Array de objetos [{ nombre: string, logoUrl: string }]
   estado       EstadoEvento  @default(PENDIENTE)
   nombreGestor          String        @db.VarChar(200)
   confianzaClasificacion Float?

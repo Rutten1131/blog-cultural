@@ -153,3 +153,23 @@ body {
   animation: calendar-bounce-glow 2.4s ease-in-out infinite;
 }
 
+/* ── Marquee / Slide infinito para Patrocinadores ── */
+@keyframes patrocinadores-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-patrocinadores-marquee {
+  display: flex;
+  width: max-content;
+  animation: patrocinadores-marquee 25s linear infinite;
+}
+
+.animate-patrocinadores-marquee:hover {
+  animation-play-state: paused;
+}
+

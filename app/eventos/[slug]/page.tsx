@@ -9,6 +9,7 @@ import { EventoListCard } from "@/components/EventoListCard";
 import { Navbar } from "@/components/Navbar";
 import { MediaGallery } from "@/components/MediaGallery";
 import { TranslatedEventContent } from "@/components/TranslatedEventContent";
+import { EventPatrocinadoresSection } from "@/components/EventPatrocinadoresSection";
 import {
   EventDetailHeaderClient,
   EventDetailUbicacionTitleClient,
@@ -452,6 +453,9 @@ export default async function EventoDetailPage({ params }: PageProps) {
                 nombreGestor={evento.nombreGestor}
                 hasFechaFin={!!evento.fechaFin}
               />
+
+              {/* Sección de Patrocinadores y Auspiciantes (Opcional) */}
+              <EventPatrocinadoresSection patrocinadores={evento.patrocinadores} />
 
               {/* Mapa de Ubicación */}
               <div className="mt-8">

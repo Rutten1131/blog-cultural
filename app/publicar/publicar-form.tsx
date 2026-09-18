@@ -3,6 +3,7 @@
 import { useActionState, useState, useEffect } from "react";
 import { crearEvento, type CrearEventoState } from "@/lib/actions/crearEvento";
 import { MultiMediaUploader } from "@/components/MultiMediaUploader";
+import { PatrocinadoresUploader, type PatrocinadorItem } from "@/components/PatrocinadoresUploader";
 import { PublicarPreviewCard } from "@/components/PublicarPreviewCard";
 
 const initialState: CrearEventoState = { success: false };
@@ -26,6 +27,7 @@ export function PublicarForm({
   const [descripcion, setDescripcion] = useState("");
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
+  const [patrocinadores, setPatrocinadores] = useState<PatrocinadorItem[]>([]);
   const [nombreGestor, setNombreGestor] = useState("");
   const [institucionRelacionada, setInstitucionRelacionada] = useState("");
   const [hasLoadedDraft, setHasLoadedDraft] = useState(false);
@@ -49,6 +51,7 @@ export function PublicarForm({
         if (parsed.descripcion) setDescripcion(parsed.descripcion);
         if (Array.isArray(parsed.imagenes)) setImagenes(parsed.imagenes);
         if (Array.isArray(parsed.videoUrls)) setVideoUrls(parsed.videoUrls);
+        if (Array.isArray(parsed.patrocinadores)) setPatrocinadores(parsed.patrocinadores);
         if (parsed.nombreGestor) setNombreGestor(parsed.nombreGestor);
         if (parsed.institucionRelacionada) setInstitucionRelacionada(parsed.institucionRelacionada);
       }
@@ -73,6 +76,7 @@ export function PublicarForm({
         descripcion,
         imagenes,
         videoUrls,
+        patrocinadores,
         nombreGestor,
         institucionRelacionada,
       };
@@ -80,7 +84,7 @@ export function PublicarForm({
       // Si todos los campos están vacíos, no hace falta guardar
       const hasAnyContent =
         nombre || fecha || fechaFin || lugar || mapaUrl || descripcion ||
-        imagenes.length > 0 || videoUrls.length > 0 || nombreGestor || institucionRelacionada;
+        imagenes.length > 0 || videoUrls.length > 0 || patrocinadores.length > 0 || nombreGestor || institucionRelacionada;
 
       if (hasAnyContent) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
@@ -97,6 +101,7 @@ export function PublicarForm({
     descripcion,
     imagenes,
     videoUrls,
+    patrocinadores,
     nombreGestor,
     institucionRelacionada,
     hasLoadedDraft,
@@ -125,6 +130,7 @@ export function PublicarForm({
       setDescripcion("");
       setImagenes([]);
       setVideoUrls([]);
+      setPatrocinadores([]);
       setNombreGestor("");
       setInstitucionRelacionada("");
     }
@@ -331,6 +337,17 @@ export function PublicarForm({
         <input type="hidden" name="videoUrl" value={JSON.stringify(videoUrls)} />
         <input type="hidden" name="imagenUrl" value={imagenes[0] || ""} />
 
+        {/* Patrocinadores y Auspiciantes (Opcional) */}
+        <PatrocinadoresUploader
+          patrocinadores={patrocinadores}
+          onChange={setPatrocinadores}
+        />
+        <input
+          type="hidden"
+          name="patrocinadores"
+          value={JSON.stringify(patrocinadores)}
+        />
+
         {/* Nombre del gestor */}
         <div>
           <label
@@ -405,6 +422,7 @@ export function PublicarForm({
           descripcion={descripcion}
           imagenUrl={imagenes[0] || ""}
           nombreGestor={nombreGestor}
+          patrocinadores={patrocinadores}
         />
       </div>
     </div>

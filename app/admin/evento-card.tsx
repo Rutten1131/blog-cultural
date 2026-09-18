@@ -30,6 +30,7 @@ interface EventoItem {
   imagenUrl: string | null;
   multimedia?: any;
   videoUrl?: string | null;
+  patrocinadores?: any;
   confianzaClasificacion: number | null;
   categoriaId: number | null;
   zonaId: number | null;
@@ -316,6 +317,50 @@ export function EventoCard({
               </div>
             </div>
           )}
+
+          {/* ── Patrocinadores y Auspiciantes ── */}
+          {(() => {
+            let patList: Array<{ nombre: string; logoUrl?: string }> = [];
+            if (Array.isArray(evento.patrocinadores)) {
+              patList = evento.patrocinadores;
+            } else if (typeof evento.patrocinadores === "string") {
+              try {
+                const parsed = JSON.parse(evento.patrocinadores);
+                if (Array.isArray(parsed)) patList = parsed;
+              } catch {}
+            }
+            if (patList.length === 0) return null;
+
+            return (
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  🤝 Patrocinadores ({patList.length})
+                </p>
+                <div className="flex flex-wrap gap-2.5">
+                  {patList.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-1.5 shadow-2xs"
+                    >
+                      {p.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.logoUrl}
+                          alt={p.nombre}
+                          className="h-6 w-6 object-contain rounded"
+                        />
+                      ) : (
+                        <span className="text-xs">🏢</span>
+                      )}
+                      <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
+                        {p.nombre}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Formulario de Edición Completa para Administradores */}
           {isEditing ? (

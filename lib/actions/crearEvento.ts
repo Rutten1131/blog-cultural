@@ -54,6 +54,24 @@ export async function crearEvento(
   const institucionRelacionada =
     formData.get("institucionRelacionada")?.toString().trim() || null;
 
+  const patrocinadoresRaw = formData.get("patrocinadores")?.toString().trim();
+  let patrocinadores: Array<{ nombre: string; logoUrl: string }> = [];
+  if (patrocinadoresRaw) {
+    try {
+      const parsed = JSON.parse(patrocinadoresRaw);
+      if (Array.isArray(parsed)) {
+        patrocinadores = parsed
+          .filter((p) => p && typeof p === "object" && (p.nombre?.trim() || p.logoUrl?.trim()))
+          .map((p) => ({
+            nombre: String(p.nombre || "").trim(),
+            logoUrl: String(p.logoUrl || "").trim(),
+          }));
+      }
+    } catch {
+      patrocinadores = [];
+    }
+  }
+
   // Validación de campos obligatorios
   if (!nombre || !fechaInput || !lugar || !descripcion || !nombreGestor) {
     return {
@@ -146,6 +164,7 @@ export async function crearEvento(
         multimedia: multimedia.length > 0 ? multimedia : undefined,
         videoUrl,
         mapaUrl,
+        patrocinadores: patrocinadores.length > 0 ? patrocinadores : undefined,
         nombreGestor,
         institucionRelacionada,
       },

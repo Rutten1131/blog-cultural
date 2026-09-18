@@ -11,6 +11,7 @@ interface PublicarPreviewCardProps {
   descripcion: string;
   imagenUrl: string;
   nombreGestor: string;
+  patrocinadores?: Array<{ nombre: string; logoUrl?: string }>;
 }
 
 function parseClientDateLoja(input: string): Date | null {
@@ -50,6 +51,7 @@ export function PublicarPreviewCard({
   descripcion,
   imagenUrl,
   nombreGestor,
+  patrocinadores,
 }: PublicarPreviewCardProps) {
   const fechaFormateada = formatFechaPreview(fecha, fechaFin);
   const descripcionCorta =
@@ -114,6 +116,30 @@ export function PublicarPreviewCard({
           {nombreGestor && (
             <div className="mt-2 border-t border-[var(--color-border)] pt-2 text-xs text-[var(--color-muted)]">
               Organizado por: <span className="font-bold text-[var(--color-dark)]">{nombreGestor}</span>
+            </div>
+          )}
+
+          {patrocinadores && patrocinadores.length > 0 && (
+            <div className="mt-2 border-t border-[var(--color-border)] pt-2 space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)] block">
+                🤝 Patrocinadores ({patrocinadores.length})
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {patrocinadores.map((p, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[11px] font-medium text-zinc-700 dark:text-zinc-300"
+                  >
+                    {p.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.logoUrl} alt={p.nombre} className="h-3.5 w-3.5 object-contain" />
+                    ) : (
+                      "🏢"
+                    )}
+                    <span className="truncate max-w-[110px]">{p.nombre}</span>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>

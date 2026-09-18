@@ -27,6 +27,7 @@ interface EventoItem {
   nombreGestor: string;
   institucionRelacionada?: string | null;
   imagenUrl: string | null;
+  patrocinadores?: any;
   estado: "PENDIENTE" | "APROBADO" | "RECHAZADO";
   categoriaId: number | null;
   zonaId: number | null;

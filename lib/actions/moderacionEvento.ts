@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidateAll } from "./revalidate";
 
 /**
@@ -92,6 +93,24 @@ export async function editarEvento(formData: FormData) {
   if (!fecha) return;
   const fechaFin = fechaFinStr ? parseFechaInputLocal(fechaFinStr) : null;
 
+  const patrocinadoresRaw = formData.get("patrocinadores")?.toString().trim();
+  let patrocinadoresData: Array<{ nombre: string; logoUrl: string }> | undefined = undefined;
+  if (patrocinadoresRaw !== undefined && patrocinadoresRaw !== null) {
+    try {
+      const parsed = JSON.parse(patrocinadoresRaw);
+      if (Array.isArray(parsed)) {
+        patrocinadoresData = parsed
+          .filter((p) => p && typeof p === "object" && (p.nombre?.trim() || p.logoUrl?.trim()))
+          .map((p) => ({
+            nombre: String(p.nombre || "").trim(),
+            logoUrl: String(p.logoUrl || "").trim(),
+          }));
+      }
+    } catch {
+      patrocinadoresData = [];
+    }
+  }
+
   await prisma.evento.update({
     where: { id: eventoId },
     data: {
@@ -101,6 +120,9 @@ export async function editarEvento(formData: FormData) {
       nombreGestor,
       institucionRelacionada,
       imagenUrl,
+      ...(patrocinadoresData !== undefined
+        ? { patrocinadores: patrocinadoresData.length > 0 ? patrocinadoresData : Prisma.DbNull }
+        : {}),
       fecha,
       fechaFin,
       categoriaId,
