@@ -5,6 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { CategoriaBadge } from "./EventoListCard";
 import { formatFechaLojaCliente } from "@/lib/fechasCliente";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { TranslatedEventText } from "./TranslatedEventText";
+
 
 interface Evento {
   id: number;
@@ -23,6 +26,7 @@ function formatFecha(fecha: Date | string) {
 }
 
 export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
+  const { t } = useLanguage();
   const [busqueda, setBusqueda] = useState("");
 
   // Filtrado dinámico por buscador (nombre, lugar, descripción, categoría, zona)
@@ -51,11 +55,11 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-purple-1)]" />
               </span>
               <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
-                Recientemente agregados
+                {t("section.ultimos_eyebrow", "Recientemente agregados")}
               </span>
             </div>
             <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)] sm:text-3xl">
-              Últimos Eventos Artísticos Publicados en Loja
+              {t("section.ultimos_titulo", "Últimos Eventos Artísticos Publicados en Loja")}
             </h2>
           </div>
 
@@ -65,9 +69,10 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar evento, lugar o artista..."
+              placeholder={t("section.buscar_placeholder", "Buscar evento, lugar o artista...")}
               className="w-full rounded-full border border-[var(--color-border)] bg-white px-4 py-2.5 pl-10 text-sm shadow-sm transition-all focus:border-[var(--color-purple-1)] focus:outline-none focus:ring-2 focus:ring-[var(--color-purple-1)]/20"
             />
+
             <svg
               className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted)]"
               fill="none"
@@ -144,9 +149,11 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
                     <div className="mb-1 flex flex-wrap gap-1">
                       <CategoriaBadge categoria={ev.categoria} />
                     </div>
-                    <h3 className="font-display text-xs font-bold uppercase leading-snug text-[var(--color-dark)] line-clamp-2 group-hover:text-[var(--color-purple-1)]">
-                      {ev.nombre}
-                    </h3>
+                    <TranslatedEventText
+                      text={ev.nombre}
+                      as="h3"
+                      className="font-display text-xs font-bold uppercase leading-snug text-[var(--color-dark)] line-clamp-2 group-hover:text-[var(--color-purple-1)]"
+                    />
                   </div>
 
                   {ev.zona && (

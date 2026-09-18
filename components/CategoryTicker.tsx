@@ -1,20 +1,26 @@
+"use client";
+
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+
 /** CategoryTicker — barra marquee horizontal animada con las categorías */
-const TICKER_ITEMS = [
-  "Arte y Exposiciones",
-  "Teatro",
-  "Música",
-  "Ferias y Festivales",
-  "Artes Vivas",
-  "Danza",
-  "Cine",
-  "Literatura",
-  "Patrimonio",
-  "Talleres Culturales",
-];
+const TICKER_KEYS = [
+  "ticker.arte",
+  "ticker.teatro",
+  "ticker.musica",
+  "ticker.ferias",
+  "ticker.artes_vivas",
+  "ticker.danza",
+  "ticker.cine",
+  "ticker.literatura",
+  "ticker.patrimonio",
+  "ticker.talleres",
+] as const;
 
 export function CategoryTicker() {
+  const { t } = useLanguage();
+  const tickerItems = TICKER_KEYS.map((k) => t(k));
   // Duplicamos para el loop infinito continuo
-  const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
+  const items = [...tickerItems, ...tickerItems];
 
   return (
     <div

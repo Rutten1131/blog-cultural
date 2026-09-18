@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { EventoListCard } from "./EventoListCard";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+
 
 interface Evento {
   id: number;
@@ -20,6 +22,8 @@ interface EventosPasadosListProps {
   eventos: Evento[];
   titulo: string;
   subtitulo?: string;
+  tituloKey?: string;
+  subtituloKey?: string;
   initialCount?: number;
   step?: number;
 }
@@ -28,11 +32,15 @@ export function EventosPasadosList({
   eventos,
   titulo,
   subtitulo,
+  tituloKey,
+  subtituloKey,
   initialCount = 6,
   step = 6,
 }: EventosPasadosListProps) {
+  const { t } = useLanguage();
   const [visibleCount, setVisibleCount] = useState(initialCount);
   const [busqueda, setBusqueda] = useState("");
+
 
   if (!eventos || eventos.length === 0) return null;
 
@@ -59,18 +67,18 @@ export function EventosPasadosList({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
-              Archivo Cultural
+              {t("archivo.eyebrow", "Archivo Cultural")}
             </span>
             <span className="rounded-full bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 text-[11px] font-bold text-zinc-600 dark:text-zinc-300">
-              {eventos.length} archivo{eventos.length !== 1 ? "s" : ""}
+              {eventos.length} {t("archivo.item", "archivo")}{eventos.length !== 1 ? t("archivo.item_plural_suffix", "s") : ""}
             </span>
           </div>
           <h2 className="font-display text-xl sm:text-2xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-            {titulo}
+            {tituloKey ? t(tituloKey, titulo) : titulo}
           </h2>
           {subtitulo && (
             <p className="text-xs sm:text-sm text-[var(--color-muted)] mt-1">
-              {subtitulo}
+              {subtituloKey ? t(subtituloKey, subtitulo) : subtitulo}
             </p>
           )}
         </div>
@@ -85,7 +93,7 @@ export function EventosPasadosList({
                 setBusqueda(e.target.value);
                 setVisibleCount(initialCount); // reset al filtrar
               }}
-              placeholder="Buscar en el archivo..."
+              placeholder={t("archivo.buscar_placeholder", "Buscar en el archivo...")}
               className="w-full rounded-xl border border-[var(--color-border)] bg-white/80 px-3 py-1.5 pl-8 text-xs shadow-sm transition-all focus:border-[var(--color-purple-1)] focus:outline-none focus:ring-2 focus:ring-[var(--color-purple-1)]/20"
             />
             <svg
@@ -115,7 +123,7 @@ export function EventosPasadosList({
       {/* Grid de eventos pasados con visualización limitada */}
       {visibles.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 p-8 text-center text-xs text-[var(--color-muted)]">
-          No se encontraron eventos anteriores con ese término.
+          {t("archivo.sin_resultados", "No se encontraron eventos anteriores con ese término.")}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 opacity-90 hover:opacity-100 transition-opacity">
@@ -133,7 +141,8 @@ export function EventosPasadosList({
               onClick={() => setVisibleCount((prev) => prev + step)}
               className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white dark:bg-zinc-900 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[var(--color-dark)] shadow-sm hover:border-[var(--color-purple-1)] hover:text-[var(--color-purple-1)] hover:shadow-md transition-all active:scale-95"
             >
-              <span>Ver más ({restantes > step ? `+${step}` : `+${restantes}`})</span>
+              <span>{t("common.ver_mas", "Ver más")} ({restantes > step ? `+${step}` : `+${restantes}`})</span>
+
               <svg
                 width="14"
                 height="14"
@@ -152,7 +161,7 @@ export function EventosPasadosList({
               onClick={() => setVisibleCount(initialCount)}
               className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/60 dark:bg-zinc-900/60 px-5 py-2 text-xs font-semibold text-[var(--color-muted)] hover:text-[var(--color-dark)] transition-all"
             >
-              <span>Mostrar menos ↑</span>
+              <span>{t("archivo.mostrar_menos", "Mostrar menos")} ↑</span>
             </button>
           )}
         </div>

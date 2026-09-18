@@ -3,6 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { formatFechaLojaCliente, formatRangoFechasLojaCliente } from "@/lib/fechasCliente";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { TranslatedEventText } from "./TranslatedEventText";
+
 
 interface EventoCardProps {
   id: number;
@@ -36,21 +39,34 @@ const CAT_COLORS: Record<string, string> = {
 
 /** Badge de categoría */
 export function CategoriaBadge({ categoria }: { categoria: { nombre: string; slug: string } | null }) {
+  const { t } = useLanguage();
   if (!categoria) return null;
   const color = CAT_COLORS[categoria.slug] ?? "bg-purple-100 text-purple-700 border-purple-200";
+  
+  const SLUG_CAT_KEY: Record<string, string> = {
+    "arte-y-exposiciones": "cat.arte",
+    teatro: "cat.teatro",
+    musica: "cat.musica",
+    ferias: "cat.ferias",
+    "artes-vivas": "cat.artes_vivas",
+  };
+  const translatedName = SLUG_CAT_KEY[categoria.slug] ? t(SLUG_CAT_KEY[categoria.slug]) : categoria.nombre;
+
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${color}`}>
-      {categoria.nombre}
+      {translatedName}
     </span>
   );
 }
 
 /** ── EventoCardFeatured — card grande para la sección hero y destacados ── */
 export function EventoCardFeatured({ evento }: { evento: EventoCardProps }) {
+  const { t } = useLanguage();
   const fecha = formatFecha(evento.fecha, evento.fechaFin);
   const descripcionCorta = evento.descripcion.length > 140
     ? `${evento.descripcion.slice(0, 137)}...`
     : evento.descripcion;
+
 
   return (
     <Link
@@ -93,21 +109,27 @@ export function EventoCardFeatured({ evento }: { evento: EventoCardProps }) {
           )}
         </div>
 
-        <h3 className="font-display text-xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] transition-colors group-hover:text-[var(--color-purple-1)] break-words [overflow-wrap:anywhere]">
-          {evento.nombre}
-        </h3>
+        <TranslatedEventText
+          text={evento.nombre}
+          as="h3"
+          className="font-display text-xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] transition-colors group-hover:text-[var(--color-purple-1)] break-words [overflow-wrap:anywhere]"
+        />
 
-        <p className="text-sm leading-relaxed text-[var(--color-muted)] break-words [overflow-wrap:anywhere]">
-          {descripcionCorta}
-        </p>
+        <TranslatedEventText
+          text={descripcionCorta}
+          as="p"
+          isDescription={true}
+          className="text-sm leading-relaxed text-[var(--color-muted)] break-words [overflow-wrap:anywhere]"
+        />
 
         {/* CTA */}
         <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[var(--color-purple-2)] transition-all duration-200 group-hover:gap-3">
-          Ver evento
+          {t("common.ver_evento", "Ver evento")}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
           </svg>
         </span>
+
       </div>
     </Link>
   );
@@ -143,9 +165,11 @@ export function EventoCardHorizontal({ evento }: { evento: EventoCardProps }) {
 
       {/* Info */}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <h4 className="font-display text-base font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] transition-colors group-hover:text-[var(--color-purple-1)] truncate">
-          {evento.nombre}
-        </h4>
+        <TranslatedEventText
+          text={evento.nombre}
+          as="h4"
+          className="font-display text-base font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] transition-colors group-hover:text-[var(--color-purple-1)] truncate"
+        />
         <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-muted)]">
           <span>📅 {fecha}</span>
           {evento.zona && <span>📍 {evento.zona.nombre}</span>}
@@ -180,11 +204,19 @@ export function EventoListCard({ evento }: { evento: EventoCardProps }) {
 }
 
 /** ── EstadoVacioEvento ── */
-export function EstadoVacioEvento({ mensaje }: { mensaje: string }) {
+export function EstadoVacioEvento({
+  mensaje,
+  messageKey,
+}: {
+  mensaje: string;
+  messageKey?: string;
+}) {
+  const { t } = useLanguage();
+  const text = messageKey ? t(messageKey, mensaje) : mensaje;
   return (
     <div className="col-span-full flex flex-col items-center justify-center py-16 text-center rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-white/60">
       <div className="mb-4 text-5xl opacity-30">📭</div>
-      <p className="text-base font-semibold text-[var(--color-muted)]">{mensaje}</p>
+      <p className="text-base font-semibold text-[var(--color-muted)]">{text}</p>
     </div>
   );
 }

@@ -1,20 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIAS } from "@/types";
-import { ahoraUTC, inicioDelDiaLojaUTC } from "@/lib/fechas";
+import { inicioDelDiaLojaUTC } from "@/lib/fechas";
 import { EstadoVacioEvento } from "@/components/EventoListCard";
 import { Navbar } from "@/components/Navbar";
 import { CategoryTicker } from "@/components/CategoryTicker";
 import { UltimosEventosSection } from "@/components/UltimosEventosSection";
 import { ProximosEventosCarousel } from "@/components/ProximosEventosCarousel";
 import { CalendarioBotonFlotante } from "@/components/CalendarioBotonFlotante";
-import { CalendarioCulturalHome } from "@/components/CalendarioCulturalHome";
 import { CalendarioHeroWidget } from "@/components/CalendarioHeroWidget";
-import { BotonVerCalendarioHero } from "@/components/BotonVerCalendarioHero";
 import { HeroBannerCarousel, BannerHeroItem } from "@/components/HeroBannerCarousel";
-
+import { HeroHomeContent } from "@/components/HeroHomeContent";
 import { BuzonRecomendaciones } from "@/components/BuzonRecomendaciones";
+import { HomeCategoriasClient, HomeFooterClient } from "@/components/HomeCategoriasClient";
+import { HomeMobileDescubre } from "@/components/HomeMobileDescubre";
 
 export const revalidate = 60;
 
@@ -82,7 +81,7 @@ const CAT_META: Record<string, { emoji: string; color: string; bg: string; image
   },
 };
 
-/* ── Blob SVG decorativo ── */
+/* ── Blob SVG decorativo (solo para el Hero, permanece Server) ── */
 function BlobDecorativo({
   className = "",
   variant = 1,
@@ -131,123 +130,6 @@ function BlobDecorativo({
         fill="url(#blob1)"
       />
     </svg>
-  );
-}
-
-/* ── Sección por categoría ── */
-async function SeccionCategoria({
-  slug,
-  nombre,
-  blobVariant,
-}: {
-  slug: string;
-  nombre: string;
-  blobVariant: 1 | 2;
-}) {
-  const hoyLoja = inicioDelDiaLojaUTC();
-
-  // Buscar eventos vigentes (que ocurran hoy o en los días siguientes)
-  let eventos = await prisma.evento.findMany({
-    where: {
-      estado: "APROBADO",
-      categoria: { slug },
-      OR: [
-        { fechaFin: { gte: hoyLoja } },
-        { fecha: { gte: hoyLoja } },
-      ],
-    },
-    include: { categoria: true, zona: true },
-    orderBy: { fecha: "asc" },
-    take: 6,
-  });
-
-  // Si no hay futuros registrados aún en esta categoría, mostramos los eventos más recientes
-  if (eventos.length === 0) {
-    eventos = await prisma.evento.findMany({
-      where: { estado: "APROBADO", categoria: { slug } },
-      include: { categoria: true, zona: true },
-      orderBy: { fecha: "desc" },
-      take: 4,
-    });
-  }
-
-  const meta = CAT_META[slug] ?? { emoji: "🎭", color: "#7c3aed", bg: "from-purple-500/20 to-violet-500/10" };
-
-  // Mapeo de preguntas H2 SEO por categoría
-  const PREGUNTAS_H2: Record<string, string> = {
-    "arte-y-exposiciones": "¿Qué eventos artísticos y exposiciones de arte existen en Loja?",
-    teatro: "¿Qué obras de teatro y eventos teatrales se presentan en Loja?",
-    musica: "¿Qué conciertos y eventos musicales hay en Loja?",
-    ferias: "¿Qué ferias culturales y festivales se realizan en Loja?",
-    "artes-vivas": "¿Qué eventos de Artes Vivas y expresiones escénicas hay en Loja?",
-  };
-
-  const preguntaH2 = PREGUNTAS_H2[slug] || `¿Qué eventos de ${nombre} existen en Loja?`;
-
-  // Respuestas cortas optimizadas para SEO debajo del H2
-  const RESPUESTAS_SEO: Record<string, string> = {
-    "arte-y-exposiciones": "Explorá exposiciones de pintura, fotografía, escultura y galerías de arte abiertas al público en Loja.",
-    teatro: "Encontrá cartelera de obras teatrales, microteatro, dramaturgia y presentaciones escénicas en los teatros de Loja.",
-    musica: "Descubrí conciertos en vivo, recitales sinfónicos, festivales musicales y presentaciones acústicas en Loja.",
-    ferias: "Descubrí ferias artesanales, emprendimientos culturales, festivales gastronómicos y mercados tradicionales en Loja.",
-    "artes-vivas": "Viví los festivales internacionales y locales de artes vivas, danza, mimo y espectáculos callejeros en Loja.",
-  };
-
-  const respuestaSeo = RESPUESTAS_SEO[slug] || `Descubrí los mejores eventos culturales y artísticos de ${nombre} en Loja.`;
-
-  return (
-    <section className="relative w-full overflow-hidden pt-4" aria-label={`Sección ${nombre}`}>
-      {/* Blob decorativo de fondo */}
-      <BlobDecorativo
-        variant={blobVariant}
-        className="pointer-events-none absolute -right-32 top-0 w-[420px] opacity-60 md:w-[520px]"
-      />
-
-      <div className="relative z-10">
-        {/* Header de sección con H2 orientado a intención de búsqueda y respuesta SEO */}
-        <div className="mb-6 flex flex-col gap-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{meta.emoji}</span>
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
-              {nombre}
-            </span>
-          </div>
-          <h2
-            className="font-display text-lg sm:text-xl md:text-2xl font-black uppercase tracking-tight leading-tight"
-            style={{ color: meta.color }}
-          >
-            {preguntaH2}
-          </h2>
-          <p className="text-xs sm:text-sm text-[var(--color-muted)] leading-relaxed max-w-3xl">
-            {respuestaSeo}
-          </p>
-        </div>
-
-        {eventos.length === 0 ? (
-          <p className="text-sm text-[var(--color-muted)]">
-            No hay eventos registrados en esta categoría por el momento.
-          </p>
-        ) : (
-          <div className="relative my-4">
-            <ProximosEventosCarousel eventos={eventos} />
-          </div>
-        )}
-
-        {/* Ver todos */}
-        <div className="mt-5">
-          <Link
-            href={`/eventos/categoria/${slug}`}
-            className="inline-flex items-center gap-2 rounded-full border-2 px-5 py-2 text-sm font-bold uppercase tracking-wide transition-all duration-200 hover:-translate-y-0.5"
-            style={{ borderColor: meta.color, color: meta.color }}
-          >
-            Ver todo en {nombre}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
-            </svg>
-          </Link>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -339,6 +221,52 @@ export default async function Home() {
     }));
   }
 
+  // ── Cargar eventos de cada categoría para el cliente ──
+  const categoriasConEventos = await Promise.all(
+    CATEGORIAS.map(async (cat, i) => {
+      let eventos = await prisma.evento.findMany({
+        where: {
+          estado: "APROBADO",
+          categoria: { slug: cat.slug },
+          OR: [
+            { fechaFin: { gte: hoyLoja } },
+            { fecha: { gte: hoyLoja } },
+          ],
+        },
+        include: { categoria: true, zona: true },
+        orderBy: { fecha: "asc" },
+        take: 6,
+      });
+
+      if (eventos.length === 0) {
+        eventos = await prisma.evento.findMany({
+          where: { estado: "APROBADO", categoria: { slug: cat.slug } },
+          include: { categoria: true, zona: true },
+          orderBy: { fecha: "desc" },
+          take: 4,
+        });
+      }
+
+      const meta = CAT_META[cat.slug] ?? {
+        emoji: "🎭",
+        color: "#7c3aed",
+        bg: "from-purple-900/80 to-violet-950/90",
+        image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=600&q=80",
+      };
+
+      return {
+        slug: cat.slug,
+        slugKey: cat.slug,
+        color: meta.color,
+        bg: meta.bg,
+        emoji: meta.emoji,
+        image: meta.image,
+        eventos,
+        blobVariant: (i % 2 === 0 ? 1 : 2) as 1 | 2,
+      };
+    })
+  );
+
   // Marcado estructurado JSON-LD (Schema.org) para la Home
   const jsonLdHome = {
     "@context": "https://schema.org",
@@ -401,7 +329,7 @@ export default async function Home() {
         )}
 
         {/* ═══════════════════════════════
-            HERO — Eventos destacados & Calendario (Inmediatamente después del Hero Banner)
+            HERO — Eventos destacados & Calendario
         ═══════════════════════════════ */}
         <section
           className="relative w-full overflow-hidden pb-8 sm:pb-12 pt-6 sm:pt-8 flex flex-col justify-between"
@@ -418,67 +346,20 @@ export default async function Home() {
           />
 
           <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 w-full flex flex-col justify-between flex-1 sm:block">
-            {/* ── EN DESKTOP: LAYOUT 2 COLUMNAS (Textos + Calendario desplegado) ── */}
+            {/* ── EN DESKTOP: LAYOUT 2 COLUMNAS ── */}
             <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-[50%_50%] gap-6 lg:gap-8 items-center">
-              {/* Columna izquierda: Textos y CTA */}
-              <div className="flex flex-col justify-center gap-5 pt-2">
-                {/* Eyebrow */}
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-coral)] opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-coral)]" />
-                  </span>
-                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
-                    Descubre qué está pasando en Loja
-                  </span>
-                </div>
-
-                {/* Título hero H1 */}
-                <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] fade-up">
-                  ¿Qué hacer{" "}
-                  <span className="text-gradient-purple">en Loja?</span>
-                  <span className="block text-sm md:text-base lg:text-lg font-bold text-[var(--color-muted)] normal-case tracking-normal mt-2">
-                    Eventos, arte y actividades culturales en la ciudad
-                  </span>
-                </h1>
-
-                {/* CTAs */}
-                <div className="flex flex-wrap gap-3 mt-2">
-                  <Link
-                    href="/eventos"
-                    className="inline-flex items-center gap-2 rounded-full bg-[var(--color-dark)] px-6 py-3 text-sm font-bold text-white shadow-lg transition-all duration-300 hover:bg-[var(--color-purple-1)] hover:shadow-[0_12px_28px_-8px_rgba(109,40,217,0.5)]"
-                  >
-                    Ver todos los eventos
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
-                    </svg>
-                  </Link>
-                  <Link
-                    href="/publicar"
-                    className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--color-purple-1)] px-6 py-3 text-sm font-bold text-[var(--color-purple-1)] transition-all duration-300 hover:bg-[var(--color-purple-1)] hover:text-white"
-                  >
-                    Publicar evento
-                  </Link>
-                </div>
-              </div>
-
-              {/* Columna derecha: Mini Calendario con popup al clic */}
+              <HeroHomeContent />
               <div id="hero-calendario-desktop" className="w-full fade-up fade-up-delay-1">
                 <CalendarioHeroWidget eventos={eventosCalendario} />
               </div>
             </div>
 
-            {/* ── EN MODO CELULAR: TÍTULO INFORMATIVO (el botón principal está en el hero banner fullscreen) ── */}
-            <div className="sm:hidden mb-4 flex flex-col items-center gap-2 text-center">
-              <h2 className="font-display text-2xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)]">
-                ¿Qué hacer <span className="text-gradient-purple">en Loja?</span>
-              </h2>
-              <p className="text-xs font-semibold text-[var(--color-muted)]">
-                Eventos, arte y actividades culturales en la ciudad
-              </p>
+            {/* ── EN MODO CELULAR: TÍTULO INFORMATIVO ── */}
+            <div className="sm:hidden">
+              <HeroHomeContent />
             </div>
 
-            {/* ── CARRUSEL DE CARTAS (solo móvil; en desktop el calendario ocupa el hero) ── */}
+            {/* ── CARRUSEL DE CARTAS (solo móvil) ── */}
             <div className="w-full pt-2 sm:hidden">
               {destacados.length > 0 ? (
                 <div className="relative w-full px-0 sm:px-1">
@@ -489,80 +370,8 @@ export default async function Home() {
               )}
             </div>
 
-            {/* ── EN MODO CELULAR: TEXTOS DESCRIPTIVOS JUSTO DEBAJO DEL CARRUSEL DE CARTAS ── */}
-            <div className="sm:hidden mt-6 pt-4 border-t border-purple-200/50 flex flex-col items-center gap-1.5 text-center">
-              <div className="inline-flex items-center justify-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-coral)] opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-coral)]" />
-                </span>
-                <span className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-[var(--color-purple-1)]">
-                  Descubre qué está pasando en Loja
-                </span>
-              </div>
-              <p className="text-xs font-semibold text-[var(--color-muted)]">
-                Eventos, arte y actividades culturales en la ciudad
-              </p>
-            </div>
-
-
-          </div>
-        </section>
-
-        {/* ═══════════════════════════════
-            CATEGORY CARDS — Diseño profesional en Tarjetas
-        ═══════════════════════════════ */}
-        <section className="w-full py-10 sm:py-14" aria-label="Explorar por categoría">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="mb-6 flex flex-col items-center text-center">
-              <span className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-purple-1)]">
-                Disciplinas y Espacios
-              </span>
-              <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)] sm:text-3xl">
-                Explorar por Categorías
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-              {CATEGORIAS.map((cat) => {
-                const meta = CAT_META[cat.slug] ?? {
-                  emoji: "🎭",
-                  color: "#7c3aed",
-                  bg: "from-purple-900/80 to-violet-950/90",
-                  image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=600&q=80",
-                };
-                return (
-                  <Link
-                    key={cat.slug}
-                    href={`/eventos/categoria/${cat.slug}`}
-                    className="group relative flex h-44 sm:h-48 flex-col justify-end overflow-hidden rounded-2xl border border-white/20 p-4 shadow-md transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-white/40"
-                  >
-                    {/* Imagen de fondo de la categoría */}
-                    <img
-                      src={meta.image}
-                      alt={cat.nombre}
-                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    {/* Degradado oscuro para legibilidad */}
-                    <div className={`absolute inset-0 bg-gradient-to-t ${meta.bg} opacity-80 transition-opacity duration-300 group-hover:opacity-70`} />
-
-                    {/* Contenido sobrepuesto */}
-                    <div className="relative z-10">
-                      <span className="mb-1 inline-block text-2xl drop-shadow-md transition-transform duration-300 group-hover:scale-110">
-                        {meta.emoji}
-                      </span>
-                      <h3 className="font-display text-base font-black uppercase tracking-tight text-white drop-shadow-sm">
-                        {cat.nombre}
-                      </h3>
-                      <p className="mt-0.5 flex items-center justify-between text-[11px] font-bold text-white/80">
-                        <span>Ver agenda</span>
-                        <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+            {/* ── EN MODO CELULAR: TEXTOS DESCRIPTIVOS ── */}
+            <HomeMobileDescubre />
           </div>
         </section>
 
@@ -577,18 +386,9 @@ export default async function Home() {
         <CategoryTicker />
 
         {/* ═══════════════════════════════
-            SECCIONES POR CATEGORÍA
+            CATEGORY CARDS + SECCIONES POR CATEGORÍA (CLIENT — i18n)
         ═══════════════════════════════ */}
-        <div className="mx-auto w-full max-w-6xl space-y-20 px-4 py-16 sm:px-6 sm:py-20">
-          {CATEGORIAS.map((cat, i) => (
-            <SeccionCategoria
-              key={cat.slug}
-              slug={cat.slug}
-              nombre={cat.nombre}
-              blobVariant={i % 2 === 0 ? 1 : 2}
-            />
-          ))}
-        </div>
+        <HomeCategoriasClient categorias={categoriasConEventos} />
 
         {/* ═══════════════════════════════
             BUZÓN CIUDADANO DE RECOMENDACIONES
@@ -597,97 +397,15 @@ export default async function Home() {
           <BuzonRecomendaciones />
         </div>
 
-        {/* ═══════════════════════════════
-            FOOTER — Centrado en móvil y limpio en desktop
-        ═══════════════════════════════ */}
-        <footer className="mt-auto bg-[var(--color-dark)] text-white">
-          {/* Decorative top border */}
-          <div
-            className="h-1 w-full"
-            style={{ background: "var(--grad-blob-1)" }}
-            aria-hidden="true"
-          />
-          <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12 sm:px-6">
-            <div className="grid grid-cols-1 gap-6 sm:gap-10 text-center sm:grid-cols-3 sm:text-left">
-              {/* Brand */}
-              <div className="flex flex-col items-center sm:items-start gap-2 sm:gap-3">
-                <div>
-                  <p className="font-display text-xl sm:text-2xl font-black uppercase tracking-tight">
-                    Agenda Cultural
-                  </p>
-                  <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-violet)]">
-                    Loja · Ecuador
-                  </p>
-                </div>
-                <p className="text-xs leading-relaxed text-white/60 max-w-xs">
-                  El directorio oficial de eventos culturales de Loja. Arte, teatro, música,
-                  ferias y artes vivas en un solo lugar.
-                </p>
-              </div>
-
-              {/* Categorías */}
-              <div className="flex flex-col items-center sm:items-start w-full sm:w-auto">
-                <p className="mb-2 sm:mb-3 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-white/40">
-                  Categorías
-                </p>
-                {/* Distribución 2-2-1 en móvil con grid-cols-2 y el 5to elemento centrado */}
-                <ul className="grid grid-cols-2 sm:flex sm:flex-col gap-x-2 gap-y-1.5 sm:gap-y-2 text-center sm:text-left w-full max-w-xs sm:max-w-none">
-                  {CATEGORIAS.map((cat, idx) => (
-                    <li
-                      key={cat.slug}
-                      className={idx === CATEGORIAS.length - 1 ? "col-span-2 sm:col-span-1 text-center sm:text-left" : ""}
-                    >
-                      <Link
-                        href={`/eventos/categoria/${cat.slug}`}
-                        className="inline-block py-0.5 px-1 sm:p-0 text-xs font-medium text-white/70 transition-colors hover:text-white"
-                      >
-                        {CAT_META[cat.slug]?.emoji} {cat.nombre}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Información */}
-              <div className="flex flex-col items-center sm:items-start gap-1.5 sm:gap-3">
-                <p className="mb-0 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-white/40">
-                  Agenda Cultural
-                </p>
-                <p className="text-xs leading-relaxed text-white/60 max-w-xs">
-                  Descubre las mejores actividades, exposiciones, obras y conciertos en Loja, Ecuador.
-                </p>
-              </div>
-            </div>
-
-            {/* Bottom bar */}
-            <div className="mt-6 sm:mt-10 flex flex-col items-center justify-center gap-2 border-t border-white/10 pt-4 sm:pt-6 text-center">
-              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-[11px] sm:text-xs text-white/70">
-                <Link href="/sobre-el-proyecto" className="hover:text-white transition-colors underline-offset-4 hover:underline">Sobre el proyecto</Link>
-                <span>•</span>
-                <Link href="/publicar" className="hover:text-white transition-colors underline-offset-4 hover:underline">
-                  Publicar un Evento
-                </Link>
-              </div>
-              <p className="text-[11px] sm:text-[12px] text-white/50">
-                Iniciativa tecnológica creada y desarrollada por{" "}
-                <a
-                  href="https://www.cesarreyesjaramillo.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-white/80 transition-colors hover:text-white hover:underline"
-                >
-                  César Reyes Jaramillo
-                </a>{" "}
-                | Agenda Cultural Loja {new Date().getFullYear()}
-              </p>
-            </div>
-          </div>
-        </footer>
       </main>
+
+      {/* ═══════════════════════════════
+          FOOTER — i18n client
+      ═══════════════════════════════ */}
+      <HomeFooterClient categorias={categoriasConEventos} />
 
       {/* ── BOTÓN FLOTANTE Y POPUP LATERAL DEL CALENDARIO ── */}
       <CalendarioBotonFlotante eventos={eventosCalendario} />
     </div>
   );
 }
-

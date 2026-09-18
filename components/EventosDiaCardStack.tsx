@@ -3,8 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { formatFechaLojaCliente } from "@/lib/fechasCliente";
+import {
+  formatFechaLojaCliente,
+  formatRangoFechasLojaCliente,
+} from "@/lib/fechasCliente";
 import { EventoCalendario } from "./CalendarioCulturalHome";
+import { TranslatedEventText } from "./TranslatedEventText";
 
 interface Props {
   eventos: EventoCalendario[];
@@ -160,9 +164,11 @@ export function EventosDiaCardStack({ eventos, onVolverCalendario, diaTexto }: P
                     </div>
                   </div>
                   <div className="p-4">
-                    <p className="font-display text-base font-black uppercase leading-tight tracking-tight text-zinc-900 dark:text-zinc-100 line-clamp-2">
-                      {ev.nombre}
-                    </p>
+                    <TranslatedEventText
+                      text={ev.nombre}
+                      as="p"
+                      className="font-display text-base font-black uppercase leading-tight tracking-tight text-zinc-900 dark:text-zinc-100 line-clamp-2"
+                    />
                   </div>
                 </div>
               );
@@ -230,7 +236,9 @@ export function EventosDiaCardStack({ eventos, onVolverCalendario, diaTexto }: P
 
                   {/* Badge fecha */}
                   <div className="absolute bottom-3 left-3 rounded-xl bg-black/75 backdrop-blur-sm px-3 py-1.5 text-white text-xs font-bold pointer-events-none">
-                    📅 {formatFechaLojaCliente(topEvent.fecha, "corto")}
+                    📅 {topEvent.fechaFin
+                      ? formatRangoFechasLojaCliente(topEvent.fecha, topEvent.fechaFin)
+                      : formatFechaLojaCliente(topEvent.fecha, "corto")}
                   </div>
 
                   {/* Badge categoría */}
@@ -243,9 +251,11 @@ export function EventosDiaCardStack({ eventos, onVolverCalendario, diaTexto }: P
 
                 {/* Info */}
                 <div className="p-4 pointer-events-none">
-                  <h3 className="font-display text-lg sm:text-xl font-black uppercase leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 line-clamp-2">
-                    {topEvent.nombre}
-                  </h3>
+                  <TranslatedEventText
+                    text={topEvent.nombre}
+                    as="h3"
+                    className="font-display text-lg sm:text-xl font-black uppercase leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 line-clamp-2"
+                  />
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
                     <svg
                       width="12"

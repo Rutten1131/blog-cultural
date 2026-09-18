@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { TranslatedEventText } from "@/components/TranslatedEventText";
 
 export interface BannerHeroItem {
   id: number;
@@ -20,7 +22,9 @@ interface Props {
 }
 
 export function HeroBannerCarousel({ banners, intervalMs = 6000 }: Props) {
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
+
   const [isPaused, setIsPaused] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -132,19 +136,24 @@ export function HeroBannerCarousel({ banners, intervalMs = 6000 }: Props) {
                   {/* Badge de Evento Destacado */}
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-sm">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-coral)] animate-pulse" />
-                    Destacado
+                    {t("hero.destacado", "Destacado")}
                   </span>
 
                   {/* Título Principal */}
-                  <h2 className="font-display text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white leading-tight drop-shadow-md">
-                    {banner.titulo}
-                  </h2>
+                  <TranslatedEventText
+                    as="h2"
+                    text={banner.titulo}
+                    className="font-display text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white leading-tight drop-shadow-md"
+                  />
 
                   {/* Subtítulo o detalle */}
                   {banner.subtitulo && (
-                    <p className="text-sm sm:text-base md:text-lg text-white/90 font-medium line-clamp-2 drop-shadow">
-                      {banner.subtitulo}
-                    </p>
+                    <TranslatedEventText
+                      as="p"
+                      text={banner.subtitulo}
+                      isDescription={true}
+                      className="text-sm sm:text-base md:text-lg text-white/90 font-medium line-clamp-2 drop-shadow"
+                    />
                   )}
 
                   {/* Botón CTA: Siempre 'Ver el calendario' que abre el popup */}
@@ -170,8 +179,9 @@ export function HeroBannerCarousel({ banners, intervalMs = 6000 }: Props) {
                         <line x1="8" y1="2" x2="8" y2="6" />
                         <line x1="3" y1="10" x2="21" y2="10" />
                       </svg>
-                      <span>Ver el calendario</span>
+                      <span>{t("hero.ver_calendario", "Ver el calendario")}</span>
                       <svg
+
                         width="15"
                         height="15"
                         viewBox="0 0 24 24"

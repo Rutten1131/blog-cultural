@@ -8,6 +8,11 @@ import { inicioDelDiaLojaUTC } from "@/lib/fechas";
 import { EventoListCard, EstadoVacioEvento } from "@/components/EventoListCard";
 import { EventosPasadosList } from "@/components/EventosPasadosList";
 import { Navbar } from "@/components/Navbar";
+import {
+  ZonaPageHeaderClient,
+  ZonaPageSectionTitleClient,
+  ZonaPageBackLinkClient,
+} from "@/components/ZonaPageHeaderClient";
 
 export const revalidate = 60;
 
@@ -154,27 +159,12 @@ export default async function ZonaPage({ params }: PageProps) {
       <Navbar />
 
       <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16 flex-1">
-        {/* Breadcrumb */}
-        <nav className="mb-6 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)] flex items-center gap-2">
-          <Link href="/" className="hover:text-[var(--color-purple-1)] transition-colors">Inicio</Link>
-          <span>›</span>
-          <span className="text-[var(--color-dark)] font-bold">{zonaInfo.nombre}</span>
-        </nav>
-
-        {/* Header */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1 text-xs font-semibold text-[var(--color-muted)]">
-              {tipoLabel}
-            </span>
-          </div>
-          <h1 className="font-display text-4xl sm:text-5xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-            Eventos en {zonaInfo.nombre}
-          </h1>
-          <p className="mt-2 text-sm text-[var(--color-muted)]">
-            {eventosProximos.length} evento{eventosProximos.length !== 1 ? "s" : ""} próximo{eventosProximos.length !== 1 ? "s" : ""} en agenda
-          </p>
-        </div>
+        {/* Header traducible dinámicamente */}
+        <ZonaPageHeaderClient
+          zonaNombre={zonaInfo.nombre}
+          tipoLabel={tipoLabel}
+          proximosCount={eventosProximos.length}
+        />
 
         {/* ── SECCIÓN 1: EVENTOS VIGENTES (HOY Y PRÓXIMOS DÍAS) ── */}
         <section className="mb-14">
@@ -183,9 +173,7 @@ export default async function ZonaPage({ params }: PageProps) {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            <h2 className="font-display text-xl sm:text-2xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-              Próximos Eventos (Hoy y siguientes días)
-            </h2>
+            <ZonaPageSectionTitleClient />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -208,18 +196,15 @@ export default async function ZonaPage({ params }: PageProps) {
           eventos={eventosPasados}
           titulo={`Eventos Realizados Anteriormente en ${zonaInfo.nombre}`}
           subtitulo={`Actividades, fiestas y encuentros culturales que tuvieron lugar en esta parroquia.`}
+          tituloKey="eventos_page.pasados_titulo"
+          subtituloKey="eventos_page.pasados_subtitulo"
           initialCount={6}
           step={6}
         />
 
         {/* Link de vuelta */}
         <div className="mt-14 pt-8 border-t border-[var(--color-border)] text-center">
-          <Link
-            href="/"
-            className="text-sm font-semibold text-[var(--color-muted)] hover:text-[var(--color-purple-1)] transition-colors"
-          >
-            ← Volver al inicio
-          </Link>
+          <ZonaPageBackLinkClient />
         </div>
       </main>
     </div>

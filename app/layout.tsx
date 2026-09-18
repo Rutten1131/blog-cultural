@@ -82,6 +82,7 @@ const globalJsonLd = {
 };
 
 import { ChatbotWidget } from "@/components/ChatbotWidget";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -95,12 +96,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="min-h-screen flex flex-col">
-        {/* Noise overlay cinematográfico */}
-        <div className="noise-overlay" aria-hidden="true" />
-        {children}
-        {/* Widget Asistente Virtual con Tarjetas E-Commerce de Aliados */}
-        <ChatbotWidget />
+        <LanguageProvider>
+          {/* Noise overlay cinematográfico */}
+          <div className="noise-overlay" aria-hidden="true" />
+          {children}
+          {/* Widget Asistente Virtual con Tarjetas E-Commerce de Aliados */}
+          <ChatbotWidget />
+        </LanguageProvider>
       </body>
     </html>
   );
 }
+

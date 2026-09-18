@@ -8,6 +8,11 @@ import { inicioDelDiaLojaUTC } from "@/lib/fechas";
 import { EventoListCard, EstadoVacioEvento } from "@/components/EventoListCard";
 import { EventosPasadosList } from "@/components/EventosPasadosList";
 import { Navbar } from "@/components/Navbar";
+import {
+  CategoryHeaderClient,
+  CategorySectionTitleClient,
+  CategoryBackButtonClient,
+} from "@/components/CategoryHeaderClient";
 
 export const revalidate = 60;
 
@@ -257,36 +262,16 @@ export default async function CategoriaPage({ params }: PageProps) {
       <Navbar />
 
       <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16 flex-1">
-        {/* Breadcrumb */}
-        <nav className="mb-6 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)] flex items-center gap-2">
-          <Link href="/" className="hover:text-[var(--color-purple-1)] transition-colors">Inicio</Link>
-          <span>›</span>
-          <span className="text-[var(--color-dark)] font-bold">{cat.nombre}</span>
-        </nav>
-
-        {/* Encabezado H1 y H2 SEO con Respuesta Corta */}
-        <div className="mb-10 space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-purple-100 dark:bg-purple-950 px-3 py-1 text-xs font-bold uppercase text-[var(--color-purple-1)]">
-              Categoría Cultural
-            </span>
-            <span className="text-xs text-[var(--color-muted)] font-medium">
-              {eventosProximos.length} próximo{eventosProximos.length !== 1 ? "s" : ""} · {todosEventosCat.length} en total
-            </span>
-          </div>
-
-          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-            {seoInfo.tituloH1}
-          </h1>
-
-          <h2 className="font-display text-lg sm:text-xl font-bold text-[var(--color-purple-1)] pt-1">
-            {seoInfo.preguntaH2}
-          </h2>
-
-          <p className="text-xs sm:text-sm text-[var(--color-muted)] leading-relaxed max-w-3xl">
-            {seoInfo.descripcionSeo}
-          </p>
-        </div>
+        {/* Header y Breadcrumbs traducibles con soporte i18n */}
+        <CategoryHeaderClient
+          categoriaSlug={cat.slug}
+          categoriaNombreDefault={cat.nombre}
+          tituloH1Default={seoInfo.tituloH1}
+          preguntaH2Default={seoInfo.preguntaH2}
+          descripcionSeoDefault={seoInfo.descripcionSeo}
+          proximosCount={eventosProximos.length}
+          totalCount={todosEventosCat.length}
+        />
 
         {/* ── SECCIÓN 1: EVENTOS VIGENTES (HOY Y PRÓXIMOS DÍAS) ── */}
         <section className="mb-14">
@@ -295,9 +280,7 @@ export default async function CategoriaPage({ params }: PageProps) {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            <h3 className="font-display text-xl sm:text-2xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-              Próximos Eventos en Cartelera (Hoy y siguientes días)
-            </h3>
+            <CategorySectionTitleClient defaultText="Próximos Eventos en Cartelera (Hoy y siguientes días)" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -326,12 +309,7 @@ export default async function CategoriaPage({ params }: PageProps) {
 
         {/* Link de vuelta */}
         <div className="mt-14 pt-8 border-t border-[var(--color-border)] text-center">
-          <Link
-            href="/"
-            className="text-sm font-semibold text-[var(--color-muted)] hover:text-[var(--color-purple-1)] transition-colors"
-          >
-            ← Ver todas las categorías
-          </Link>
+          <CategoryBackButtonClient />
         </div>
       </main>
     </div>

@@ -7,6 +7,10 @@ import { EventoListCard, EstadoVacioEvento } from "@/components/EventoListCard";
 import { EventosPasadosList } from "@/components/EventosPasadosList";
 import { Navbar } from "@/components/Navbar";
 import { CalendarioCulturalHome } from "@/components/CalendarioCulturalHome";
+import {
+  EventosPageHeaderClient,
+  EventosPageSectionTitleClient,
+} from "@/components/EventosPageHeaderClient";
 
 export const revalidate = 60;
 
@@ -125,24 +129,8 @@ export default async function EventosPage() {
       <Navbar />
 
       <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16 flex-1">
-        {/* Breadcrumb */}
-        <nav className="mb-6 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)] flex items-center gap-2">
-          <Link href="/" className="hover:text-[var(--color-purple-1)] transition-colors">Inicio</Link>
-          <span>›</span>
-          <span className="text-[var(--color-dark)] font-bold">Todos los eventos</span>
-        </nav>
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-display text-4xl sm:text-5xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-            Cartelera y Calendario Cultural
-          </h1>
-          <p className="mt-2 text-sm text-[var(--color-muted)]">
-            {eventosProximos.length > 0
-              ? `Explora los ${eventosProximos.length} eventos próximos en agenda o toca un día en el calendario interactivo.`
-              : "No hay eventos próximos en este momento."}
-          </p>
-        </div>
+        {/* Header traducible dinámicamente */}
+        <EventosPageHeaderClient proximosCount={eventosProximos.length} />
 
         {/* Calendario Interactivo */}
         <div className="mb-12">
@@ -156,9 +144,7 @@ export default async function EventosPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-              Eventos Próximos (Hoy y siguientes fechas)
-            </h2>
+            <EventosPageSectionTitleClient />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -168,7 +154,7 @@ export default async function EventosPage() {
               ))
             ) : (
               <div className="sm:col-span-2 lg:col-span-3">
-                <EstadoVacioEvento mensaje="No hay eventos próximos programados para hoy o los siguientes días." />
+                <EstadoVacioEvento mensaje="No hay eventos próximos programados para hoy o los siguientes días." messageKey="eventos_page.sin_proximos_msg" />
               </div>
             )}
           </div>
@@ -179,6 +165,8 @@ export default async function EventosPage() {
           eventos={eventosPasados}
           titulo="Eventos Realizados Anteriormente en Loja"
           subtitulo="Registro histórico de presentaciones, talleres y festivales concluidos en la ciudad."
+          tituloKey="eventos_page.pasados_titulo"
+          subtituloKey="eventos_page.pasados_subtitulo"
           initialCount={6}
           step={6}
         />

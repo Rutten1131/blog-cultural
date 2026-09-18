@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function BackButton({ fallbackHref = "/" }: { fallbackHref?: string }) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleBack = () => {
     // Si hay historial previo en la navegación, volvemos atrás; sino vamos al fallback
@@ -20,7 +22,7 @@ export function BackButton({ fallbackHref = "/" }: { fallbackHref?: string }) {
       onClick={handleBack}
       className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer shrink-0"
     >
-      ← Volver
+      ← {t("common.volver", "Volver")}
     </button>
   );
 }

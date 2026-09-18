@@ -19,8 +19,16 @@ export const LOCALE_LOJA_CLIENTE = "es-EC" as const;
 export function formatFechaLojaCliente(
   fecha: Date | string | number,
   opciones: "corto" | "medio" | "largo" | "iso" = "medio",
+  customLocale?: string,
 ): string {
-  const d = fecha instanceof Date ? fecha : new Date(fecha);
+  let d: Date;
+  if (fecha instanceof Date) {
+    d = fecha;
+  } else if (typeof fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    d = new Date(`${fecha}T12:00:00-05:00`);
+  } else {
+    d = new Date(fecha);
+  }
   if (isNaN(d.getTime())) return "";
 
   if (opciones === "iso") {
@@ -63,7 +71,8 @@ export function formatFechaLojaCliente(
     });
   }
 
-  return new Intl.DateTimeFormat(LOCALE_LOJA_CLIENTE, config).format(d);
+  const targetLocale = customLocale ? `${customLocale}-EC` : LOCALE_LOJA_CLIENTE;
+  return new Intl.DateTimeFormat(targetLocale, config).format(d);
 }
 
 /**
@@ -72,6 +81,7 @@ export function formatFechaLojaCliente(
 export function formatFechaHoraLojaCliente(
   fecha: Date | string | number,
   opciones: "corto" | "medio" | "largo" = "medio",
+  customLocale?: string,
 ): string {
   const d = fecha instanceof Date ? fecha : new Date(fecha);
   if (isNaN(d.getTime())) return "";
@@ -112,7 +122,8 @@ export function formatFechaHoraLojaCliente(
     });
   }
 
-  return new Intl.DateTimeFormat(LOCALE_LOJA_CLIENTE, config).format(d);
+  const targetLocale = customLocale ? `${customLocale}-EC` : LOCALE_LOJA_CLIENTE;
+  return new Intl.DateTimeFormat(targetLocale, config).format(d);
 }
 
 /**

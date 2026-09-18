@@ -2,10 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { crearRecomendacion, type CrearRecomendacionState } from "@/lib/actions/crearRecomendacion";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 const initialState: CrearRecomendacionState = { success: false };
 
 export function BuzonRecomendaciones() {
+  const { t } = useLanguage();
   const [mensaje, setMensaje] = useState("");
   const [contacto, setContacto] = useState("");
   const [abierto, setAbierto] = useState(false);
@@ -20,13 +22,13 @@ export function BuzonRecomendaciones() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 mb-3 border border-amber-300/40">
-            <span>✨ Etapa de validación comunitaria</span>
+            <span>{t("buzon.badge")}</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            ¿Tienes una recomendación para mejorar la Agenda Cultural de Loja?
+            {t("buzon.titulo")}
           </h2>
           <p className="mt-2 text-sm sm:text-base text-zinc-600 dark:text-zinc-300 leading-relaxed">
-            Estamos en etapa de validación. Tu aporte nos ayuda a construir una mejor plataforma para nuestra ciudad.
+            {t("buzon.desc")}
           </p>
         </div>
 
@@ -37,7 +39,7 @@ export function BuzonRecomendaciones() {
               onClick={() => setAbierto(true)}
               className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 transition-all dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 whitespace-nowrap"
             >
-              ✍️ Dejar una recomendación
+              {t("buzon.btn_abrir")}
             </button>
           )}
         </div>
@@ -54,7 +56,7 @@ export function BuzonRecomendaciones() {
 
           <div>
             <label htmlFor="mensaje" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              ¿Qué te gustaría ver, mejorar o añadir en la plataforma?
+              {t("buzon.label_mensaje")}
             </label>
             <textarea
               id="mensaje"
@@ -63,7 +65,7 @@ export function BuzonRecomendaciones() {
               required
               value={mensaje}
               onChange={(e) => setMensaje(e.target.value)}
-              placeholder="Ej: Me gustaría que avisen eventos en Malacatos, o que agreguen teatro infantil..."
+              placeholder={t("buzon.placeholder_mensaje")}
               className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500"
             />
           </div>
@@ -71,7 +73,7 @@ export function BuzonRecomendaciones() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
             <div>
               <label htmlFor="contacto" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Tu contacto o nombre <span className="text-zinc-400 font-normal">(Opcional)</span>
+                {t("buzon.label_contacto")} <span className="text-zinc-400 font-normal">{t("buzon.opcional")}</span>
               </label>
               <input
                 id="contacto"
@@ -79,7 +81,7 @@ export function BuzonRecomendaciones() {
                 type="text"
                 value={contacto}
                 onChange={(e) => setContacto(e.target.value)}
-                placeholder="Nombre, WhatsApp o email"
+                placeholder={t("buzon.placeholder_contacto")}
                 className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500"
               />
             </div>
@@ -90,14 +92,14 @@ export function BuzonRecomendaciones() {
                 disabled={isPending}
                 className="flex-1 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
               >
-                {isPending ? "Enviando..." : "Enviar aporte"}
+                {isPending ? t("buzon.enviando") : t("buzon.btn_enviar")}
               </button>
               <button
                 type="button"
                 onClick={() => setAbierto(false)}
                 className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
               >
-                Cancelar
+                {t("buzon.cancelar")}
               </button>
             </div>
           </div>
@@ -111,7 +113,7 @@ export function BuzonRecomendaciones() {
             ✓
           </span>
           <p className="text-sm font-medium">
-            ¡Muchas gracias por tu aporte! Tu recomendación fue registrada para el equipo.
+            {t("buzon.gracias")}
           </p>
         </div>
       )}

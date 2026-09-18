@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { formatFechaLojaCliente } from "@/lib/fechasCliente";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { TranslatedEventText } from "./TranslatedEventText";
 
 interface Evento {
   id: number;
@@ -25,6 +27,7 @@ interface Props {
 }
 
 export function ProximosEventosCarousel({ eventos }: Props) {
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [dragX, setDragX] = useState(0);
@@ -165,9 +168,11 @@ export function ProximosEventosCarousel({ eventos }: Props) {
                 <div className="flex h-full w-full items-center justify-center text-5xl opacity-20">🎭</div>
               </div>
               <div className="p-4">
-                <p className="font-display text-base font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] line-clamp-2">
-                  {ev.nombre}
-                </p>
+                <TranslatedEventText
+                  text={ev.nombre}
+                  as="p"
+                  className="font-display text-base font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] line-clamp-2"
+                />
               </div>
             </div>
           );
@@ -201,14 +206,14 @@ export function ProximosEventosCarousel({ eventos }: Props) {
             {swipeDirection === "right" && (
               <div className="absolute inset-0 z-20 flex items-start justify-start p-5 pointer-events-none">
                 <span className="rounded-xl border-4 border-purple-400 text-purple-600 text-xl font-black uppercase px-4 py-1 rotate-[-12deg] bg-white/90 backdrop-blur-sm shadow-lg">
-                  Siguiente →
+                  {t("carousel.siguiente", "Siguiente →")}
                 </span>
               </div>
             )}
             {swipeDirection === "left" && (
               <div className="absolute inset-0 z-20 flex items-start justify-end p-5 pointer-events-none">
                 <span className="rounded-xl border-4 border-zinc-400 text-zinc-600 text-xl font-black uppercase px-4 py-1 rotate-[12deg] bg-white/90 backdrop-blur-sm shadow-lg">
-                  ← Anterior
+                  {t("carousel.anterior", "← Anterior")}
                 </span>
               </div>
             )}
@@ -246,9 +251,11 @@ export function ProximosEventosCarousel({ eventos }: Props) {
 
             {/* Texto */}
             <div className="p-5 pointer-events-none">
-              <h3 className="font-display text-xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] line-clamp-2">
-                {topEvent.nombre}
-              </h3>
+              <TranslatedEventText
+                text={topEvent.nombre}
+                as="h3"
+                className="font-display text-xl font-black uppercase leading-tight tracking-tight text-[var(--color-dark)] line-clamp-2"
+              />
               <p className="mt-2 flex items-center gap-1 text-xs text-[var(--color-muted)]">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                 {topEvent.lugar}
@@ -262,7 +269,7 @@ export function ProximosEventosCarousel({ eventos }: Props) {
                 className="block w-full rounded-xl bg-[var(--color-purple-1)] py-2.5 text-center text-sm font-bold text-white transition-opacity hover:opacity-90"
                 onClick={(e) => e.stopPropagation()}
               >
-                Ver evento →
+                {t("common.ver_evento", "Ver evento")} →
               </Link>
             </div>
           </div>
@@ -303,7 +310,7 @@ export function ProximosEventosCarousel({ eventos }: Props) {
 
       {/* ── Hint swipe (solo primera vez) ── */}
       <p className="text-center text-[11px] text-[var(--color-muted)]/70 -mt-2">
-        Deslizá la carta o usá las flechas para explorar
+        {t("carousel.hint_swipe", "Desliza la carta o usa las flechas para explorar")}
       </p>
     </div>
   );
