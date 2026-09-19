@@ -21,6 +21,7 @@ export function ZonaPageHeaderClient({ zonaNombre, tipoLabel, proximosCount }: P
     if (locale === "fr") return `Événements à ${zonaNombre}`;
     if (locale === "de") return `Events in ${zonaNombre}`;
     if (locale === "pt") return `Eventos em ${zonaNombre}`;
+    if (locale === "ko") return `${zonaNombre} 문화 행사`;
     return `Eventos en ${zonaNombre}`;
   })();
 
@@ -29,6 +30,7 @@ export function ZonaPageHeaderClient({ zonaNombre, tipoLabel, proximosCount }: P
     if (locale === "fr") return `${proximosCount} événement${proximosCount !== 1 ? "s" : ""} à venir`;
     if (locale === "de") return `${proximosCount} kommendes Event${proximosCount !== 1 ? "s" : ""} im Programm`;
     if (locale === "pt") return `${proximosCount} evento${proximosCount !== 1 ? "s" : ""} próximos na agenda`;
+    if (locale === "ko") return `예정된 문화 행사 ${proximosCount}개`;
     return `${proximosCount} evento${proximosCount !== 1 ? "s" : ""} próximo${proximosCount !== 1 ? "s" : ""} en agenda`;
   })();
 

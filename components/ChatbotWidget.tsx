@@ -63,6 +63,7 @@ interface UbicacionData {
   lng: number;
   ciudad?: string;
   zona?: string;
+  direccionDetallada?: string;
   provincia?: string;
   pais?: string;
 }
@@ -109,7 +110,35 @@ export function ChatbotWidget() {
         // ignore
       }
     }
+
+    // Recuperar historial de mensajes de la sesión para no perder el hilo si recarga la página
+    const savedMsgs = localStorage.getItem("agenda_chat_history");
+    if (savedMsgs) {
+      try {
+        const parsedMsgs = JSON.parse(savedMsgs);
+        if (Array.isArray(parsedMsgs) && parsedMsgs.length > 0) {
+          setMessages(parsedMsgs);
+        }
+      } catch {
+        // ignore
+      }
+    }
   }, []);
+
+  const reiniciarChat = () => {
+    localStorage.removeItem("agenda_chat_history");
+    const newSid = `ses_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem("agenda_chat_session_id", newSid);
+    setSessionId(newSid);
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        sender: "bot",
+        text: "¡Hola! 👋 Te doy la bienvenida a Loja. Pregúntame qué hacer en la ciudad, lugares culturales, rutas de naturaleza o dónde hospedarte con nuestros aliados recomendados.",
+        time: "Ahora",
+      },
+    ]);
+  };
 
   const solicitarUbicacion = () => {
     if (!navigator.geolocation) {
@@ -134,6 +163,7 @@ export function ChatbotWidget() {
             lng,
             ciudad: geoData.ciudad || "Loja",
             zona: geoData.zona || "Loja",
+            direccionDetallada: geoData.direccionDetallada || null,
             provincia: geoData.provincia || "Loja",
             pais: geoData.pais || "Ecuador",
           };
@@ -142,12 +172,13 @@ export function ChatbotWidget() {
           localStorage.setItem("agenda_chat_user_loc", JSON.stringify(infoLoc));
 
           // Agregar mensaje de bienvenida contextualizado
+          const zonaTexto = infoLoc.zona ? `en la zona de ${infoLoc.zona}` : `en ${infoLoc.ciudad}`;
           setMessages((prev) => [
             ...prev,
             {
               id: `geo-welcome-${Date.now()}`,
               sender: "bot",
-              text: `📍 ¡Ubicación detectada en ${infoLoc.zona || infoLoc.ciudad}! Ahora podré recomendarte planes, sitios turísticos y hospedajes cercanos a tu zona en Loja.`,
+              text: `📍 ¡Ubicación detectada ${zonaTexto}! Con esto podré recomendarte eventos culturales, sitios para comer o visitar y aliados comerciales más cercanos a ti. ¿Qué te gustaría descubrir hoy?`,
               time: new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }),
             },
           ]);
@@ -255,7 +286,12 @@ export function ChatbotWidget() {
         time: new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }),
       };
 
-      setMessages((prev) => [...prev, botMsg]);
+      setMessages((prev) => {
+        const updated = [...prev, botMsg];
+        // Guardar hasta los últimos 20 mensajes para preservar el contexto si recarga
+        localStorage.setItem("agenda_chat_history", JSON.stringify(updated.slice(-20)));
+        return updated;
+      });
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -319,12 +355,22 @@ export function ChatbotWidget() {
               </div>
             </div>
 
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-white/80 hover:text-white p-1.5 rounded-xl hover:bg-white/15 transition-all text-sm font-bold"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={reiniciarChat}
+                title="Reiniciar chat y borrar historial"
+                className="text-white/80 hover:text-white p-1.5 rounded-xl hover:bg-white/15 transition-all text-xs font-semibold flex items-center gap-1"
+              >
+                <span>🔄</span>
+                <span className="hidden sm:inline text-[11px]">Nuevo chat</span>
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-white/80 hover:text-white p-1.5 rounded-xl hover:bg-white/15 transition-all text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Banner de Geolocalización Inteligente */}

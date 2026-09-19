@@ -93,6 +93,22 @@ export async function editarEvento(formData: FormData) {
   if (!fecha) return;
   const fechaFin = fechaFinStr ? parseFechaInputLocal(fechaFinStr) : null;
 
+  const mapaUrl = (formData.get("mapaUrl") as string)?.trim() || null;
+  const multimediaRaw = formData.get("multimedia")?.toString().trim();
+  const videoUrlRaw = formData.get("videoUrl")?.toString().trim();
+
+  let multimediaData: string[] | undefined = undefined;
+  if (multimediaRaw !== undefined && multimediaRaw !== null) {
+    try {
+      const parsed = JSON.parse(multimediaRaw);
+      if (Array.isArray(parsed)) {
+        multimediaData = parsed.map(String).filter(Boolean);
+      }
+    } catch {
+      multimediaData = [];
+    }
+  }
+
   const patrocinadoresRaw = formData.get("patrocinadores")?.toString().trim();
   let patrocinadoresData: Array<{ nombre: string; logoUrl: string }> | undefined = undefined;
   if (patrocinadoresRaw !== undefined && patrocinadoresRaw !== null) {
@@ -111,15 +127,26 @@ export async function editarEvento(formData: FormData) {
     }
   }
 
+  // Si se actualizan imágenes multimedia, asegurarse de que imagenUrl no quede huérfano
+  let finalImagenUrl = imagenUrl;
+  if (!finalImagenUrl && multimediaData && multimediaData.length > 0) {
+    finalImagenUrl = multimediaData[0];
+  }
+
   await prisma.evento.update({
     where: { id: eventoId },
     data: {
       nombre,
       lugar,
+      mapaUrl,
       descripcion,
       nombreGestor,
       institucionRelacionada,
-      imagenUrl,
+      imagenUrl: finalImagenUrl,
+      ...(multimediaData !== undefined
+        ? { multimedia: multimediaData.length > 0 ? multimediaData : Prisma.DbNull }
+        : {}),
+      ...(videoUrlRaw !== undefined ? { videoUrl: videoUrlRaw || null } : {}),
       ...(patrocinadoresData !== undefined
         ? { patrocinadores: patrocinadoresData.length > 0 ? patrocinadoresData : Prisma.DbNull }
         : {}),

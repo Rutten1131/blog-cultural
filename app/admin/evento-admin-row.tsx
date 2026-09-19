@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { editarEvento, eliminarEvento } from "@/lib/actions/moderacionEvento";
+import { MultiMediaUploader } from "@/components/MultiMediaUploader";
+import { PatrocinadoresUploader, PatrocinadorItem } from "@/components/PatrocinadoresUploader";
+import { extractVideoUrls } from "@/lib/mediaUtils";
 
 interface Categoria {
   id: number;
@@ -23,10 +26,13 @@ interface EventoItem {
   fecha: Date;
   fechaFin?: Date | null;
   lugar: string;
+  mapaUrl?: string | null;
   descripcion: string;
   nombreGestor: string;
   institucionRelacionada?: string | null;
   imagenUrl: string | null;
+  multimedia?: any;
+  videoUrl?: string | null;
   patrocinadores?: any;
   estado: "PENDIENTE" | "APROBADO" | "RECHAZADO";
   categoriaId: number | null;
@@ -74,7 +80,56 @@ export function EventoAdminRow({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [previewImg, setPreviewImg] = useState<string>(evento.imagenUrl || "");
+
+  // Parsear imágenes multimedia iniciales
+  const getInitialImagenes = (): string[] => {
+    let list: string[] = [];
+    if (Array.isArray(evento.multimedia)) {
+      list = evento.multimedia.map(String).filter(Boolean);
+    } else if (typeof evento.multimedia === "string") {
+      try {
+        const p = JSON.parse(evento.multimedia);
+        if (Array.isArray(p)) list = p.map(String).filter(Boolean);
+      } catch {
+        if (evento.multimedia.startsWith("http")) list = [evento.multimedia];
+      }
+    }
+    if (evento.imagenUrl && !list.includes(evento.imagenUrl)) {
+      list.unshift(evento.imagenUrl);
+    }
+    return list;
+  };
+
+  // Parsear videos iniciales
+  const getInitialVideos = (): string[] => {
+    return extractVideoUrls(evento.videoUrl);
+  };
+
+  // Parsear patrocinadores iniciales
+  const getInitialPatrocinadores = (): PatrocinadorItem[] => {
+    if (!evento.patrocinadores) return [];
+    if (Array.isArray(evento.patrocinadores)) {
+      return evento.patrocinadores.filter(
+        (p: any) => p && (p.nombre?.trim() || p.logoUrl?.trim())
+      );
+    }
+    if (typeof evento.patrocinadores === "string") {
+      try {
+        const p = JSON.parse(evento.patrocinadores);
+        if (Array.isArray(p)) {
+          return p.filter(
+            (item: any) => item && (item.nombre?.trim() || item.logoUrl?.trim())
+          );
+        }
+      } catch {}
+    }
+    return [];
+  };
+
+  const [imagenes, setImagenes] = useState<string[]>(getInitialImagenes);
+  const [videoUrls, setVideoUrls] = useState<string[]>(getInitialVideos);
+  const [patrocinadores, setPatrocinadores] = useState<PatrocinadorItem[]>(getInitialPatrocinadores);
+  const [mapaUrl, setMapaUrl] = useState<string>(evento.mapaUrl || "");
 
   const badge = ESTADO_BADGE[evento.estado] ?? ESTADO_BADGE.PENDIENTE;
 
@@ -98,10 +153,10 @@ export function EventoAdminRow({
         <div className="flex items-center gap-4 min-w-0">
           {/* Miniatura de imagen */}
           <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-xl overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-            {evento.imagenUrl ? (
+            {imagenes[0] || evento.imagenUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={evento.imagenUrl}
+                src={imagenes[0] || evento.imagenUrl!}
                 alt={evento.nombre}
                 className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
@@ -206,199 +261,177 @@ export function EventoAdminRow({
         </div>
       </div>
 
-      {/* Formulario de edición expandible con vista previa en vivo */}
+      {/* Formulario de edición integral expandible */}
       {open && (
         <form
           action={handleEdit}
           className="border-t border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/40 p-5 sm:p-7 space-y-6 animate-fadeIn"
         >
           <input type="hidden" name="eventoId" value={evento.id} />
+          <input type="hidden" name="multimedia" value={JSON.stringify(imagenes)} />
+          <input type="hidden" name="videoUrl" value={JSON.stringify(videoUrls)} />
+          <input type="hidden" name="imagenUrl" value={imagenes[0] || ""} />
+          <input type="hidden" name="patrocinadores" value={JSON.stringify(patrocinadores)} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Columna Izquierda / Central: Campos */}
-            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Nombre */}
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Nombre del evento
-                </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Nombre */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Nombre del evento <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="nombre"
+                defaultValue={evento.nombre}
+                required
+                className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Lugar */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Lugar <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="lugar"
+                defaultValue={evento.lugar}
+                required
+                className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Google Maps URL */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Ubicación Google Maps (opcional)
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm">📍</span>
                 <input
-                  type="text"
-                  name="nombre"
-                  defaultValue={evento.nombre}
-                  required
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  type="url"
+                  name="mapaUrl"
+                  value={mapaUrl}
+                  onChange={(e) => setMapaUrl(e.target.value)}
+                  placeholder="https://maps.app.goo.gl/... o https://www.google.com/maps/..."
+                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 pl-8 pr-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-              </div>
-
-              {/* Lugar */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Lugar
-                </label>
-                <input
-                  type="text"
-                  name="lugar"
-                  defaultValue={evento.lugar}
-                  required
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              {/* Organizador */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Organizador / Gestor
-                </label>
-                <input
-                  type="text"
-                  name="nombreGestor"
-                  defaultValue={evento.nombreGestor}
-                  required
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              {/* Institución */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Institución / Entidad Responsable
-                </label>
-                <input
-                  type="text"
-                  name="institucionRelacionada"
-                  defaultValue={evento.institucionRelacionada ?? ""}
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              {/* Estado */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Estado
-                </label>
-                <select
-                  name="estado"
-                  defaultValue={evento.estado}
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="PENDIENTE">⏳ Pendiente</option>
-                  <option value="APROBADO">✅ Aprobado (Publicado)</option>
-                  <option value="RECHAZADO">❌ Rechazado</option>
-                </select>
-              </div>
-
-              {/* Fecha inicio */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Fecha inicio
-                </label>
-                <input
-                  type="date"
-                  name="fecha"
-                  defaultValue={toLocalDateInput(evento.fecha)}
-                  required
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              {/* Fecha fin */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Fecha fin (opcional)
-                </label>
-                <input
-                  type="date"
-                  name="fechaFin"
-                  defaultValue={toLocalDateInput(evento.fechaFin)}
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              {/* Categoría */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Categoría
-                </label>
-                <select
-                  name="categoriaId"
-                  defaultValue={evento.categoriaId ? String(evento.categoriaId) : ""}
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">-- Sin categoría --</option>
-                  {categorias.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Zona */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  Zona / Parroquia
-                </label>
-                <select
-                  name="zonaId"
-                  defaultValue={evento.zonaId ? String(evento.zonaId) : ""}
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">-- Sin zona --</option>
-                  {zonas.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.nombre} ({z.tipo})
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 
-            {/* Columna Derecha: Vista previa de Imagen & URL */}
-            <div className="flex flex-col gap-3">
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                Imagen del Evento
+            {/* Organizador / Gestor */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Organizador / Gestor <span className="text-red-500">*</span>
               </label>
+              <input
+                type="text"
+                name="nombreGestor"
+                defaultValue={evento.nombreGestor}
+                required
+                className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
 
-              {/* Contenedor de visualización previa */}
-              <div className="relative aspect-video w-full rounded-2xl overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/60 flex items-center justify-center">
-                {previewImg ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={previewImg}
-                    alt="Previsualización"
-                    className="h-full w-full object-cover"
-                    onError={() => setPreviewImg("")}
-                  />
-                ) : (
-                  <div className="text-center p-4">
-                    <span className="text-3xl block mb-1">🖼️</span>
-                    <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                      Sin imagen asignada o enlace inválido
-                    </span>
-                  </div>
-                )}
-              </div>
+            {/* Institución */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Institución / Entidad Responsable
+              </label>
+              <input
+                type="text"
+                name="institucionRelacionada"
+                defaultValue={evento.institucionRelacionada ?? ""}
+                className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
 
-              <div>
-                <input
-                  type="url"
-                  name="imagenUrl"
-                  value={previewImg}
-                  onChange={(e) => setPreviewImg(e.target.value)}
-                  placeholder="https://ejemplo.com/imagen.jpg"
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <p className="text-[11px] text-zinc-400 mt-1">
-                  Escribe o pega una URL para previsualizar al instante.
-                </p>
-              </div>
+            {/* Estado */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Estado de Publicación
+              </label>
+              <select
+                name="estado"
+                defaultValue={evento.estado}
+                className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="PENDIENTE">⏳ Pendiente</option>
+                <option value="APROBADO">✅ Aprobado (Publicado)</option>
+                <option value="RECHAZADO">❌ Rechazado</option>
+              </select>
+            </div>
+
+            {/* Categoría */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Categoría
+              </label>
+              <select
+                name="categoriaId"
+                defaultValue={evento.categoriaId ? String(evento.categoriaId) : ""}
+                className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">-- Sin categoría --</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Fecha inicio */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Fecha inicio <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                name="fecha"
+                defaultValue={toLocalDateInput(evento.fecha)}
+                required
+                className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Fecha fin */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Fecha fin (opcional)
+              </label>
+              <input
+                type="date"
+                name="fechaFin"
+                defaultValue={toLocalDateInput(evento.fechaFin)}
+                className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Zona */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                Zona / Parroquia
+              </label>
+              <select
+                name="zonaId"
+                defaultValue={evento.zonaId ? String(evento.zonaId) : ""}
+                className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">-- Sin zona --</option>
+                {zonas.map((z) => (
+                  <option key={z.id} value={z.id}>
+                    {z.nombre} ({z.tipo})
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Descripción a todo el ancho */}
-            <div className="lg:col-span-3">
+            <div className="sm:col-span-2">
               <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
-                Descripción
+                Descripción Completa <span className="text-red-500">*</span>
               </label>
               <textarea
                 name="descripcion"
@@ -408,6 +441,24 @@ export function EventoAdminRow({
                 className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-y"
               />
             </div>
+          </div>
+
+          {/* Sección de Multimedia Completa (Imágenes/Afiches + Videos de redes) */}
+          <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+            <MultiMediaUploader
+              imagenes={imagenes}
+              onImagenesChange={setImagenes}
+              videoUrls={videoUrls}
+              onVideoUrlsChange={setVideoUrls}
+            />
+          </div>
+
+          {/* Sección de Patrocinadores y Auspiciantes */}
+          <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+            <PatrocinadoresUploader
+              patrocinadores={patrocinadores}
+              onChange={setPatrocinadores}
+            />
           </div>
 
           {/* Botones de acción formulario */}
@@ -422,7 +473,7 @@ export function EventoAdminRow({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2 text-sm font-bold text-white shadow-md hover:from-purple-700 hover:to-indigo-700 disabled:opacity-60 transition-all flex items-center gap-2"
+              className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:from-purple-700 hover:to-indigo-700 disabled:opacity-60 transition-all flex items-center gap-2"
             >
               {saving ? "Guardando..." : "💾 Guardar Cambios"}
             </button>

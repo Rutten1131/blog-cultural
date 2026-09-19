@@ -47,6 +47,8 @@ export function CategoryHeaderClient({
     tituloH1 = `Veranstaltungen für ${nombreCategoria} in Loja`;
   } else if (locale === "pt") {
     tituloH1 = `Eventos de ${nombreCategoria} em Loja`;
+  } else if (locale === "ko") {
+    tituloH1 = `로하 ${nombreCategoria} 행사 및 축제`;
   }
 
   return (

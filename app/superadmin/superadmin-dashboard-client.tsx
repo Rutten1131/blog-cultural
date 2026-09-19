@@ -21,6 +21,7 @@ export interface ChatSessionData {
   ubicacionLat: number | null;
   ubicacionLng: number | null;
   zonaDetectada: string | null;
+  direccionDetallada?: string | null;
   ciudad: string | null;
   provincia: string | null;
   pais: string | null;
@@ -32,9 +33,17 @@ export interface ChatSessionData {
   mensajes: ChatMessageData[];
 }
 
+export interface RecomendacionItem {
+  id: number;
+  mensaje: string;
+  contacto: string | null;
+  createdAt: Date;
+}
+
 interface Props {
   initialAliados: AliadoItem[];
   initialSessions: ChatSessionData[];
+  initialRecomendaciones?: RecomendacionItem[];
   stats: {
     total: number;
     conUbicacion: number;
@@ -42,9 +51,14 @@ interface Props {
   };
 }
 
-type Tab = "aliados" | "crm";
+type Tab = "aliados" | "crm" | "buzon";
 
-export function SuperAdminDashboardClient({ initialAliados, initialSessions, stats }: Props) {
+export function SuperAdminDashboardClient({
+  initialAliados,
+  initialSessions,
+  initialRecomendaciones = [],
+  stats,
+}: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("crm");
 
   const handleLogout = async () => {
@@ -52,9 +66,10 @@ export function SuperAdminDashboardClient({ initialAliados, initialSessions, sta
     window.location.href = "/superadmin/login";
   };
 
-  const tabs: { id: Tab; label: string; emoji: string }[] = [
+  const tabs: { id: Tab; label: string; emoji: string; count?: number }[] = [
     { id: "crm", label: "CRM Chatbot", emoji: "📊" },
-    { id: "aliados", label: "Aliados Comerciales", emoji: "🤝" },
+    { id: "aliados", label: "Aliados Comerciales", emoji: "🤝", count: initialAliados.length },
+    { id: "buzon", label: "Buzón de Sugerencias", emoji: "📬", count: initialRecomendaciones.length },
   ];
 
   return (
@@ -97,6 +112,15 @@ export function SuperAdminDashboardClient({ initialAliados, initialSessions, sta
             >
               <span>{tab.emoji}</span>
               {tab.label}
+              {typeof tab.count === "number" && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                  activeTab === tab.id
+                    ? "bg-purple-500/20 text-purple-300"
+                    : "bg-zinc-800 text-zinc-400"
+                }`}>
+                  {tab.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -109,6 +133,57 @@ export function SuperAdminDashboardClient({ initialAliados, initialSessions, sta
         )}
         {activeTab === "aliados" && (
           <AdminAliados initialAliados={initialAliados} />
+        )}
+        {activeTab === "buzon" && (
+          <div className="space-y-6 animate-fadeIn">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                <span>📬</span> Buzón de Sugerencias ({initialRecomendaciones.length})
+              </h2>
+              <p className="text-sm text-zinc-400 mt-1">
+                Aportes, opiniones y recomendaciones enviadas libremente por la comunidad desde la web.
+              </p>
+            </div>
+
+            {initialRecomendaciones.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/40 p-12 text-center">
+                <p className="text-sm text-zinc-400">
+                  Aún no se han recibido sugerencias desde el buzón de la web.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {initialRecomendaciones.map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 shadow-sm flex flex-col justify-between"
+                  >
+                    <p className="text-sm text-zinc-200 whitespace-pre-line leading-relaxed mb-4">
+                      &ldquo;{rec.mensaje}&rdquo;
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-zinc-500 pt-3 border-t border-zinc-800">
+                      <span>
+                        {rec.contacto ? (
+                          <span className="text-zinc-300 font-semibold">
+                            👤 {rec.contacto}
+                          </span>
+                        ) : (
+                          <span className="italic text-zinc-500">Anónimo</span>
+                        )}
+                      </span>
+                      <span>
+                        {new Date(rec.createdAt).toLocaleDateString("es-EC", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </main>
     </div>

@@ -80,12 +80,16 @@ Ubicado en el frontend global mediante el componente `components/ChatbotWidget.t
 
 ### 4.2 Arquitectura RAG del Chatbot (`/api/chat`)
 - Recibe el array de mensajes, `sessionId` (persistido en `localStorage`) y `ubicacion`.
+- **Motor de Clasificación y Extracción Semántica:**
+  - Extrae intenciones de búsqueda: temporalidad (hoy, rango de fechas, histórico/pasados) y palabras clave temáticas (ej: "rock", "teatro", "infantil", "feria", etc.).
+  - Realiza consultas multivariables a la base de datos (Prisma/MySQL) sobre `nombre`, `descripcion` y `lugar`.
 - Inyecta en el prompt del sistema:
   - Fecha y hora actual en Ecuador (`America/Guayaquil`).
   - Ubicación geográfica detectada del usuario (`lat`/`lng` + zona textual).
-  - Eventos aprobados vigentes o filtrados por la fecha solicitada.
+  - **Estado temporal explícito de cada evento:** Clasificado como `¡HOY!`, `PRÓXIMO` o `FINALIZADO / PASADO` para que el bot pueda dar resúmenes cronológicos precisos sin alucinar.
   - **Cálculo de Proximidad Inteligente (Fórmula Haversine):** Compara la ubicación del usuario con las coordenadas `ubicacionLat`/`ubicacionLng` de cada aliado comercial registrado, ordenándolos por cercanía y especificando la distancia exacta (ej. *"a 320 metros de distancia"* o *"a 1.8 km"*).
   - Catálogo de Atractivos Cantonales (turismo cruzado B2G).
+  - **Regla Estricta Anti-Alucinación:** Si el usuario consulta por un género o tema inexistente en la cartelera, la IA tiene instrucción imperativa de aclarar con honestidad que no hay eventos de ese tipo programados y ofrecer alternativas reales vigentes.
 - Devuelve respuesta conversacional formateada + tarjetas interactivas de eventos, aliados comerciales (con botones de WhatsApp/Web/Google Maps) y rutas turísticas.
 - En background (asíncrono sin retrasar la respuesta al cliente), almacena o actualiza la sesión en `chat_sessions` y registra los mensajes en `chat_messages`.
 
@@ -147,7 +151,9 @@ Ecuador continental es **UTC-5 todo el año** (`America/Guayaquil`).
 - **`chat_sessions`**:
   - `id`, `sessionId` (VarChar 64, UNIQUE).
   - `ubicacionLat`, `ubicacionLng` (coordenadas GPS del usuario).
-  - `zonaDetectada`, `ciudad`, `provincia`, `pais`.
+  - `zonaDetectada` (barrio/parroquia amigable para el frontend).
+  - `direccionDetallada` (dirección física detallada/completa para auditoría en SuperAdmin).
+  - `ciudad`, `provincia`, `pais`.
   - `userAgent`, `ipAddress`, `totalMensajes`.
   - `createdAt`, `updatedAt`.
 - **`chat_messages`**:

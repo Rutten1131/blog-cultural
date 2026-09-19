@@ -1,4 +1,4 @@
-export type Locale = "es" | "en" | "fr" | "de" | "pt";
+export type Locale = "es" | "en" | "fr" | "de" | "pt" | "ko";
 
 export const LOCALES: { code: Locale; name: string; flag: string; nativeName: string }[] = [
   { code: "es", name: "Español", flag: "🇪🇸", nativeName: "Español" },
@@ -6,6 +6,7 @@ export const LOCALES: { code: Locale; name: string; flag: string; nativeName: st
   { code: "fr", name: "Francés", flag: "🇫🇷", nativeName: "Français" },
   { code: "de", name: "Alemán", flag: "🇩🇪", nativeName: "Deutsch" },
   { code: "pt", name: "Portugués", flag: "🇧🇷", nativeName: "Português" },
+  { code: "ko", name: "Coreano", flag: "🇰🇷", nativeName: "한국어" },
 ];
 
 export const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
@@ -919,5 +920,187 @@ export const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
 
     // Common
     "common.volver_inicio": "Voltar ao início",
+  },
+
+  ko: {
+    // Navbar
+    "nav.inicio": "홈",
+    "nav.arte": "예술",
+    "nav.teatro": "연극",
+    "nav.musica": "음악",
+    "nav.ferias": "박람회 & 마켓",
+    "nav.artes_vivas": "공연예술",
+    "nav.sobre_proyecto": "프로젝트 소개",
+    "nav.publicar": "+ 행사 등록하기",
+    "nav.menu": "메뉴",
+    "nav.idioma": "언어",
+
+    // Hero Principal Home
+    "hero.eyebrow": "에콰도르 로하에서 펼쳐지는 문화와 예술",
+    "hero.h1_prefix": "로하에서",
+    "hero.h1_suffix": "무엇을 할까요?",
+    "hero.subtitulo": "도시의 다양한 행사, 예술 및 문화 활동을 만나보세요",
+    "hero.btn_ver_todos": "모든 행사 보기",
+    "hero.btn_publicar": "행사 등록하기",
+    "hero.destacado": "추천",
+    "hero.ver_calendario": "캘린더 보기",
+
+    // Secciones Home
+    "section.ultimos_eyebrow": "최근 등록된 행사",
+    "section.ultimos_titulo": "로하의 최신 예술 & 문화 행사",
+    "section.buscar_placeholder": "행사명, 장소 또는 아티스트 검색...",
+    "section.proximos_titulo": "예정된 주요 행사",
+    "section.ver_mas": "행사 더보기",
+    "section.agenda_fecha": "날짜별 일정",
+    "section.eventos_encontrados": "개의 행사 발견",
+
+    // Chatbot Widget
+    "chat.tooltip": "로하 여행, 즐길 거리나 숙소를 찾으시나요?",
+    "chat.btn_label": "로하에서 뭐하지?",
+    "chat.title": "로하 문화 & 여행 가이드",
+    "chat.subtitle": "관광, 문화 일정 & 추천 제휴처",
+    "chat.welcome": "안녕하세요! 👋 로하에 오신 것을 환영합니다. 도시 내 가볼 만한 곳, 문화 공간, 자연 탐방 코스 및 추천 숙소에 대해 무엇이든 물어보세요.",
+    "chat.placeholder": "활동이나 숙소에 대해 질문해 보세요...",
+    "chat.sug_hospedaje": "🏨 로하에서 추천하는 숙소는 어디인가요?",
+    "chat.sug_naturaleza": "🌿 근교 자연 명소 추천",
+    "chat.sug_hoy": "🎭 오늘 로하에서 무엇을 할 수 있나요?",
+    "chat.sug_cafe": "☕ 맛있는 로하 커피를 마실 수 있는 카페는?",
+
+    // Evento Detalle & Comunes
+    "common.ver_evento": "행사 보기",
+    "common.ver_mas": "더보기",
+    "common.hoy": "오늘",
+    "common.este_fin_de_semana": "이번 주말",
+    "common.gratis": "무료 입장",
+    "common.como_llegar": "길 찾기",
+    "common.compartir": "행사 공유하기",
+    "common.copiado": "링크가 복사되었습니다!",
+    "common.organizador": "주최 / 주관",
+    "common.lugar": "장소 / 공간",
+    "common.fecha": "일시",
+    "common.fecha_inicio": "시작일",
+    "common.fecha_fin": "종료일",
+    "common.categoria": "카테고리",
+    "common.zona": "지역 / 교구",
+    "common.cargando_traduccion": "AI 번역 진행 중...",
+    "common.original_es": "스페인어 원문 보기",
+    "common.traducido_por_ia": "AI 문화 맞춤 번역",
+    "common.volver": "돌아가기",
+    "common.contacto_whatsapp": "WhatsApp으로 문의하기",
+    "common.recomendar": "피드백 보내기",
+    "common.sin_eventos": "현재 이 섹션에 예정된 행사가 없습니다.",
+
+    // Ticker marquee
+    "ticker.arte": "예술 & 전시",
+    "ticker.teatro": "연극",
+    "ticker.musica": "음악",
+    "ticker.ferias": "박람회 & 축제",
+    "ticker.artes_vivas": "공연예술",
+    "ticker.danza": "무용",
+    "ticker.cine": "영화",
+    "ticker.literatura": "문학",
+    "ticker.patrimonio": "문화유산",
+    "ticker.talleres": "문화 워크숍",
+
+    // Explorar por Categorías
+    "home.explorar_disciplinas": "분야 & 예술 공간",
+    "home.explorar_titulo": "카테고리별 탐색",
+    "home.ver_agenda": "일정 보기",
+    "home.descubre_loja": "로하의 다채로운 문화 소식을 확인하세요",
+    "home.eventos_actividades": "도시 곳곳의 행사, 예술 및 문화 활동",
+
+    // Nombres de categorías
+    "cat.arte": "예술 & 전시",
+    "cat.teatro": "연극",
+    "cat.musica": "음악",
+    "cat.ferias": "박람회",
+    "cat.artes_vivas": "공연예술",
+
+    // SeccionCategoria — H2 SEO
+    "scat.h2.arte": "로하에는 어떤 미술 전시와 예술 행사가 있나요?",
+    "scat.h2.teatro": "로하에서 공연 중인 연극과 무대 행사는 무엇인가요?",
+    "scat.h2.musica": "로하에서 어떤 콘서트와 음악 공연이 열리나요?",
+    "scat.h2.ferias": "로하에서 열리는 문화 박람회와 축제는 무엇인가요?",
+    "scat.h2.artes_vivas": "로하 공연예술 축제 및 무대 표현 행사는 무엇인가요?",
+
+    // SeccionCategoria — SEO
+    "scat.seo.arte": "로하에서 일반에 개방된 회화, 사진, 조각 전시회와 아트 갤러리를 둘러보세요.",
+    "scat.seo.teatro": "로하 극장에서 펼쳐지는 연극, 마이크로 연극, 드라마 공연 일정을 확인하세요.",
+    "scat.seo.musica": "로하의 라이브 콘서트, 오케스트라 연주회, 음악 페스티벌 및 어쿠스틱 세션을 즐겨보세요.",
+    "scat.seo.ferias": "로하의 전통 공예 마켓, 문화 박람회, 미식 축제와 장터를 만나보세요.",
+    "scat.seo.artes_vivas": "로하 거리와 무대에서 펼쳐지는 국내외 공연예술, 무용, 마임, 퍼포먼스를 경험하세요.",
+    "scat.ver_todo": "전체 보기:",
+    "scat.sin_eventos": "현재 이 카테고리에 등록된 행사가 없습니다.",
+
+    // Footer
+    "footer.descripcion": "로하 공식 문화 행사 디렉토리. 미술, 연극, 음악, 박람회 및 공연예술을 한곳에서 만나보세요.",
+    "footer.categorias": "카테고리",
+    "footer.info": "로하 문화 아젠다",
+    "footer.info_desc": "에콰도르 로하의 최고의 문화 활동, 전시회, 연극, 콘서트를 발견해 보세요.",
+    "footer.sobre": "프로젝트 소개",
+    "footer.publicar": "행사 등록하기",
+    "footer.creditos": "제작 및 기술 개발:",
+
+    // Buzón
+    "buzon.badge": "✨ 커뮤니티 검증 단계",
+    "buzon.titulo": "로하 문화 아젠다를 위한 제안이나 의견이 있으신가요?",
+    "buzon.desc": "현재 플랫폼 검증 단계입니다. 보내주시는 소중한 의견은 우리 도시의 더 나은 문화 플랫폼을 만드는 데 큰 힘이 됩니다.",
+    "buzon.btn_abrir": "✍️ 제안 남기기",
+    "buzon.label_mensaje": "어떤 기능이나 정보가 추가되면 좋을까요?",
+    "buzon.placeholder_mensaje": "예: 근교 교구 행사나 어린이 연극 일정도 더 자주 보고 싶어요...",
+    "buzon.label_contacto": "성함 또는 연락처",
+    "buzon.opcional": "(선택사항)",
+    "buzon.placeholder_contacto": "성함, WhatsApp 또는 이메일",
+    "buzon.btn_enviar": "제안 보내기",
+    "buzon.enviando": "전송 중...",
+    "buzon.cancelar": "취소",
+    "cat.header_badge": "문화 카테고리",
+    "cat.proximos": "예정된 행사",
+    "cat.total": "총",
+    "section.proximos_cartelera": "예정된 주요 행사 (오늘 및 향후 일정)",
+    "cat.ver_todas_categorias": "모든 카테고리 보기",
+    "buzon.gracias": "소중한 의견 감사합니다! 운영팀에 잘 전달되었습니다.",
+
+    // Detalle de evento
+    "nav.todos_eventos": "행사",
+    "zona.urbana": "도시 교구",
+    "zona.rural": "시외 교구",
+    "evento.varios_dias": "다일정 행사",
+    "evento.fecha_hora": "일시",
+    "evento.fecha_inicio": "시작일",
+    "evento.fecha_fin": "종료일",
+    "evento.lugar": "장소 / 공간",
+    "evento.organizador": "주최자 / 주관사",
+    "evento.zona_parroquial": "교구 지역",
+    "evento.sobre_este_evento": "행사 소개",
+    "evento.patrocinadores": "후원 및 지원:",
+    "evento.ubicacion_titulo": "행사 위치 안내",
+    "evento.abrir_maps": "Google 지도에서 열기",
+    "evento.otros_interesar": "관심 가질 만한 다른 행사",
+
+    // Archivo cultural / EventosPasadosList
+    "archivo.eyebrow": "문화 아카이브",
+    "archivo.item": "기록",
+    "archivo.item_plural_suffix": "개",
+    "archivo.buscar_placeholder": "지난 아카이브 검색...",
+    "archivo.sin_resultados": "해당 검색어와 일치하는 지난 행사가 없습니다.",
+    "archivo.mostrar_menos": "접기",
+
+    // Página /eventos
+    "eventos_page.breadcrumb_todos": "모든 행사",
+    "eventos_page.titulo": "문화 일정 및 캘린더",
+    "eventos_page.proximos_desc": "예정된 {n}개의 행사를 둘러보거나 인터랙티브 캘린더에서 날짜를 선택하세요.",
+    "eventos_page.sin_proximos": "현재 예정된 행사가 없습니다.",
+    "eventos_page.seccion_proximos": "예정된 행사 (오늘 및 향후 일정)",
+    "eventos_page.sin_proximos_msg": "오늘 또는 향후 일정으로 예정된 행사가 없습니다.",
+    "eventos_page.pasados_titulo": "로하에서 이전에 열린 문화 행사",
+    "eventos_page.pasados_subtitulo": "도시에서 성황리에 종료된 공연, 워크숍, 축제의 역사적 기록입니다.",
+
+    // Zona page
+    "zona.parroquia_urbana": "도시 교구",
+    "zona.parroquia_rural": "시외 교구",
+
+    // Common
+    "common.volver_inicio": "홈으로 돌아가기",
   },
 };

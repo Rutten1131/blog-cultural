@@ -199,6 +199,7 @@ model ChatSession {
   ubicacionLat     Float?
   ubicacionLng     Float?
   zonaDetectada    String?  @db.VarChar(150)
+  direccionDetallada String? @db.VarChar(500)
   ciudad           String?  @db.VarChar(100)
   provincia        String?  @db.VarChar(100)
   pais             String?  @db.VarChar(50)

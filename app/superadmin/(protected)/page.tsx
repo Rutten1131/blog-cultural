@@ -35,6 +35,12 @@ export default async function SuperAdminPage() {
     .filter((z: any) => z.zonaDetectada)
     .map((z: any) => ({ zona: z.zonaDetectada as string, count: z._count.zonaDetectada as number }));
 
+  // Cargar buzón de sugerencias
+  const recomendaciones = await prisma.recomendacion.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
   return (
     <SuperAdminDashboardClient
       initialAliados={aliados.map((a: any) => ({
@@ -55,6 +61,7 @@ export default async function SuperAdminPage() {
         ubicacionLat: s.ubicacionLat ?? null,
         ubicacionLng: s.ubicacionLng ?? null,
         zonaDetectada: s.zonaDetectada ?? null,
+        direccionDetallada: s.direccionDetallada ?? null,
         ciudad: s.ciudad ?? null,
         provincia: s.provincia ?? null,
         pais: s.pais ?? null,
@@ -68,6 +75,7 @@ export default async function SuperAdminPage() {
         })),
       }))}
       stats={{ total: totalSessions, conUbicacion, zonasFrecuentes }}
+      initialRecomendaciones={recomendaciones}
     />
   );
 }

@@ -27,27 +27,53 @@ export async function POST(req: NextRequest) {
     const data = await res.json();
     const addr = data.address || {};
 
-    // Extraer los campos que nos interesan
+    // 1. Extraer ciudad / cantón
     const ciudad =
-      addr.city || addr.town || addr.village || addr.county || addr.state_district || "Loja";
+      addr.city || addr.town || addr.village || addr.municipality || addr.county || "Loja";
     const provincia = addr.state || "Loja";
     const pais = addr.country || "Ecuador";
 
-    // Zona más específica posible para orientar al chatbot
-    const zona =
+    // 2. Extraer barrio, sector o parroquia (sin nombres de calles como "10 de Agosto", "Bolívar", etc.)
+    // En OpenStreetMap:
+    // suburb = parroquia / sector urbano grande (ej: El Sagrario, Sucre, San Sebastián)
+    // neighbourhood / quarter = barrio (ej: Zamora Huayco, Las Palmas, Jipiro, Clodoveo)
+    // residential = zona residencial
+    let zonaLimpia =
       addr.suburb ||
       addr.neighbourhood ||
       addr.quarter ||
       addr.city_district ||
       addr.district ||
-      ciudad;
+      addr.residential ||
+      "";
+
+    // Si la zona detectada contiene términos de calle o números que OpenStreetMap a veces confunde con un barrio,
+    // o si está vacía, derivamos una zona amigable
+    if (!zonaLimpia || /^(calle|av|avenida|pasaje|\d+)/i.test(zonaLimpia.trim())) {
+      // Intentar parroquia o sector administrativo
+      if (addr.city_district && !/^(calle|av|\d+)/i.test(addr.city_district)) {
+        zonaLimpia = addr.city_district;
+      } else if (addr.suburb && !/^(calle|av|\d+)/i.test(addr.suburb)) {
+        zonaLimpia = addr.suburb;
+      } else {
+        // Si no se encuentra un barrio específico, colocar la ciudad/cantón o sector céntrico
+        zonaLimpia = ciudad === "Loja" ? "Loja (Sector Urbano)" : ciudad;
+      }
+    }
+
+    // Limpieza cosmética: si dice "Parroquia Sucre" -> "Sucre", etc.
+    zonaLimpia = zonaLimpia.replace(/^parroquia\s+/i, "").trim();
+
+    // Dirección detallada completa para auditoría técnica en SuperAdmin (calle, numeración, etc.)
+    const direccionDetallada = data.display_name || `${zonaLimpia}, ${ciudad}, ${provincia}`;
 
     return NextResponse.json({
       ciudad,
       provincia,
       pais,
-      zona,
-      displayName: data.display_name || `${ciudad}, ${provincia}`,
+      zona: zonaLimpia,
+      direccionDetallada,
+      displayName: direccionDetallada,
     });
   } catch (err: any) {
     console.error("[geo-decode] Error:", err.message);

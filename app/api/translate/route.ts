@@ -24,6 +24,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
   fr: "French (Français)",
   de: "German (Deutsch)",
   pt: "Portuguese (Português)",
+  ko: "Korean (한국어)",
 };
 
 export async function POST(req: NextRequest) {

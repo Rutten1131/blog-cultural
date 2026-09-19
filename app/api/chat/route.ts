@@ -47,7 +47,24 @@ function extraerRangoFecha(query: string): { desde: Date; hasta: Date; etiqueta:
     return { desde, hasta, etiqueta: "este fin de semana" };
   }
 
-  if (q.includes("esta semana") || (q.includes("semana") && !q.includes("fin de semana"))) {
+  if (q.includes("esta semana")) {
+    const desde = startOfDayEcuador(hoy);
+    const hasta = new Date(desde);
+    hasta.setDate(hasta.getDate() + 7);
+    hasta.setHours(23, 59, 59, 999);
+    return { desde, hasta, etiqueta: "esta semana" };
+  }
+
+  if (q.includes("proxima semana") || q.includes("próxima semana") || q.includes("la otra semana") || q.includes("siguiente semana")) {
+    const desde = startOfDayEcuador(hoy);
+    desde.setDate(desde.getDate() + 7);
+    const hasta = new Date(desde);
+    hasta.setDate(hasta.getDate() + 7);
+    hasta.setHours(23, 59, 59, 999);
+    return { desde, hasta, etiqueta: "la próxima semana" };
+  }
+
+  if (q.includes("semana") && !q.includes("fin de semana") && !q.includes("finde")) {
     const desde = startOfDayEcuador(hoy);
     const hasta = new Date(desde);
     hasta.setDate(hasta.getDate() + 7);
@@ -94,6 +111,41 @@ function extraerRangoFecha(query: string): { desde: Date; hasta: Date; etiqueta:
   return null;
 }
 
+function extraerIntencionBusqueda(query: string) {
+  const q = query.toLowerCase();
+
+  // Detección de temporalidad especial
+  const quierePasados =
+    q.includes("pasad") || q.includes("anteriore") || q.includes("hubo") ||
+    q.includes("ayer") || q.includes("historial") || q.includes("archivo");
+
+  const quiereHoy =
+    q.includes("hoy") || q.includes("esta noche") || q.includes("ahora") ||
+    q.includes("en este momento");
+
+  // Extracción de palabras clave de temática / género / lugar
+  // Quitamos stopwords y palabras genéricas del chat
+  const stopwords = new Set([
+    "hay", "algo", "de", "un", "una", "unos", "unas", "el", "la", "los", "las",
+    "en", "para", "por", "con", "que", "qué", "donde", "dónde", "cuando", "cuándo",
+    "cual", "cuál", "como", "cómo", "evento", "eventos", "actividad", "actividades",
+    "hacer", "puedo", "podemos", "ir", "recomiendas", "recomiéndame", "dime", "cuenta",
+    "sobre", "hola", "buenas", "buenos", "dias", "días", "tardes", "noches", "porfavor",
+    "favor", "este", "esta", "estos", "estas", "mes", "semana", "dia", "día", "loja"
+  ]);
+
+  const palabras = q
+    .replace(/[^a-záéíóúñ0-9\s]/gi, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !stopwords.has(w));
+
+  return {
+    quierePasados,
+    quiereHoy,
+    palabrasClave: palabras,
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -105,6 +157,7 @@ export async function POST(req: NextRequest) {
         lng: number;
         ciudad?: string;
         zona?: string;
+        direccionDetallada?: string;
         provincia?: string;
         pais?: string;
       };
@@ -130,6 +183,7 @@ export async function POST(req: NextRequest) {
           ubicacionLat: ubicacion?.lat ?? null,
           ubicacionLng: ubicacion?.lng ?? null,
           zonaDetectada: ubicacion?.zona ?? null,
+          direccionDetallada: ubicacion?.direccionDetallada ?? null,
           ciudad: ubicacion?.ciudad ?? null,
           provincia: ubicacion?.provincia ?? null,
           pais: ubicacion?.pais ?? null,
@@ -142,6 +196,7 @@ export async function POST(req: NextRequest) {
             ubicacionLat: ubicacion.lat,
             ubicacionLng: ubicacion.lng,
             zonaDetectada: ubicacion.zona ?? null,
+            ...(ubicacion.direccionDetallada ? { direccionDetallada: ubicacion.direccionDetallada } : {}),
             ciudad: ubicacion.ciudad ?? null,
             provincia: ubicacion.provincia ?? null,
             pais: ubicacion.pais ?? null,
@@ -161,28 +216,141 @@ export async function POST(req: NextRequest) {
       }).catch(() => {/* fail silently */});
     }
 
-    const aliados = await prisma.aliado.findMany({
-      where: { activo: true },
-      orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
-      take: 6,
-    });
-
-    const atractivos = await prisma.atractivoCantonal.findMany({
-      where: { activo: true },
-      take: 6,
-    });
-
     const ahora = nowEcuador();
+    const hoyInicio = startOfDayEcuador(ahora);
     const fechaHoyStr = ahora.toLocaleDateString("es-EC", {
       weekday: "long", year: "numeric", month: "long", day: "numeric",
     });
 
-    const rangoFecha = extraerRangoFecha(lastUserMessage);
+    // Analizar tanto el último mensaje como los mensajes anteriores para mantener contexto
+    const ultimosMensajesTexto = messages
+      .slice(-3)
+      .map((m: any) => m.content || m.text || "")
+      .join(" ");
 
-    // 1. Buscar eventos exactamente en el rango solicitado (si aplica)
-    let eventosEnFecha: any[] = [];
-    if (rangoFecha) {
-      eventosEnFecha = await prisma.evento.findMany({
+    // El rango de fecha SOLO se calcula a partir del mensaje actual del usuario (nunca se hereda accidentalmente)
+    const rangoFecha = extraerRangoFecha(lastUserMessage);
+    const intencion = extraerIntencionBusqueda(lastUserMessage);
+
+    // Detectar si el usuario hace una pregunta referencial sobre el evento recién conversado
+    // Ejemplos: "y eso de que es?", "de que se trata?", "cuentame mas", "a que hora?", "cuanto cuesta?", "donde es?"
+    const esPreguntaReferencial =
+      /(eso\s+de\s+qu[eé]|de\s+qu[eé]\s+(es|se\s+trata|trata)|cu[eé]ntame\s+m[aá]s|m[aá]s\s+informaci[oó]n|d[oó]nde\s+es|a\s+qu[eé]\s+hora|qui[eé]n(es)?\s+toca(n)?|cu[aá]nto\s+cuesta|precio|entrada|de\s+qu[eé]\s+va)/i.test(lowerUser) ||
+      (lowerUser.length < 35 && (lowerUser.includes("eso") || lowerUser.includes("trata") || lowerUser.includes("hora") || lowerUser.includes("donde") || lowerUser.includes("dónde") || lowerUser.includes("precio")));
+
+    // Si es pregunta referencial, buscar el último evento mencionado en los mensajes recientes del bot
+    let eventoEnDiscusion: any = null;
+    if (esPreguntaReferencial && messages.length > 1) {
+      const botMessages = messages.filter((m: any) => m.sender === "bot" || m.role === "assistant");
+      const ultimoBotMsg = botMessages[botMessages.length - 1];
+      const botTexto = (ultimoBotMsg?.content || ultimoBotMsg?.text || "").toLowerCase();
+
+      // Buscar eventos activos en la DB que hayan sido mencionados en el texto del bot
+      const eventosCandidatos = await prisma.evento.findMany({
+        where: { estado: "APROBADO" },
+        orderBy: { fecha: "asc" },
+        select: {
+          id: true,
+          nombre: true,
+          fecha: true,
+          lugar: true,
+          slug: true,
+          imagenUrl: true,
+          descripcion: true,
+        },
+      });
+
+      eventoEnDiscusion = eventosCandidatos.find((e) =>
+        botTexto.includes(e.nombre.toLowerCase()) ||
+        botTexto.includes(e.slug.toLowerCase()) ||
+        (e.nombre.length > 5 && lowerUser.includes(e.nombre.toLowerCase()))
+      );
+    }
+
+    // Si el último mensaje es cortito temático (ej: "y boleros?", "o musica?") y no es referencial, combinar con el hilo reciente
+    if (!esPreguntaReferencial && intencion.palabrasClave.length <= 1 && messages.length > 1) {
+      const intencionHilo = extraerIntencionBusqueda(ultimosMensajesTexto);
+      intencion.palabrasClave = Array.from(new Set([...intencion.palabrasClave, ...intencionHilo.palabrasClave]));
+    }
+
+    // ─── 1. BÚSQUEDA INTELIGENTE DE EVENTOS EN PRISMA (RAG TEMÁTICO Y TEMPORAL) ───
+    let eventosParaContexto: any[] = [];
+    let tipoBusqueda = "general";
+
+    // A. Si el usuario pregunta por eventos PASADOS / HISTÓRICOS:
+    if (intencion.quierePasados) {
+      tipoBusqueda = "pasados";
+      eventosParaContexto = await prisma.evento.findMany({
+        where: {
+          estado: "APROBADO",
+          fecha: { lt: hoyInicio },
+          ...(intencion.palabrasClave.length > 0 && {
+            OR: intencion.palabrasClave.flatMap((palabra) => [
+              { nombre: { contains: palabra } },
+              { descripcion: { contains: palabra } },
+              { lugar: { contains: palabra } },
+            ]),
+          }),
+        },
+        orderBy: { fecha: "desc" },
+        take: 6,
+        select: {
+          id: true, nombre: true, fecha: true, lugar: true,
+          slug: true, imagenUrl: true, descripcion: true,
+        },
+      });
+    }
+    // B. Si hay palabras clave temáticas (ej: "rock", "danza", "teatro", "infantil", "feria", "bolero"):
+    else if (intencion.palabrasClave.length > 0) {
+      tipoBusqueda = "tematica";
+      const filtrosOr = intencion.palabrasClave.flatMap((palabra) => [
+        { nombre: { contains: palabra } },
+        { descripcion: { contains: palabra } },
+        { lugar: { contains: palabra } },
+      ]);
+
+      // Buscar tanto eventos futuros como en el rango de fecha si fue pedido
+      eventosParaContexto = await prisma.evento.findMany({
+        where: {
+          estado: "APROBADO",
+          ...(rangoFecha
+            ? { fecha: { gte: rangoFecha.desde, lte: rangoFecha.hasta } }
+            : { fecha: { gte: hoyInicio } }),
+          OR: filtrosOr,
+        },
+        orderBy: { fecha: "asc" },
+        take: 6,
+        select: {
+          id: true, nombre: true, fecha: true, lugar: true,
+          slug: true, imagenUrl: true, descripcion: true,
+        },
+      });
+
+      // Si no hay futuros de ese tema, buscar si hubo alguno recientemente para informar al usuario
+      if (eventosParaContexto.length === 0) {
+        const eventosPasadosTema = await prisma.evento.findMany({
+          where: {
+            estado: "APROBADO",
+            fecha: { lt: hoyInicio },
+            OR: filtrosOr,
+          },
+          orderBy: { fecha: "desc" },
+          take: 3,
+          select: {
+            id: true, nombre: true, fecha: true, lugar: true,
+            slug: true, imagenUrl: true, descripcion: true,
+          },
+        });
+        if (eventosPasadosTema.length > 0) {
+          tipoBusqueda = "tematica_pasada";
+          eventosParaContexto = eventosPasadosTema;
+        }
+      }
+    }
+    // C. Si preguntó por un rango de fecha específico (ej: "el 15 de octubre", "este fin de semana"):
+    else if (rangoFecha) {
+      tipoBusqueda = "rango_fecha";
+      eventosParaContexto = await prisma.evento.findMany({
         where: {
           estado: "APROBADO",
           fecha: { gte: rangoFecha.desde, lte: rangoFecha.hasta },
@@ -196,40 +364,51 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. Buscar eventos futuros generales desde hoy
-    let eventosGenerales = await prisma.evento.findMany({
-      where: {
-        estado: "APROBADO",
-        fecha: { gte: startOfDayEcuador(ahora) },
-      },
-      orderBy: { fecha: "asc" },
-      take: 6,
-      select: {
-        id: true, nombre: true, fecha: true, lugar: true,
-        slug: true, imagenUrl: true, descripcion: true,
-      },
-    });
-
-    if (eventosGenerales.length === 0) {
-      eventosGenerales = await prisma.evento.findMany({
-        where: { estado: "APROBADO" },
-        orderBy: { fecha: "desc" },
+    // D. Si no hubo resultados temáticos o no hubo búsqueda específica, traer próximos eventos vigentes
+    if (eventosParaContexto.length === 0 && !rangoFecha && !intencion.quierePasados) {
+      tipoBusqueda = "general";
+      eventosParaContexto = await prisma.evento.findMany({
+        where: {
+          estado: "APROBADO",
+          fecha: { gte: hoyInicio },
+        },
+        orderBy: { fecha: "asc" },
         take: 6,
         select: {
           id: true, nombre: true, fecha: true, lugar: true,
           slug: true, imagenUrl: true, descripcion: true,
         },
       });
+
+      // Fallback si la cartelera futura estuviese vacía
+      if (eventosParaContexto.length === 0) {
+        eventosParaContexto = await prisma.evento.findMany({
+          where: { estado: "APROBADO" },
+          orderBy: { fecha: "desc" },
+          take: 6,
+          select: {
+            id: true, nombre: true, fecha: true, lugar: true,
+            slug: true, imagenUrl: true, descripcion: true,
+          },
+        });
+      }
     }
 
-    // Eventos a considerar para contexto
-    const eventosParaContexto = rangoFecha
-      ? (eventosEnFecha.length > 0 ? eventosEnFecha : [])
-      : eventosGenerales;
+    // ─── 2. OBTENCIÓN DE ALIADOS Y ATRACTIVOS ───
+    const aliados = await prisma.aliado.findMany({
+      where: { activo: true },
+      orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
+      take: 8,
+    });
 
-    // Función para calcular distancia en km usando Haversine
+    const atractivos = await prisma.atractivoCantonal.findMany({
+      where: { activo: true },
+      take: 6,
+    });
+
+    // Función Haversine para distancia GPS
     const calcularDistanciaKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-      const R = 6371; // Radio de la Tierra en km
+      const R = 6371; // km
       const dLat = (lat2 - lat1) * (Math.PI / 180);
       const dLon = (lon2 - lon1) * (Math.PI / 180);
       const a =
@@ -258,114 +437,124 @@ export async function POST(req: NextRequest) {
           a.ubicacionLng
         );
         if (distanciaKm < 1) {
-          distanciaTexto = ` | 📍 DISTANCIA AL USUARIO: a ${(distanciaKm * 1000).toFixed(0)} metros de distancia (¡MUY CERCA!)`;
+          distanciaTexto = ` | DISTANCIA GPS: a ${(distanciaKm * 1000).toFixed(0)} metros (¡MUY CERCA!)`;
         } else {
-          distanciaTexto = ` | 📍 DISTANCIA AL USUARIO: a ${distanciaKm.toFixed(1)} km de distancia`;
+          distanciaTexto = ` | DISTANCIA GPS: a ${distanciaKm.toFixed(1)} km`;
         }
       }
-      return {
-        ...a,
-        distanciaKm,
-        distanciaTexto,
-      };
+      return { ...a, distanciaKm, distanciaTexto };
     });
 
-    // Si el usuario tiene ubicación, ordenar los aliados por cercanía
+    // Ordenar aliados por cercanía al usuario
     if (ubicacion?.lat && ubicacion?.lng) {
       aliadosConDistancia.sort((a, b) => {
-        if (a.distanciaKm !== null && b.distanciaKm !== null) {
-          return a.distanciaKm - b.distanciaKm;
-        }
+        if (a.distanciaKm !== null && b.distanciaKm !== null) return a.distanciaKm - b.distanciaKm;
         if (a.distanciaKm !== null) return -1;
         if (b.distanciaKm !== null) return 1;
         return 0;
       });
     }
 
+    // ─── 3. FORMATEO DE CONTEXTO PARA EL SYSTEM PROMPT ───
     const aliadosContexto = aliadosConDistancia
       .map(
         (a) =>
-          `[ID:${a.id}] ${a.nombre} | Tipo:${a.tipo} | Dirección:${a.ubicacion}${a.distanciaTexto} | Precio:${a.rangoPrecio || "Consultar"} | Cuartos:${a.cuartos || "Disponibles"} | Servicios:${a.servicios || "Todos"} | WhatsApp:${a.telefono || ""} | Web:${a.websiteUrl || ""} | Maps:${a.mapaUrl || ""} | Desc:${a.descripcion}`
+          `[ID:${a.id}] ${a.nombre} | Tipo:${a.tipo} | Dirección:${a.ubicacion}${a.distanciaTexto} | Precio:${a.rangoPrecio || "Consultar"} | WhatsApp:${a.telefono || ""} | Web:${a.websiteUrl || ""} | Maps:${a.mapaUrl || ""} | Servicios:${a.servicios || ""} | Desc:${a.descripcion}`
       )
       .join("\n");
 
     const atractivosContexto = atractivos
       .map(
         (at) =>
-          `[ID:${at.id}] ${at.nombre} | Cantón:${at.canton} | Dist:${at.distancia} | Ruta:${at.ruta} | Desc:${at.descripcion} | Maps:${at.mapaUrl || ""}`
+          `[ID:${at.id}] ${at.nombre} | Cantón:${at.canton} | Distancia:${at.distancia} | Ruta:${at.ruta} | Desc:${at.descripcion}`
       )
       .join("\n");
+
+    // Si hay un evento en discusión referencial, asegurarlo como prioritario en eventosParaContexto
+    if (eventoEnDiscusion && !eventosParaContexto.some((e) => e.id === eventoEnDiscusion.id)) {
+      eventosParaContexto.unshift(eventoEnDiscusion);
+      tipoBusqueda = "detalle_evento";
+    }
 
     const eventosContexto = eventosParaContexto
-      .map(
-        (e) =>
-          `[ID:${e.id}] ${e.nombre} | Fecha:${new Date(e.fecha).toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" })} | Lugar:${e.lugar} | Enlace:/eventos/${e.slug}`
-      )
+      .map((e) => {
+        const fechaEv = new Date(e.fecha);
+        let estadoTemporal = "PRÓXIMO";
+        if (fechaEv.toDateString() === ahora.toDateString()) {
+          estadoTemporal = "¡HOY!";
+        } else if (fechaEv < hoyInicio) {
+          estadoTemporal = "FINALIZADO / PASADO";
+        }
+        const horaStr = fechaEv.toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
+        return `[ID:${e.id}] ${e.nombre} | Estado:${estadoTemporal} | Fecha:${fechaEv.toLocaleDateString("es-EC", { weekday: "short", day: "numeric", month: "long", year: "numeric" })} ${horaStr} | Lugar:${e.lugar} | Descripción Completa:${(e.descripcion || e.nombre || "").slice(0, 600)} | Enlace:/eventos/${e.slug}`;
+      })
       .join("\n");
 
+    // Información de auditoría contextual para guiar al modelo
+    let guiaBusqueda = "";
+    if (eventoEnDiscusion) {
+      guiaBusqueda = `\nPREGUNTA SOBRE EVENTO ESPECÍFICO ("${eventoEnDiscusion.nombre}"):
+El usuario está preguntando de qué trata, qué es o pidiendo más detalles sobre "${eventoEnDiscusion.nombre}" que se mencionó antes.
+- Explícale amena y detalladamente de qué se trata el evento (género, música, ambiente, lugar: ${eventoEnDiscusion.lugar}).
+- NO vuelvas a repetir el listado o menú de cartelera. Responde su duda con naturalidad y amabilidad.
+- Cierra preguntando si desea saber los horarios exactos, cómo llegar o adquirir entradas.`;
+    } else if (intencion.quierePasados) {
+      guiaBusqueda = `\nCONSULTA DE HISTORIAL / PASADOS: El usuario pregunta por eventos pasados. Resúmelos muy brevemente indicando que ya finalizaron.`;
+    } else if (tipoBusqueda === "tematica" && eventosParaContexto.length > 0) {
+      guiaBusqueda = `\nRESULTADO TEMÁTICO: Se encontraron ${eventosParaContexto.length} evento(s) sobre "${intencion.palabrasClave.join(", ")}". Responde con entusiasmo, menciónalos y haz una pregunta sugerente.`;
+    } else if (tipoBusqueda === "tematica_pasada") {
+      guiaBusqueda = `\nRESULTADO TEMÁTICO: No hay eventos futuros de "${intencion.palabrasClave.join(", ")}", solo eventos pasados. Dilo cordialmente en 1 frase y sugiere los eventos vigentes disponibles preguntándole si le gustaría explorarlos.`;
+    } else if (intencion.palabrasClave.length > 0 && eventosParaContexto.length === 0) {
+      guiaBusqueda = `\nSIN COINCIDENCIAS: No hay eventos de "${intencion.palabrasClave.join(", ")}" en cartelera. Dilo con amabilidad en 1 oración clara y sugiere revisar la cartelera general o qué otro plan le gustaría.`;
+    }
+
     const detalleRango = rangoFecha
-      ? `- El usuario pregunta por: ${rangoFecha.etiqueta} (${rangoFecha.desde.toLocaleDateString("es-EC")} al ${rangoFecha.hasta.toLocaleDateString("es-EC")}).\n- EVENTOS CONFIRMADOS PARA ESA FECHA: ${eventosEnFecha.length > 0 ? eventosEnFecha.length + " evento(s) encontrado(s)." : "NINGUNO. Informa explícitamente al usuario que no hay eventos programados para ese día específico y sugiérele los próximos eventos o actividades fijas (museos, Calle Lourdes, gastronomía)."}`
+      ? `\nRANGO DE FECHA: Consulta para ${rangoFecha.etiqueta}. ${eventosParaContexto.length === 0 ? "No hay eventos para esa fecha." : ""}`
       : "";
 
-    // Contexto de ubicación del usuario (si compartió su ubicación)
     const detalleUbicacion = ubicacion?.zona
-      ? `\nUBICACIÓN REAL DEL USUARIO: El usuario se encuentra en "${ubicacion.zona}" (${ubicacion.ciudad || "Loja"}, ${ubicacion.provincia || "Loja"}, ${ubicacion.pais || "Ecuador"}). Coordenadas del usuario: [${ubicacion.lat}, ${ubicacion.lng}].
-REGLA DE CERCANÍA:
-- Se ha calculado la distancia exacta a los Aliados Comerciales registrados.
-- Cuando el usuario pregunte dónde comer, hospedarse o qué hacer, PRIORIZA Y MENCIONA los aliados más cercanos a él destacando la proximidad (ej: "A solo 300 metros de donde estás encuentras...", o "El más cercano a tu ubicación es...").
-- Adapta el lenguaje si el usuario es turista (está fuera de Loja) o si está en el centro/barrios locales.`
+      ? `\nUBICACIÓN GPS DEL USUARIO: Zona "${ubicacion.zona}" (${ubicacion.ciudad || "Loja"}). Solo si el usuario pregunta dónde comer, dormir o salir cerca, recomienda el aliado comercial más cercano.`
       : "";
 
-    const systemPrompt = `Eres el asistente virtual oficial de la "Agenda Cultural Loja" (Ecuador).
+    const systemPrompt = `Eres el asistente turístico y cultural oficial de la Agenda Cultural Loja (Ecuador).
 ${detalleUbicacion}
-
-FECHA Y HORA ACTUAL EN LOJA (Ecuador, UTC-5):
-- Hoy es: ${fechaHoyStr}
-- Usa SIEMPRE esta fecha como referencia para "hoy", "mañana", "esta semana".
 ${detalleRango}
+${guiaBusqueda}
 
-MISIÓN: Orientar con orgullo y exactitud sobre qué hacer en Loja: eventos culturales, lugares emblemáticos, gastronomía y aliados comerciales.
+FECHA ACTUAL: ${fechaHoyStr}.
 
-CONOCIMIENTO GENERAL SOBRE LOJA:
-- Puerta de la Ciudad: museo de arte, mirador y salas de exhibición.
-- Calle Lourdes: calle colonial más pintoresca, artesanías y cafeterías bohemias.
-- Parque Jipiro: arquitectura de maravillas del mundo, laguna y áreas verdes.
-- Mirador El Cisne y Parque Pucará Podocarpus: vistas panorámicas.
-- Teatro Bolívar y Teatro Benjamín Carrión: artes vivas y música sinfónica.
-- Gastronomía: Repe Lojano, Cecina Lojana, Tamal Lojano, Café de especialidad.
-- Música: cuna del FIAVL (Festival Internacional Artes Vivas de Loja), noviembre.
-
-REGLAS DE RESPUESTA:
-1. Sé conciso: máximo 2–3 oraciones entusiastas.
-2. SI EL USUARIO PREGUNTA POR UNA FECHA ESPECÍFICA:
-   - Si HAY eventos para esa fecha: inclúyelos en "eventosRecomendadosIds" y menciónalos.
-   - Si NO HAY eventos confirmados para esa fecha: DI CLARAMENTE que para esa fecha aún no hay eventos en cartelera, recomienda visitar la Calle Lourdes, Puerta de la Ciudad o Parque Jipiro, y en "eventosRecomendadosIds" pon [] (VACÍO, NO INVENTES NI PONGAS EVENTOS DE OTRAS FECHAS).
-3. ALIADO ESPECÍFICO: si nombran un hotel/restaurante concreto, pon SOLO ese ID en "aliadosRecomendadosIds" y detalla cuartos, servicios, precio, ubicación.
-4. HOSPEDAJE GENERAL: incluye 2–3 IDs de aliados en "aliadosRecomendadosIds".
-5. NATURALEZA/CANTONES: incluye IDs en "atractivosRecomendadosIds".
-6. NUNCA devuelvas "texto" vacío o con menos de 10 caracteres.
+TONO Y ESTILO DE CONVERSACIÓN (NATURAL, AMABLE Y ENGAGEMENT):
+1. EQUILIBRIO PERFECTO: Responde con calidez humana en 2 o 3 frases fluidas. No seas un robot que repite lo mismo.
+2. CONTINUIDAD CONVERSACIONAL: Si el usuario pregunta "¿y eso de qué es?" o similar, responde directamente sobre el evento en discusión explicando de qué va.
+3. CIERRE CONVERSACIONAL ACTIVO: Termina SIEMPRE con una pregunta sugerente o invitación natural para continuar la charla.
+4. RELEVANCIA TEMÁTICA:
+   - Mantente enfocado en lo que el usuario preguntó. Si pregunta por un evento, habla de ese evento.
+   - Solo sugiere hospedaje o gastronomía si el usuario lo menciona o pregunta qué hacer de noche/dónde salir.
+5. CERO ALUCINACIÓN: Solo asocia IDs de la lista EVENTOS DISPONIBLES.
+6. NO REPITAS datos obvios ni vuelvas a mandar la misma tarjeta si ya se la mostraste al usuario.
 
 ALIADOS COMERCIALES:
-${aliadosContexto || "Sin aliados registrados."}
+${aliadosContexto || "Sin aliados."}
 
 ATRACTIVOS CANTONALES:
-${atractivosContexto || "Sin atractivos registrados."}
+${atractivosContexto || "Sin atractivos."}
 
 EVENTOS DISPONIBLES:
-${eventosContexto || "Sin eventos para la consulta."}
+${eventosContexto || "Sin eventos coincidentes."}
 
-FORMATO DE RESPUESTA — SOLO JSON válido, sin markdown, sin bloques de código:
+FORMATO DE RESPUESTA — SOLO JSON válido:
 {
-  "texto": "Tu respuesta conversacional concisa...",
+  "texto": "Tu respuesta cálida, explicativa y con pregunta final...",
   "eventosRecomendadosIds": [],
   "aliadosRecomendadosIds": [],
   "atractivosRecomendadosIds": []
 }`;
 
-    const deepseekKey = process.env.DEEPSEEK_API_KEY;
     const groqKey = process.env.GROQ_API_KEY;
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
     let aiContent = "";
 
+    // Motor de IA Primario: DeepSeek (activo, funcional y con créditos)
     if (deepseekKey) {
       try {
         const dsRes = await fetch("https://api.deepseek.com/chat/completions", {
@@ -380,7 +569,7 @@ FORMATO DE RESPUESTA — SOLO JSON válido, sin markdown, sin bloques de código
               { role: "system", content: systemPrompt },
               ...messages.map((m: any) => ({
                 role: m.sender === "user" ? "user" : "assistant",
-                content: m.text || m.content || "",
+                content: m.content || m.text || "",
               })),
             ],
             response_format: { type: "json_object" },
@@ -401,6 +590,7 @@ FORMATO DE RESPUESTA — SOLO JSON válido, sin markdown, sin bloques de código
       }
     }
 
+    // Fallback secundario con Groq si DeepSeek no respondiera
     if (!aiContent && groqKey) {
       try {
         const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -415,11 +605,11 @@ FORMATO DE RESPUESTA — SOLO JSON válido, sin markdown, sin bloques de código
               { role: "system", content: systemPrompt },
               ...messages.map((m: any) => ({
                 role: m.sender === "user" ? "user" : "assistant",
-                content: m.text || m.content || "",
+                content: m.content || m.text || "",
               })),
             ],
             response_format: { type: "json_object" },
-            temperature: 0.4,
+            temperature: 0.5,
             max_tokens: 600,
           }),
         });
@@ -484,54 +674,38 @@ FORMATO DE RESPUESTA — SOLO JSON válido, sin markdown, sin bloques de código
       lowerUser.includes("parque") || lowerUser.includes("reserva") ||
       lowerUser.includes("vilcabamba") || lowerUser.includes("podocarpus");
 
-    // Heurístico si el LLM no generó texto
-    if (!parsedResult.texto || parsedResult.texto.trim().length < 10) {
+    console.log("[Chat Debug] AI Content raw length:", aiContent.length, "Parsed text:", parsedResult.texto);
+
+    // Heurístico ÚNICAMENTE si la IA falló por completo y vino vacía
+    if (!parsedResult.texto || parsedResult.texto.trim().length === 0) {
       if (esSaludo) {
-        parsedResult.texto = "¡Hola! 👋 Bienvenido a la Agenda Cultural de Loja, la capital musical del Ecuador. ¿Qué buscas? Puedo orientarte sobre eventos, lugares, gastronomía o dónde hospedarte.";
+        parsedResult.texto = "¡Hola! 👋 Bienvenido a la Agenda Cultural de Loja. ¿Qué planes o eventos buscas para hoy?";
       } else if (esHospedaje) {
-        parsedResult.texto = "Aquí tienes excelentes opciones de hospedaje en Loja con reserva directa por WhatsApp:";
+        parsedResult.texto = "Aquí tienes excelentes opciones recomendadas en Loja:";
         if (parsedResult.aliadosRecomendadosIds.length === 0) {
-          parsedResult.aliadosRecomendadosIds = aliados.slice(0, 3).map((a) => a.id);
+          parsedResult.aliadosRecomendadosIds = aliados.slice(0, 2).map((a) => a.id);
         }
-      } else if (rangoFecha) {
-        if (eventosEnFecha.length > 0) {
-          parsedResult.texto = `🎭 Para el ${rangoFecha.etiqueta} tenemos estos eventos destacados en cartelera:`;
-          parsedResult.eventosRecomendadosIds = eventosEnFecha.slice(0, 4).map((e) => e.id);
-        } else {
-          parsedResult.texto = `Para el ${rangoFecha.etiqueta} no tenemos eventos registrados en cartelera por el momento. Te recomendamos pasear por la Calle Lourdes o la Puerta de la Ciudad.`;
-          parsedResult.eventosRecomendadosIds = [];
-        }
-      } else if (esEvento) {
-        parsedResult.texto = "¡Loja vibra con su cartelera cultural! Aquí tienes los eventos destacados próximos:";
-        parsedResult.eventosRecomendadosIds = eventosGenerales.slice(0, 4).map((e) => e.id);
-      } else if (esNaturaleza) {
-        parsedResult.texto = "Loja y sus cantones son un paraíso natural. Te recomiendo estos atractivos cercanos:";
-        parsedResult.atractivosRecomendadosIds = atractivos.slice(0, 3).map((at) => at.id);
+      } else if (eventosParaContexto.length > 0) {
+        parsedResult.texto = "Aquí tienes los eventos relacionados disponibles en cartelera. ¿Te gustaría saber más detalles de alguno?";
+        parsedResult.eventosRecomendadosIds = eventosParaContexto.slice(0, 4).map((e: any) => e.id);
       } else {
-        parsedResult.texto = "¡Con gusto te ayudo! Loja tiene mucho que ofrecer: eventos culturales, lugares emblemáticos, gastronomía típica y excelentes opciones de hospedaje. ¿Qué te interesa explorar?";
+        parsedResult.texto = "Por el momento no encuentro eventos específicos para esa consulta en cartelera. ¿Te gustaría explorar otras fechas o actividades?";
       }
     }
 
-    // Regla estricta para rango de fecha:
-    if (rangoFecha) {
-      if (eventosEnFecha.length === 0) {
+    // Regla para tarjetas de eventos:
+    if (eventoEnDiscusion) {
+      // Si el usuario pregunta de qué trata o detalles de un evento ya mencionado, NO repetir las tarjetas (a menos que la IA explícitamente lo decida)
+      // Mantener lo que la IA haya decidido en eventosRecomendadosIds
+    } else if (rangoFecha) {
+      if (eventosParaContexto.length === 0) {
         // No hay eventos para esa fecha: NUNCA mostrar tarjetas de eventos de otros días
         parsedResult.eventosRecomendadosIds = [];
       } else if (parsedResult.eventosRecomendadosIds.length === 0) {
-        parsedResult.eventosRecomendadosIds = eventosEnFecha.slice(0, 4).map((e) => e.id);
+        parsedResult.eventosRecomendadosIds = eventosParaContexto.slice(0, 4).map((e: any) => e.id);
       }
-    } else if (esEvento && parsedResult.eventosRecomendadosIds.length === 0 && eventosGenerales.length > 0) {
-      parsedResult.eventosRecomendadosIds = eventosGenerales.slice(0, 4).map((e) => e.id);
-    }
-
-    if (esHospedaje && parsedResult.aliadosRecomendadosIds.length === 0) {
-      parsedResult.aliadosRecomendadosIds = aliados
-        .filter((a) => a.tipo === "HOSPEDAJE" || a.tipo === "GASTRONOMIA")
-        .slice(0, 3)
-        .map((a) => a.id);
-      if (parsedResult.aliadosRecomendadosIds.length === 0) {
-        parsedResult.aliadosRecomendadosIds = aliados.slice(0, 3).map((a) => a.id);
-      }
+    } else if (esEvento && parsedResult.eventosRecomendadosIds.length === 0 && eventosParaContexto.length > 0) {
+      parsedResult.eventosRecomendadosIds = eventosParaContexto.slice(0, 4).map((e: any) => e.id);
     }
 
     const aliadoEspecifico = aliados.find((a) =>
@@ -539,20 +713,34 @@ FORMATO DE RESPUESTA — SOLO JSON válido, sin markdown, sin bloques de código
       (a.nombre.toLowerCase().includes("gran victoria") && lowerUser.includes("victoria")) ||
       (a.nombre.toLowerCase().includes("puerta del sol") && lowerUser.includes("puerta del sol"))
     );
+
+    // Solo recomendar aliados si el usuario preguntó explícitamente por hospedaje, comida o por un aliado puntual
+    if (!esHospedaje && !aliadoEspecifico) {
+      parsedResult.aliadosRecomendadosIds = [];
+    } else if (esHospedaje && parsedResult.aliadosRecomendadosIds.length === 0) {
+      parsedResult.aliadosRecomendadosIds = aliados
+        .filter((a) => a.tipo === "HOSPEDAJE" || a.tipo === "GASTRONOMIA")
+        .slice(0, 2)
+        .map((a) => a.id);
+      if (parsedResult.aliadosRecomendadosIds.length === 0) {
+        parsedResult.aliadosRecomendadosIds = aliados.slice(0, 2).map((a) => a.id);
+      }
+    }
+
     if (aliadoEspecifico) {
       parsedResult.aliadosRecomendadosIds = [aliadoEspecifico.id];
       const textoGenerico = !parsedResult.texto || parsedResult.texto.trim().length < 20 || parsedResult.texto === "Aquí tienes la información:";
       if (textoGenerico) {
-        parsedResult.texto = `¡Excelente elección! ${aliadoEspecifico.nombre} se ubica en ${aliadoEspecifico.ubicacion}. Cuenta con ${aliadoEspecifico.cuartos || "habitaciones confortables"}, precios ${aliadoEspecifico.rangoPrecio || "a consultar"} e incluye: ${aliadoEspecifico.servicios || "servicios de calidad"}. Puedes reservar directamente por WhatsApp.`;
+        parsedResult.texto = `¡Excelente elección! ${aliadoEspecifico.nombre} se ubica en ${aliadoEspecifico.ubicacion}. Reserva directa por WhatsApp disponible.`;
       }
     }
 
     if (esNaturaleza && parsedResult.atractivosRecomendadosIds.length === 0 && atractivos.length > 0) {
-      parsedResult.atractivosRecomendadosIds = atractivos.slice(0, 3).map((at) => at.id);
+      parsedResult.atractivosRecomendadosIds = atractivos.slice(0, 2).map((at) => at.id);
     }
 
-    const poolEventos = rangoFecha ? eventosEnFecha : eventosGenerales;
-    const fullEventos = poolEventos.filter((e) =>
+    // Resolver tarjetas de eventos a mostrar a partir de los eventos analizados en el contexto
+    const fullEventos = eventosParaContexto.filter((e) =>
       parsedResult.eventosRecomendadosIds?.includes(e.id)
     );
 

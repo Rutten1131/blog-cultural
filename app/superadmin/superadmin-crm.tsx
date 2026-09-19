@@ -178,20 +178,29 @@ export function SuperAdminCRM({ sessions, stats }: Props) {
                 <div className="border-t border-zinc-800 px-5 py-4 space-y-4">
                   {/* Datos de ubicación */}
                   {session.ubicacionLat && (
-                    <div className="flex items-center gap-3 text-xs text-zinc-400 bg-zinc-800/60 rounded-xl px-4 py-3">
-                      <span className="text-lg">🗺️</span>
-                      <div>
-                        <p className="font-semibold text-zinc-300">Ubicación detectada</p>
-                        <p>{session.zonaDetectada}, {session.ciudad}, {session.provincia}, {session.pais}</p>
-                        <p className="text-zinc-600 mt-0.5">
-                          GPS: {session.ubicacionLat.toFixed(5)}, {session.ubicacionLng?.toFixed(5)}
+                    <div className="flex items-start gap-3 text-xs text-zinc-400 bg-zinc-800/60 rounded-xl px-4 py-3">
+                      <span className="text-xl mt-0.5">🗺️</span>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-emerald-400 text-sm">
+                            {session.zonaDetectada || "Zona detectada"}
+                          </p>
+                          <span className="text-zinc-500">({session.ciudad || "Loja"}, {session.provincia})</span>
+                        </div>
+                        {session.direccionDetallada && (
+                          <p className="text-zinc-300 font-mono text-[11px] bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/5">
+                            📍 <span className="text-zinc-400">Punto exacto:</span> {session.direccionDetallada}
+                          </p>
+                        )}
+                        <p className="text-zinc-500 text-[11px]">
+                          Coordenadas GPS: <span className="text-zinc-300 font-mono">{session.ubicacionLat.toFixed(5)}, {session.ubicacionLng?.toFixed(5)}</span>
                           {" · "}
                           <a
-                            href={`https://maps.google.com/maps?q=${session.ubicacionLat},${session.ubicacionLng}&z=15`}
+                            href={`https://maps.google.com/maps?q=${session.ubicacionLat},${session.ubicacionLng}&z=16`}
                             target="_blank" rel="noopener noreferrer"
-                            className="text-emerald-500 hover:text-emerald-400 underline"
+                            className="text-emerald-400 hover:text-emerald-300 font-medium underline inline-flex items-center gap-0.5"
                           >
-                            Ver en Maps
+                            Abrir en Google Maps ↗
                           </a>
                         </p>
                       </div>

@@ -5,6 +5,8 @@ import Image from "next/image";
 import { aprobarEvento, rechazarEvento, editarEvento } from "@/lib/actions/moderacionEvento";
 import { formatFechaLojaCliente } from "@/lib/fechasCliente";
 import { parseVideoUrl, extractVideoUrls } from "@/lib/mediaUtils";
+import { MultiMediaUploader } from "@/components/MultiMediaUploader";
+import { PatrocinadoresUploader, PatrocinadorItem } from "@/components/PatrocinadoresUploader";
 
 interface Categoria {
   id: number;
@@ -65,7 +67,55 @@ export function EventoCard({
 
   const [isEditing, setIsEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [previewImg, setPreviewImg] = useState<string>(evento.imagenUrl || "");
+  // Parsear imágenes multimedia iniciales
+  const getInitialImagenes = (): string[] => {
+    let list: string[] = [];
+    if (Array.isArray(evento.multimedia)) {
+      list = evento.multimedia.map(String).filter(Boolean);
+    } else if (typeof evento.multimedia === "string") {
+      try {
+        const p = JSON.parse(evento.multimedia);
+        if (Array.isArray(p)) list = p.map(String).filter(Boolean);
+      } catch {
+        if (evento.multimedia.startsWith("http")) list = [evento.multimedia];
+      }
+    }
+    if (evento.imagenUrl && !list.includes(evento.imagenUrl)) {
+      list.unshift(evento.imagenUrl);
+    }
+    return list;
+  };
+
+  // Parsear videos iniciales
+  const getInitialVideos = (): string[] => {
+    return extractVideoUrls(evento.videoUrl);
+  };
+
+  // Parsear patrocinadores iniciales
+  const getInitialPatrocinadores = () => {
+    if (!evento.patrocinadores) return [];
+    if (Array.isArray(evento.patrocinadores)) {
+      return evento.patrocinadores.filter(
+        (p: any) => p && (p.nombre?.trim() || p.logoUrl?.trim())
+      );
+    }
+    if (typeof evento.patrocinadores === "string") {
+      try {
+        const p = JSON.parse(evento.patrocinadores);
+        if (Array.isArray(p)) {
+          return p.filter(
+            (item: any) => item && (item.nombre?.trim() || item.logoUrl?.trim())
+          );
+        }
+      } catch {}
+    }
+    return [];
+  };
+
+  const [editImagenes, setEditImagenes] = useState<string[]>(getInitialImagenes);
+  const [editVideoUrls, setEditVideoUrls] = useState<string[]>(getInitialVideos);
+  const [editPatrocinadores, setEditPatrocinadores] = useState<any[]>(getInitialPatrocinadores);
+  const [editMapaUrl, setEditMapaUrl] = useState<string>((evento as any).mapaUrl || "");
 
   const [selectedCategoria, setSelectedCategoria] = useState<string>(
     evento.categoriaId ? String(evento.categoriaId) : ""
@@ -392,170 +442,156 @@ export function EventoCard({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Campos principales */}
-                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Nombre */}
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
-                      Nombre del evento
-                    </label>
+              <input type="hidden" name="multimedia" value={JSON.stringify(editImagenes)} />
+              <input type="hidden" name="videoUrl" value={JSON.stringify(editVideoUrls)} />
+              <input type="hidden" name="imagenUrl" value={editImagenes[0] || ""} />
+              <input type="hidden" name="patrocinadores" value={JSON.stringify(editPatrocinadores)} />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Nombre */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Nombre del evento <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="nombre"
+                    defaultValue={evento.nombre}
+                    required
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Lugar */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Lugar <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="lugar"
+                    defaultValue={evento.lugar}
+                    required
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Google Maps */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Ubicación Google Maps (opcional)
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm">📍</span>
                     <input
-                      type="text"
-                      name="nombre"
-                      defaultValue={evento.nombre}
-                      required
-                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      type="url"
+                      name="mapaUrl"
+                      value={editMapaUrl}
+                      onChange={(e) => setEditMapaUrl(e.target.value)}
+                      placeholder="https://maps.app.goo.gl/... o https://www.google.com/maps/..."
+                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 pl-8 pr-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
-                  </div>
-
-                  {/* Lugar */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
-                      Lugar
-                    </label>
-                    <input
-                      type="text"
-                      name="lugar"
-                      defaultValue={evento.lugar}
-                      required
-                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Gestor / Organizador */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
-                      Organizador / Gestor
-                    </label>
-                    <input
-                      type="text"
-                      name="nombreGestor"
-                      defaultValue={evento.nombreGestor}
-                      required
-                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Institución */}
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
-                      Institución / Entidad Relacionada
-                    </label>
-                    <input
-                      type="text"
-                      name="institucionRelacionada"
-                      defaultValue={evento.institucionRelacionada ?? ""}
-                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Fecha inicio */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
-                      Fecha Inicio
-                    </label>
-                    <input
-                      type="date"
-                      name="fecha"
-                      defaultValue={toLocalDateInput(evento.fecha)}
-                      required
-                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Fecha fin */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
-                      Fecha Fin (opcional)
-                    </label>
-                    <input
-                      type="date"
-                      name="fechaFin"
-                      defaultValue={toLocalDateInput(evento.fechaFin)}
-                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Categoría */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
-                      Categoría
-                    </label>
-                    <select
-                      name="categoriaId"
-                      value={selectedCategoria}
-                      onChange={(e) => setSelectedCategoria(e.target.value)}
-                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    >
-                      <option value="">-- Sin categoría --</option>
-                      {categorias.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Zona */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
-                      Zona / Parroquia
-                    </label>
-                    <select
-                      name="zonaId"
-                      value={selectedZona}
-                      onChange={(e) => setSelectedZona(e.target.value)}
-                      className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    >
-                      <option value="">-- Sin zona --</option>
-                      {zonas.map((z) => (
-                        <option key={z.id} value={z.id}>
-                          {z.nombre} ({z.tipo})
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 
-                {/* Columna derecha: Imagen */}
-                <div className="flex flex-col gap-3">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
-                    Imagen Principal
+                {/* Gestor / Organizador */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Organizador / Gestor <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative aspect-video w-full rounded-2xl overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/60 flex items-center justify-center">
-                    {previewImg ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={previewImg}
-                        alt="Previsualización"
-                        className="h-full w-full object-cover"
-                        onError={() => setPreviewImg("")}
-                      />
-                    ) : (
-                      <div className="text-center p-4 text-zinc-400">
-                        <span className="text-2xl block mb-1">🖼️</span>
-                        <span className="text-xs">Sin imagen o enlace roto</span>
-                      </div>
-                    )}
-                  </div>
                   <input
-                    type="url"
-                    name="imagenUrl"
-                    value={previewImg}
-                    onChange={(e) => setPreviewImg(e.target.value)}
-                    placeholder="https://ejemplo.com/imagen.jpg"
-                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    type="text"
+                    name="nombreGestor"
+                    defaultValue={evento.nombreGestor}
+                    required
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
-                  <p className="text-[11px] text-zinc-500">
-                    Puedes pegar un enlace directo a la imagen afiche.
-                  </p>
+                </div>
+
+                {/* Institución */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Institución / Entidad Relacionada
+                  </label>
+                  <input
+                    type="text"
+                    name="institucionRelacionada"
+                    defaultValue={evento.institucionRelacionada ?? ""}
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Fecha inicio */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Fecha Inicio <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="fecha"
+                    defaultValue={toLocalDateInput(evento.fecha)}
+                    required
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Fecha fin */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Fecha Fin (opcional)
+                  </label>
+                  <input
+                    type="date"
+                    name="fechaFin"
+                    defaultValue={toLocalDateInput(evento.fechaFin)}
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Categoría */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Categoría
+                  </label>
+                  <select
+                    name="categoriaId"
+                    value={selectedCategoria}
+                    onChange={(e) => setSelectedCategoria(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">-- Sin categoría --</option>
+                    {categorias.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Zona */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
+                    Zona / Parroquia
+                  </label>
+                  <select
+                    name="zonaId"
+                    value={selectedZona}
+                    onChange={(e) => setSelectedZona(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">-- Sin zona --</option>
+                    {zonas.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.nombre} ({z.tipo})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Descripción a ancho completo */}
-                <div className="lg:col-span-3">
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-1">
-                    Descripción Completa
+                    Descripción Completa <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     name="descripcion"
@@ -565,6 +601,24 @@ export function EventoCard({
                     className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-y"
                   />
                 </div>
+              </div>
+
+              {/* Multimedia */}
+              <div className="pt-4 border-t border-purple-200/60 dark:border-purple-800/40">
+                <MultiMediaUploader
+                  imagenes={editImagenes}
+                  onImagenesChange={setEditImagenes}
+                  videoUrls={editVideoUrls}
+                  onVideoUrlsChange={setEditVideoUrls}
+                />
+              </div>
+
+              {/* Patrocinadores */}
+              <div className="pt-4 border-t border-purple-200/60 dark:border-purple-800/40">
+                <PatrocinadoresUploader
+                  patrocinadores={editPatrocinadores}
+                  onChange={setEditPatrocinadores}
+                />
               </div>
 
               {/* Botones de guardar edición */}

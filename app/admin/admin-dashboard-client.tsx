@@ -6,7 +6,7 @@ import { EventoAdminRow } from "./evento-admin-row";
 import { AdminNotificaciones } from "./admin-notificaciones";
 import { AdminInstituciones } from "./admin-instituciones";
 import { AdminBanners, BannerHeroAdminItem } from "./admin-banners";
-import { AdminAliados, AliadoItem } from "./admin-aliados";
+import type { AliadoItem } from "./admin-aliados";
 import { logoutAdmin } from "@/lib/actions/authAdmin";
 
 interface Categoria {
@@ -100,7 +100,7 @@ export function AdminDashboardClient({
   const esSuperadmin = session.role === "SUPERADMIN";
 
   const [activeTab, setActiveTab] = useState<
-    "pendientes" | "todos" | "aliados" | "banners" | "buzon" | "notificaciones" | "instituciones"
+    "pendientes" | "todos" | "banners" | "notificaciones" | "instituciones"
   >("pendientes");
 
   // Control de acordeón único para moderar pendientes (uno a la vez)
@@ -244,29 +244,6 @@ export function AdminDashboardClient({
             </span>
           </button>
 
-          {/* Aliados Comerciales (Hoteles, Gastronomía, Patrocinadores): SOLO SUPERADMIN */}
-          {esSuperadmin && (
-            <button
-              onClick={() => setActiveTab("aliados")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                activeTab === "aliados"
-                  ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
-                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              }`}
-            >
-              <span>🤝 Aliados Comerciales</span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                  activeTab === "aliados"
-                    ? "bg-black text-amber-400"
-                    : "bg-amber-500/20 text-amber-400"
-                }`}
-              >
-                {aliados.length}
-              </span>
-            </button>
-          )}
-
           {/* Banners Hero: SOLO SUPERADMIN */}
           {esSuperadmin && (
             <button
@@ -286,29 +263,6 @@ export function AdminDashboardClient({
                 }`}
               >
                 {banners.length}
-              </span>
-            </button>
-          )}
-
-          {/* Buzón de Sugerencias: SOLO SUPERADMIN GENERAL */}
-          {esSuperadmin && (
-            <button
-              onClick={() => setActiveTab("buzon")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                activeTab === "buzon"
-                  ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
-                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              }`}
-            >
-              <span>📬 Buzón de Sugerencias</span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                  activeTab === "buzon"
-                    ? "bg-white/20 text-white"
-                    : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
-                }`}
-              >
-                {recomendaciones.length}
               </span>
             </button>
           )}
@@ -529,65 +483,7 @@ export function AdminDashboardClient({
           </div>
         )}
 
-        {/* ===================== TAB 3: BUZÓN (SOLO SUPERADMIN) ===================== */}
-        {esSuperadmin && activeTab === "buzon" && (
-          <div className="space-y-6 animate-fadeIn">
-            <div>
-              <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-                <span>📬</span> Buzón Ciudadano — Sugerencias ({recomendaciones.length})
-              </h2>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                Aportes, opiniones y recomendaciones enviadas libremente por la comunidad desde la web.
-              </p>
-            </div>
 
-            {recomendaciones.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Aún no se han recibido sugerencias desde el buzón de la web.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {recomendaciones.map((rec) => (
-                  <div
-                    key={rec.id}
-                    className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm flex flex-col justify-between"
-                  >
-                    <p className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-line leading-relaxed mb-4">
-                      &ldquo;{rec.mensaje}&rdquo;
-                    </p>
-                    <div className="flex items-center justify-between text-xs text-zinc-400 dark:text-zinc-500 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                      <span>
-                        {rec.contacto ? (
-                          <span className="text-zinc-700 dark:text-zinc-300 font-semibold">
-                            👤 {rec.contacto}
-                          </span>
-                        ) : (
-                          <span className="italic">Anónimo</span>
-                        )}
-                      </span>
-                      <span>
-                        {new Date(rec.createdAt).toLocaleDateString("es-EC", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ===================== TAB: ALIADOS COMERCIALES (SOLO SUPERADMIN) ===================== */}
-        {esSuperadmin && activeTab === "aliados" && (
-          <div className="animate-fadeIn">
-            <AdminAliados initialAliados={aliados} />
-          </div>
-        )}
 
         {/* ===================== TAB: BANNERS HERO (SOLO SUPERADMIN) ===================== */}
         {esSuperadmin && activeTab === "banners" && (
