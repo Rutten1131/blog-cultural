@@ -1,0 +1,57 @@
+{
+  "categorias": [
+    {
+      "id": "hoteles",
+      "label": "Hoteles",
+      "emoji": "🏨",
+      "descripcion": "Establecimientos de alojamiento integrados al Asesor IA de GuIAloja",
+      "maxSocios": 3,
+      "socios": []
+    },
+    {
+      "id": "restaurantes",
+      "label": "Restaurantes",
+      "emoji": "🍽️",
+      "descripcion": "Restaurantes y establecimientos gastronómicos recomendados por el Asesor IA",
+      "maxSocios": 3,
+      "socios": []
+    },
+    {
+      "id": "operadores",
+      "label": "Operadores Turísticos",
+      "emoji": "🧭",
+      "descripcion": "Agencias y operadores de turismo integrados al ecosistema GuIAloja",
+      "maxSocios": 3,
+      "socios": []
+    },
+    {
+      "id": "financiero",
+      "label": "Financiero",
+      "emoji": "🏦",
+      "descripcion": "Bancos y cooperativas que apoyan la infraestructura turística de Loja",
+      "maxSocios": 3,
+      "socios": []
+    },
+    {
+      "id": "centros-comerciales",
+      "label": "Centros Comerciales",
+      "emoji": "🛍️",
+      "descripcion": "Espacios de retail integrados a la red de recomendación turística",
+      "maxSocios": 3,
+      "socios": []
+    },
+    {
+      "id": "sitios-turisticos",
+      "label": "Sitios Turísticos",
+      "emoji": "🗺️",
+      "descripcion": "Atractivos naturales y culturales de Loja integrados al Asesor IA",
+      "maxSocios": 3,
+      "socios": []
+    }
+  ],
+  "contacto": {
+    "whatsapp": "+593963410409",
+    "email": "negocios@cesarreyesjaramillo.com",
+    "mensaje_whatsapp_base": "Hola César, me interesa ser Socio Fundador de GuIAloja."
+  }
+}

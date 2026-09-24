@@ -3,6 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/Navbar";
 import { SITE_CONFIG } from "@/lib/utils";
+import { SociosMarqueeSection } from "@/components/socios-fundadores/SociosMarqueeSection";
+import sociosData from "@/data/socios-fundadores.json";
 
 export const revalidate = 3600; // 1 hora
 
@@ -213,6 +215,9 @@ export default function SobreElProyectoPage() {
                 </Link>
               </div>
             </div>
+
+            {/* Bloque: Socios Fundadores GuIAloja con Slide Infinito y Disponibilidad */}
+            <SociosMarqueeSection categorias={sociosData.categorias} />
 
             {/* Footer interno del creador */}
             <div className="text-center pt-4">
