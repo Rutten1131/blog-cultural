@@ -16,7 +16,11 @@ const {
   extraerTextoDeMensaje,
   esMensajeRelevante,
 } = require("./evolution-client");
-const { extractAndProcessUrls, extractUrls } = require("./url-extractor");
+const {
+  extractAndProcessUrls,
+  extractFromTextOnly,
+  extractUrls,
+} = require("./url-extractor");
 
 /** Evita que dos pasadas se solapen si una tarda más de lo previsto. */
 let escaneando = false;
@@ -64,6 +68,9 @@ async function escanearGrupo(prisma, jid, opciones = {}) {
     mensajesRevisados: 0,
     mensajesNuevos: 0,
     mensajesConUrl: 0,
+    // Mensajes con adjunto (afiche) que quedan para cuando exista la descarga
+    // de media: no se marcan como procesados, así no se "queman".
+    mensajesEnEspera: 0,
     postsCreados: 0,
     errores: [],
   };
@@ -101,6 +108,18 @@ async function escanearGrupo(prisma, jid, opciones = {}) {
       const texto = extraerTextoDeMensaje(msg);
       const urls = texto ? extractUrls(texto) : [];
 
+      // ¿Trae un adjunto que todavía no sabemos leer? (afiche, PDF, audio, video)
+      // `documentWithCaptionMessage` es el PDF/imagen CON texto, que llega
+      // anidado y es justo el caso más probable de la descarga de media.
+      const contenido = msg.message || {};
+      const tieneAdjunto = Boolean(
+        contenido.imageMessage ||
+          contenido.videoMessage ||
+          contenido.audioMessage ||
+          contenido.documentMessage ||
+          contenido.documentWithCaptionMessage
+      );
+
       let posts = [];
       if (urls.length > 0) {
         resumen.mensajesConUrl++;
@@ -114,6 +133,26 @@ async function escanearGrupo(prisma, jid, opciones = {}) {
         } catch (err) {
           resumen.errores.push(`extracción ${mensajeId}: ${err.message}`);
         }
+      } else if (texto && texto.trim().length > 10) {
+        // Sin enlace pero con texto propio: puede describir el evento entero.
+        try {
+          const post = await extractFromTextOnly(texto, jid, prisma);
+          posts = post ? [post] : [];
+        } catch (err) {
+          resumen.errores.push(`texto ${mensajeId}: ${err.message}`);
+        }
+      }
+
+      resumen.postsCreados += posts.length;
+
+      // Adjunto sin enlace: el afiche es la fuente buena y todavía no podemos
+      // leerlo. Se deja SIN marcar como procesado para que, cuando exista la
+      // descarga de media, este mensaje se vuelva a procesar y el post gane la
+      // imagen. No se duplica nada porque `extractFromTextOnly` dedupea por
+      // texto exacto (y si el mensaje no tenía texto, no creó nada).
+      if (urls.length === 0 && tieneAdjunto) {
+        resumen.mensajesEnEspera++;
+        continue;
       }
 
       try {
@@ -125,8 +164,6 @@ async function escanearGrupo(prisma, jid, opciones = {}) {
       } catch (err) {
         resumen.errores.push(`marcar ${mensajeId}: ${err.message}`);
       }
-
-      resumen.postsCreados += posts.length;
     }
   }
 

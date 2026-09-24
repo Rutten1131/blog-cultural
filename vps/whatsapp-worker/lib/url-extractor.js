@@ -1118,12 +1118,30 @@ async function extraerEvento(url, textoMensaje = "") {
   let confianza = 0;
   if (eventoJsonLd) confianza += 0.4;
   if (fuentes.fecha === "json-ld") confianza += 0.2;
+  // El afiche es lo que publicó el propio organizador: vale más que el texto con
+  // el que alguien compartió el enlace. Antes aportaba CERO puntos, así que un
+  // post con los 4 campos leídos del afiche salía DEBAJO de uno incompleto y
+  // /admin (que ordena por confianzaIA desc) abría mostrando lo que menos sirve.
+  else if (fuentes.fecha === "afiche") confianza += 0.15;
   else if (fuentes.fecha === "caption") confianza += 0.1;
   if (fuentes.lugar === "json-ld") confianza += 0.15;
+  else if (fuentes.lugar === "afiche") confianza += 0.15;
   else if (fuentes.lugar === "caption") confianza += 0.1;
   if (imagenUrl) confianza += 0.1;
   if (titulo) confianza += 0.1;
   if (descripcion) confianza += 0.05;
+
+  // La visión dice claramente que esto no anuncia un evento cultural: se hunde al
+  // fondo, pero NO se descarta (sigue visible y auditable para el moderador).
+  // Medido sobre los 15 posts reales: aplica a 2 y no toca a ningún evento real.
+  // Se respeta el JSON-LD `schema.org/Event`, que es una señal más fuerte que la
+  // lectura del afiche, para no castigar un evento legítimo mal leído.
+  // OJO con el orden: `confianza` se declara recién en la línea de arriba, así que
+  // esto NO puede ir en el bloque de visión (ahí sería un ReferenceError).
+  if (afiche && afiche.esEventoCultural === false && !eventoJsonLd) {
+    confianza = Math.min(confianza, 0.1);
+  }
+
   confianza = Math.max(0, Math.min(1, Number(confianza.toFixed(2))));
 
   return {
@@ -1156,6 +1174,68 @@ async function extraerEvento(url, textoMensaje = "") {
  */
 async function extractEventInfo(url) {
   return extraerEvento(url, "");
+}
+
+/**
+ * Crea un post candidato a partir de un mensaje de texto SIN enlace.
+ *
+ * Es la otra mitad del grupo: hay mensajes que describen el evento
+ * directamente ("Sábado 4 de octubre, 20:00, Teatro Bolívar") sin compartir
+ * ninguna página. Reutiliza los extractores ya probados; no inventa datos.
+ *
+ * @param {string} text - Texto del mensaje de WhatsApp
+ * @param {string} grupoId - Identificador del grupo
+ * @param {import('@prisma/client').PrismaClient} prisma
+ * @returns {Promise<Object|null>} El post creado, o null si no era candidato
+ */
+async function extractFromTextOnly(text, grupoId, prisma) {
+  if (!text || text.trim().length < 10) return null;
+
+  const textoOriginal = text.slice(0, 5000);
+
+  // Sin URL no hay otra clave de dedupe, y el mismo texto puede repetirse en un
+  // escaneo (los mensajes con adjunto no se marcan como procesados a propósito).
+  const yaExiste = await prisma.postSocial.findFirst({
+    where: { textoOriginal, grupoId: grupoId || null },
+    select: { id: true },
+  });
+  if (yaExiste) return null;
+
+  // extraerRangoDeTexto ya cubre "del 4 al 6 de octubre [de 2026]" y devuelve
+  // `.fecha` como Date normalizado en zona Loja (17:00 UTC si es "solo día").
+  const infoFecha = extraerRangoDeTexto(text);
+  const lugar = extraerLugarDeTexto(text);
+
+  let titulo = text.split("\n")[0].trim().slice(0, 255);
+  titulo = esTituloGenerico(titulo) ? null : limpiarTitulo(titulo);
+
+  // Sin fecha ni lugar no hay evento: un párrafo con solo "titulo" es charla
+  // ("buenos días a todos") y la cola ya tiene ruido de sobra.
+  if (!infoFecha && !lugar) return null;
+
+  const confianza =
+    (titulo ? 0.1 : 0) + (infoFecha ? 0.15 : 0) + (lugar ? 0.1 : 0);
+
+  const post = await prisma.postSocial.create({
+    data: {
+      origen: "WHATSAPP_GRUPO",
+      urlOriginal: null,
+      textoOriginal,
+      titulo,
+      // Ojo: `.fecha` es un Date. Pasar `infoFecha` entero rompe en Prisma.
+      fechaPublicacion: infoFecha ? infoFecha.fecha : null,
+      lugar,
+      estado: "PENDIENTE",
+      grupoId: grupoId || null,
+      confianzaIA: confianza,
+    },
+  });
+
+  console.log(
+    `[Extractor] Post #${post.id} creado desde texto (sin enlace) — confianza ${confianza}`
+  );
+
+  return post;
 }
 
 // ─── Flujo completo: mensaje → posts en BD ────────────────────────────────
@@ -1215,8 +1295,19 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
       // Le pasa a los enlaces que dan muro de login (facebook.com/share/...):
       // no hay título, ni fecha, ni lugar, ni imagen. Guardarlos solo llena la
       // cola de moderación con filas vacías. Se cuentan aparte en el resumen.
+      //
+      // P15: el texto del mensaje TAMBIÉN es contenido moderable (el grupo
+      // describe eventos sin enlace), pero se mide SIN las URLs: un mensaje que
+      // solo trae el enlace no aporta nada y reabriría el agujero de las filas
+      // vacías que este filtro cierra.
+      const textoSinUrls = text ? text.replace(/https?:\/\/\S+/gi, "") : "";
+
       const tieneAlgo = Boolean(
-        datos.titulo || datos.fecha || datos.lugar || (fotosPermanentes.length > 0)
+        datos.titulo ||
+          datos.fecha ||
+          datos.lugar ||
+          (fotosPermanentes.length > 0) ||
+          textoSinUrls.trim().length > 10
       );
 
       if (!tieneAlgo) {
@@ -1274,6 +1365,7 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
 
 module.exports = {
   extractAndProcessUrls,
+  extractFromTextOnly,
   extractUrls,
   extractEventInfo,
   extraerEvento,
