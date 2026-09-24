@@ -88,6 +88,13 @@ export default async function AdminPage() {
     orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
   });
 
+  // 6. Posts capturados por el bot de WhatsApp (tabla `posts_social`).
+  // Solo se muestran en administración: nunca se publican en la página.
+  const postsBot = await prisma.postSocial.findMany({
+    orderBy: [{ confianzaIA: "desc" }, { fechaDeteccion: "desc" }],
+    take: 200,
+  });
+
   return (
     <AdminDashboardClient
       session={session}
@@ -100,6 +107,7 @@ export default async function AdminPage() {
       zonas={zonas}
       banners={banners}
       aliados={aliados}
+      postsBot={postsBot}
     />
   );
 }

@@ -1,6 +1,6 @@
 # Agenda Cultural Loja — Contexto técnico para desarrollo
 
-> Este documento es la **única fuente de verdad técnica** del proyecto. No modificar sin confirmación explícita del responsable. Última auditoría completa: **2026-09-17**.
+> Este documento es la **única fuente de verdad técnica** del proyecto. No modificar sin confirmación explícita del responsable. Última auditoría completa: **2026-09-21**.
 
 ---
 
@@ -10,15 +10,16 @@ Sitio web oficial y plataforma cultural/turística (`https://agendacultural-loja
 
 El ecosistema integra:
 - **Agenda pública colaborativa:** Gestores culturales publican eventos vía formulario público. La IA (Groq / Llama 3.3) clasifica la categoría y parroquia (zona), requiere aprobación humana y los publica en cartelera organizada.
-- **Asistente Virtual Turístico Inteligente:** Chatbot conversacional con IA para orientar al ciudadano o turista sobre qué hacer, eventos, sitios turísticos cantonales y aliados comerciales (hoteles, gastronomía, cafeterías). Incluye **geolocalización en tiempo real** por OpenStreetMap Nominatim.
-- **CRM del Chatbot en tiempo real:** Auditoría analítica de conversaciones, detección de procedencia geográfica de visitantes, estadísticas de zonas más demandadas y registro de aliados sugeridos.
+- **Asistente Virtual Turístico Inteligente:** Chatbot conversacional con IA (Motor principal **DeepSeek Chat** con failover a **Groq / Llama 3.3**) para orientar al ciudadano o turista sobre qué hacer, eventos, sitios turísticos cantonales y aliados comerciales (hoteles, gastronomía, cafeterías). Incluye **geolocalización en tiempo real** por OpenStreetMap Nominatim, **detección de preguntas referenciales en contexto de conversación**, y cálculo Haversine de proximidad.
+- **Motor Multilingüe Internacional (i18n):** Traducción en tiempo real de la UI y del contenido de eventos a 6 idiomas (Español, Inglés, Francés, Alemán, Portugués y Coreano) mediante traducción híbrida (diccionarios estáticos + pipeline con IA Groq y caché en memoria).
+- **CRM del Chatbot en tiempo real:** Auditoría analítica de conversaciones, detección de procedencia geográfica de visitantes (`zonaDetectada` y `direccionDetallada`), estadísticas de zonas más demandadas y registro de aliados sugeridos.
 - **Ecosistema Administrativo Dual:**
   - **Panel de Moderación General (`/admin`):** Aprobación de eventos, categorización, sugerencias ciudadanas, gestión de banners del Hero, números de notificación y cuentas de instituciones culturales asociadas.
   - **Super Admin Exclusivo (`/superadmin`):** Acceso seguro con clave única para la gestión central de **Aliados Comerciales** y monitoreo analítico del **CRM del Chatbot**.
 - **Notificaciones automáticas y Redes:** Notificaciones vía WhatsApp (Evolution API) y difusión automática de eventos hacia el VPS del agente Hermes.
 
 El proyecto tiene cinco perfiles y audiencias diferenciadas:
-1. **Visitante público / Turista:** Consulta la agenda, categorías, parroquias, fichas con Google Maps interactivo, multimedia (carruseles y videos embed) y conversa con el chatbot turístico para recomendaciones personalizadas a su ubicación.
+1. **Visitante público / Turista (Nacional e Internacional):** Consulta la agenda en su idioma nativo, categorías, parroquias, fichas con Google Maps interactivo, multimedia (carruseles y videos embed) y conversa con el chatbot turístico para recomendaciones personalizadas a su ubicación.
 2. **Gestor cultural:** Envía eventos vía formulario público sin registro previo.
 3. **Moderador (`/admin`):** Revisa, edita, aprueba/rechaza eventos y administra contenidos generales y banners.
 4. **Institución asociada:** Cuentas institucionales para seguimiento de eventos vinculados.
@@ -36,8 +37,10 @@ El proyecto tiene cinco perfiles y audiencias diferenciadas:
 | Estilos | Tailwind CSS | 4.x | vía `@tailwindcss/postcss` |
 | ORM | Prisma | 7.9.1 | **con driver adapter MariaDB** (`@prisma/adapter-mariadb`) |
 | Base de Datos | MariaDB / MySQL | 10+ | Conexión pooling vía `DATABASE_URL` |
-| Motor IA Clasificación | Groq API | Llama 3.3 70b | Clasificación rápida y estructurada de eventos |
-| Motor IA Chatbot | Groq / DeepSeek | Chatbot contextual | RAG dinámico con agenda, aliados y atractivos |
+| Motor IA Clasificación | Groq API | Llama 3.3 70b | Clasificación rápida y estructurada de eventos al publicar |
+| Motor IA Chatbot (Primario) | DeepSeek API | `deepseek-chat` | Razonamiento contextual, bajo costo y alta empatía turística |
+| Motor IA Chatbot (Fallback) | Groq API | Llama 3.3 70b | Respaldo automático e instantáneo si DeepSeek no responde |
+| Traducción i18n | Groq API + Diccionarios | 6 idiomas | ES, EN, FR, DE, PT, KO con caché en memoria por hash |
 | Geolocalización | OpenStreetMap Nominatim | API REST | Reverse geocoding gratuito y sin API key |
 | CDN Multimedia | Bunny CDN | — | Upload directo vía `app/api/upload/route.ts` |
 | WhatsApp Bot API | Evolution API | v2 | Instancia `agenda-cultural` para alertas a administradores |
@@ -83,6 +86,7 @@ Ubicado en el frontend global mediante el componente `components/ChatbotWidget.t
 - **Motor de Clasificación y Extracción Semántica:**
   - Extrae intenciones de búsqueda: temporalidad (hoy, rango de fechas, histórico/pasados) y palabras clave temáticas (ej: "rock", "teatro", "infantil", "feria", etc.).
   - Realiza consultas multivariables a la base de datos (Prisma/MySQL) sobre `nombre`, `descripcion` y `lugar`.
+  - **Detección de Preguntas Referenciales Contextuales:** Reconoce expresiones cortas del usuario como *"¿y eso de qué es?"*, *"¿cuánto cuesta?"*, *"¿a qué hora?"*, *"¿dónde queda?"*, mapeándolas al último evento mencionado por el bot para no perder el hilo conversacional.
 - Inyecta en el prompt del sistema:
   - Fecha y hora actual en Ecuador (`America/Guayaquil`).
   - Ubicación geográfica detectada del usuario (`lat`/`lng` + zona textual).
@@ -90,8 +94,17 @@ Ubicado en el frontend global mediante el componente `components/ChatbotWidget.t
   - **Cálculo de Proximidad Inteligente (Fórmula Haversine):** Compara la ubicación del usuario con las coordenadas `ubicacionLat`/`ubicacionLng` de cada aliado comercial registrado, ordenándolos por cercanía y especificando la distancia exacta (ej. *"a 320 metros de distancia"* o *"a 1.8 km"*).
   - Catálogo de Atractivos Cantonales (turismo cruzado B2G).
   - **Regla Estricta Anti-Alucinación:** Si el usuario consulta por un género o tema inexistente en la cartelera, la IA tiene instrucción imperativa de aclarar con honestidad que no hay eventos de ese tipo programados y ofrecer alternativas reales vigentes.
+- **Estrategia Dual de Modelos LLM:**
+  - **Primario:** `deepseek-chat` (DeepSeek V3). Mayor riqueza conversacional, empatía y razonamiento semántico.
+  - **Fallback secundario:** `llama-3.3-70b-versatile` (Groq API). Se activa transparentemente en milisegundos si DeepSeek presenta timeout o error HTTP.
 - Devuelve respuesta conversacional formateada + tarjetas interactivas de eventos, aliados comerciales (con botones de WhatsApp/Web/Google Maps) y rutas turísticas.
 - En background (asíncrono sin retrasar la respuesta al cliente), almacena o actualiza la sesión en `chat_sessions` y registra los mensajes en `chat_messages`.
+
+### 4.3 Sistema de Internacionalización y Traducción en Tiempo Real (`/api/translate`)
+- Permite la navegación y lectura de la plataforma en 6 idiomas: Español (`es`), Inglés (`en`), Francés (`fr`), Alemán (`de`), Portugués (`pt`) y Coreano (`ko`).
+- **Diccionarios Estáticos UI:** Definidos en `lib/i18n/translations.ts` para toda la interfaz (navbar, botones, etiquetas, widgets).
+- **Traducción Dinámica de Contenido:** El endpoint `app/api/translate/route.ts` traduce títulos, descripciones y lugares de eventos en tiempo real usando Groq (`llama-3.3-70b-versatile`).
+- **Caché en Memoria (`translationCache`):** Indexa traducciones mediante hash del texto y código de idioma para evitar llamadas redundantes a la API de Groq, optimizando latencia y consumo de cuota.
 
 ---
 
@@ -212,8 +225,9 @@ software/
 │   │   └── superadmin-crm.tsx             # Dashboard CRM de conversaciones y geolocalización
 │   │
 │   └── api/
-│       ├── chat/route.ts                  # Motor IA del chatbot + guardado CRM
+│       ├── chat/route.ts                  # Motor IA del chatbot (DeepSeek + Groq fallback) + CRM
 │       ├── geo-decode/route.ts            # Reverse geocoding Nominatim
+│       ├── translate/route.ts             # Traducción dinámica i18n con Groq y caché hash
 │       ├── upload/route.ts                # Subida de imágenes a Bunny CDN
 │       ├── media/resolve/route.ts         # Resolución de miniaturas de video
 │       ├── superadmin/auth/route.ts       # Endpoint de login/logout SuperAdmin
@@ -269,3 +283,10 @@ HERMES_BUSINESS_ID="agenda_cultural_loja"
   - Documentación de **Aliados Comerciales** y **Atractivos Cantonales** para turismo cruzado B2B y B2G.
   - Integración de **WhatsApp con Evolution API** e integración con **Agente Hermes en VPS** para distribución en redes.
   - Documentación de campos multimedia (`multimedia`, `videoUrl`, `mapaUrl`, `fechaFin`).
+- **2026-09-21** — **Arquitectura Dual LLM, Multilingüe i18n y Detección Contextual Avanzada:**
+  - Configuración del motor de chatbot principal con **DeepSeek Chat (`deepseek-chat`)** para mayor empatía, razonamiento natural y bajo costo operativo.
+  - Sistema de **Failover automático e instantáneo con Groq (`llama-3.3-70b-versatile`)** para resiliencia total 24/7.
+  - Implementación del **Sistema de Internacionalización i18n en 6 idiomas** (Español, Inglés, Francés, Alemán, Portugués y Coreano) con diccionario UI estático y endpoint dinámico con caché por hash en `/api/translate`.
+  - Incorporación del **Reconocimiento de Preguntas Referenciales Contextuales** en el bot (resuelve dudas sobre el último evento mencionado como *"¿de qué se trata?"*, *"¿cuánto cuesta?"*, *"¿dónde es?"* sin perder el hilo).
+  - Auditoría de geolocalización ampliada con almacenamiento de `direccionDetallada` en `chat_sessions` para análisis de origen en el SuperAdmin CRM.
+  - Integración y soporte de patrocinadores institucionales (`patrocinadores` Json) en la moderación de eventos.

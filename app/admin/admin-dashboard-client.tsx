@@ -7,6 +7,7 @@ import { AdminNotificaciones } from "./admin-notificaciones";
 import { AdminInstituciones } from "./admin-instituciones";
 import { AdminBanners, BannerHeroAdminItem } from "./admin-banners";
 import type { AliadoItem } from "./admin-aliados";
+import { BotPendientes, type PostBotItem } from "./admin-bot-posts";
 import { logoutAdmin } from "@/lib/actions/authAdmin";
 
 interface Categoria {
@@ -85,6 +86,7 @@ export function AdminDashboardClient({
   zonas,
   banners = [],
   aliados = [],
+  postsBot = [],
 }: {
   session: SessionData;
   eventosPendientes: EventoItem[];
@@ -96,6 +98,7 @@ export function AdminDashboardClient({
   zonas: Zona[];
   banners?: BannerHeroAdminItem[];
   aliados?: AliadoItem[];
+  postsBot?: PostBotItem[];
 }) {
   const esSuperadmin = session.role === "SUPERADMIN";
 
@@ -107,6 +110,11 @@ export function AdminDashboardClient({
   const [openPendienteId, setOpenPendienteId] = useState<number | null>(
     eventosPendientes[0]?.id ?? null
   );
+
+  // Los candidatos del bot van a la MISMA cola que los eventos enviados por
+  // la comunidad: un solo flujo. Solo se distinguen por la marca 🤖 BOT.
+  const postsBotPendientes = postsBot.filter((p) => p.estado === "PENDIENTE");
+  const totalPendientes = eventosPendientes.length + postsBotPendientes.length;
 
   // Filtros para la pestaña "Todos los Eventos"
   const [searchTerm, setSearchTerm] = useState("");
@@ -244,6 +252,10 @@ export function AdminDashboardClient({
             </span>
           </button>
 
+          {/* Bot de WhatsApp: candidatos capturados automáticamente del grupo.
+              NO tienen pestaña propia: se integran en "Moderar Pendientes"
+              para que todo sea un único flujo de moderación. */}
+
           {/* Banners Hero: SOLO SUPERADMIN */}
           {esSuperadmin && (
             <button
@@ -329,12 +341,12 @@ export function AdminDashboardClient({
                 </p>
               </div>
               <span className="self-start sm:self-auto rounded-full bg-purple-100 dark:bg-purple-950/60 px-3 py-1 text-xs font-bold text-purple-700 dark:text-purple-300">
-                {eventosPendientes.length}{" "}
-                {eventosPendientes.length === 1 ? "pendiente" : "pendientes"}
+                {totalPendientes}{" "}
+                {totalPendientes === 1 ? "pendiente" : "pendientes"}
               </span>
             </div>
 
-            {eventosPendientes.length === 0 ? (
+            {totalPendientes === 0 ? (
               <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
                 <span className="text-3xl">✨</span>
                 <h3 className="mt-2 text-base font-bold text-zinc-800 dark:text-zinc-200">
@@ -346,6 +358,10 @@ export function AdminDashboardClient({
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Candidatos capturados del grupo de WhatsApp: misma cola y
+                    mismo flujo que los eventos de la comunidad. */}
+                <BotPendientes posts={postsBot} />
+
                 {eventosPendientes.map((evento) => (
                   <EventoCard
                     key={evento.id}

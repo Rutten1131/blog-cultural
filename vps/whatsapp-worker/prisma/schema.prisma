@@ -227,38 +227,3 @@ model ChatMessage {
   @@index([sessionId])
   @@map("chat_messages")
 }
-
-// ─── Posts de Moderación Social (WhatsApp Worker) ───────────
-// Posts extraídos de redes sociales/WhatsApp para moderación.
-// No se publican automáticamente; requieren revisión humana.
-model PostSocial {
-  id             Int            @id @default(autoincrement())
-  origen         String         @db.VarChar(50)   // WHATSAPP_GRUPO, MANUAL, etc.
-  urlOriginal    String?        @db.VarChar(500)
-  textoOriginal  String?        @db.Text
-  titulo         String?        @db.VarChar(255)
-  descripcion    String?        @db.Text
-  imagenUrl      String?        @db.VarChar(500)
-  fechaPublicacion DateTime?
-  lugar          String?        @db.VarChar(255)
-  estado         EstadoPost     @default(PENDIENTE)
-  grupoId        String?        @db.VarChar(100)
-  moderadoPor    String?        @db.VarChar(100)
-  moderadoAt     DateTime?
-  moderationComentario String?   @db.Text
-  confianzaIA    Float?
-  fechaDeteccion DateTime        @default(now())
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  @@index([estado])
-  @@index([fechaDeteccion])
-  @@index([origen])
-  @@map("posts_social")
-}
-
-enum EstadoPost {
-  PENDIENTE
-  APROBADO
-  RECHAZADO
-}

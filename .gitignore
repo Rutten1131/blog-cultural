@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ─── Claves SSH y secretos de VPS: NUNCA subir al repositorio ───
+# `vps/antigravity_vps_key` es la clave PRIVADA del servidor.
+# Si se filtra, cualquiera puede entrar al VPS.
+vps/antigravity_vps_key
+*_vps_key
+id_rsa
+id_ed25519
+*.key
+*-key
+
+# Volcados y backups locales
+*.rar
+*.zip
+*.bak
+*.log

@@ -1,0 +1,16 @@
+{
+  "event": "messages.upsert",
+  "instance": "agenda-cultural",
+  "destination": "http://178.238.238.158:8083/webhook/whatsapp",
+  "data": {
+    "key": {
+      "remoteJid": "593999999999-1612345678@g.us",
+      "fromMe": false,
+      "id": "TESTMSG-001"
+    },
+    "pushName": "Gestor Cultural Loja",
+    "message": {
+      "conversation": "🎭 AGENDA CULTURAL LOJA\n\nPresentación de la Orquesta Sinfónica de Loja\nSábado 4 de octubre, 19h00\nLugar: Teatro Bolívar\nEntrada libre\nMás información: https://www.agendaculturalloja.com/eventos"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+services:
+  whatsapp-worker:
+    build: .
+    ports:
+      - "8083:8083"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - EVOLUTION_API_URL=${EVOLUTION_API_URL}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
+      - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE}
+      # Grupos de WhatsApp a escanear (JIDs separados por coma) y frecuencia.
+      - GRUPOS_SCRAPING=${GRUPOS_SCRAPING}
+      - SCRAPE_INTERVALO_MIN=${SCRAPE_INTERVALO_MIN}
+      - SCRAPE_PAGINAS=${SCRAPE_PAGINAS}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      # Bunny CDN: necesario para re-alojar las imágenes de Facebook e
+      # Instagram, cuyas URLs originales caducan en pocos días.
+      - BUNNY_STORAGE_ZONE=${BUNNY_STORAGE_ZONE}
+      - BUNNY_API_KEY=${BUNNY_API_KEY}
+      - BUNNY_PULL_ZONE_URL=${BUNNY_PULL_ZONE_URL}
+      - REHOSPEDAR_IMAGENES=${REHOSPEDAR_IMAGENES:-true}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - HERMES_WEBHOOK_URL=${HERMES_WEBHOOK_URL}
+      - HERMES_WEBHOOK_SECRET=${HERMES_WEBHOOK_SECRET}
+      - HERMES_BUSINESS_ID=${HERMES_BUSINESS_ID}
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      # Código montado desde el host: los cambios solo requieren
+      # `docker compose restart` en lugar de reconstruir la imagen.
+      - ./worker.js:/app/worker.js:ro
+      - ./lib:/app/lib:ro
+      - ./scripts:/app/scripts:ro
+
+networks:
+  app-network:
+    external: true
