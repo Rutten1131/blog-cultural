@@ -411,16 +411,27 @@ export function ChatbotWidget() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Las sugerencias aparecen solo tras unos segundos de inactividad, para no confundir
+  // Las sugerencias salen de inmediato si el chat está vacío; si ya hay conversación,
+  // recién aparecen tras unos segundos de inactividad para no confundir.
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const hayConversacion = messages.some((m) => m.sender === "user");
 
   useEffect(() => {
-    setMostrarSugerencias(false);
-    if (loading || !isOpen) return;
+    if (!isOpen || loading) {
+      setMostrarSugerencias(false);
+      return;
+    }
 
+    // Chat recién abierto (solo el saludo): se muestran al instante
+    if (!hayConversacion) {
+      setMostrarSugerencias(true);
+      return;
+    }
+
+    setMostrarSugerencias(false);
     const timer = setTimeout(() => setMostrarSugerencias(true), SEGUNDOS_PARA_SUGERENCIAS * 1000);
     return () => clearTimeout(timer);
-  }, [messages, input, loading, isOpen]);
+  }, [messages, input, loading, isOpen, hayConversacion]);
 
   // Inicializar o recuperar sessionId único
   useEffect(() => {

@@ -123,6 +123,15 @@ function limpiarLugar(v) {
 
   if (s.length < 4) return null;
   if (LUGAR_INVALIDO.test(s)) return null;
+  // Frase cortada: empieza con una palabra de enlace en minúscula.
+  // Ejemplos reales que se colaban:
+  //   "de Cultura continúa fortaleciendo y apoyando a los escritores..."
+  //   "es puedan consolidarse"
+  if (/^(?:de|del|con|y|o|que|se|su|al|para|por|en|es|son|contin[uú]a|esta|este)\s/i.test(s)) {
+    return null;
+  }
+  // Un lugar no es una frase larga.
+  if (s.length > 70) return null;
   if (/^\d+$/.test(s)) return null;
   // Horas sueltas: "19h00", "19:00"
   if (/^\d{1,2}\s*(?:h|:)\s*\d{2}$/i.test(s)) return null;
@@ -524,6 +533,15 @@ async function descargarFotos(urls) {
  * @returns {Promise<Array<{url:string, tipo:string, buf:Buffer}>>}
  */
 async function seleccionarImagenes(crudo, capturadas) {
+  // Página bloqueada por un muro de login: no hay NINGUNA imagen del post.
+  // Se corta aquí para no guardar dibujos de la interfaz como afiche.
+  if (crudo.esMuroDeLogin) {
+    console.log(
+      "[Extractor] Página tras un muro de login: no se usará ninguna imagen"
+    );
+    return [];
+  }
+
   const carrusel = fotosDelCarrusel(crudo.jsonCarrusel);
   const MAX_CARRUSEL = Number(process.env.MAX_FOTOS_CARRUSEL) || 10;
   const pedidas = carrusel.slice(0, MAX_CARRUSEL).map((f) => f.url);
@@ -567,10 +585,11 @@ async function seleccionarImagenes(crudo, capturadas) {
     if (bajada) resultado = [bajada];
   }
 
-  // 3. Último recurso: la imagen real más pesada de todas.
-  if (resultado.length === 0 && capturadas.length > 0) {
-    resultado = [capturadas.reduce((a, b) => (b.buf.length > a.buf.length ? b : a))];
-  }
+  // NO hay paso 3. Antes existía un respaldo que tomaba "la imagen más
+  // pesada de todas" y eso metía dibujos de la interfaz (por ejemplo el de
+  // la política de cookies de Facebook) como si fueran el afiche del
+  // evento. Si no hay carrusel ni og:image, este post se queda SIN imagen:
+  // es preferible no mostrar nada antes que mostrar algo que no es.
 
   return resultado;
 }
@@ -694,7 +713,24 @@ async function leerPagina(url) {
         return el ? el.textContent.trim() : null;
       };
 
+      // ── ¿La página está BLOQUEADA por un muro de login? ──
+      //
+      // Por qué se comprueba: los enlaces facebook.com/share/... redirigen
+      // a /login. La página que se descarga es la pantalla de "Log into
+      // Facebook", cuyas únicas imágenes son los dibujos de la política de
+      // cookies. Sin esta comprobación, uno de esos dibujos terminaba
+      // guardado como afiche del evento.
+      const urlFinal = location.href;
+      const tituloDoc = (document.title || "").trim();
+      const hayOgTitulo = Boolean(document.querySelector('meta[property="og:title"]'));
+      const hayJsonLd = document.querySelectorAll('script[type="application/ld+json"]').length > 0;
+      const urlDeLogin = /\/login|\/checkpoint|accounts\.facebook\.com|\/signin/i.test(urlFinal);
+      const tituloDeLogin = /^(facebook|instagram|log in|log into|iniciar sesi|sign in)/i.test(tituloDoc);
+
       return {
+        urlFinal,
+        urlDeLogin,
+        esMuroDeLogin: urlDeLogin || (!hayOgTitulo && !hayJsonLd && tituloDeLogin),
         tituloDocumento: document.title || null,
         h1: texto("h1"),
         ogTitulo: meta('meta[property="og:title"]', "content"),
@@ -758,6 +794,55 @@ async function leerPagina(url) {
   }
 }
 
+/**
+ * Datos de un video de YouTube vía oEmbed.
+ *
+ * oEmbed es la única vía que sigue abierta sin credenciales: devuelve el
+ * título real del video, el canal y la miniatura. La página normal de
+ * YouTube devuelve avisos de cookies y títulos como "Tráiler Oficial".
+ *
+ * NO sirve para Facebook ni Instagram: sus enlaces comprimidos
+ * (facebook.com/share/...) redirigen a un muro de login y no existe oEmbed
+ * público desde que Meta lo retiró.
+ */
+async function datosDeYouTube(url) {
+  if (!/(?:youtube\.com|youtu\.be)/i.test(url)) return null;
+
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`,
+      { signal: AbortSignal.timeout(12000) }
+    );
+    if (!res.ok) return null;
+
+    const d = await res.json();
+
+    // La miniatura que da oEmbed es de 480 px (hqdefault). Se pide la de
+    // 1280 px (maxresdefault) para que se vea bien en la página.
+    let miniatura = d.thumbnail_url || null;
+    if (miniatura && /\/hqdefault\.jpg/.test(miniatura)) {
+      const grande = miniatura.replace("/hqdefault.jpg", "/maxresdefault.jpg");
+      try {
+        const prueba = await fetch(grande, {
+          method: "HEAD",
+          signal: AbortSignal.timeout(8000),
+        });
+        if (prueba.ok) miniatura = grande;
+      } catch {
+        // no hay versión grande; se queda la de 480 px
+      }
+    }
+
+    return {
+      titulo: d.title || null,
+      autor: d.author_name || null,
+      miniatura,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ─── Extracción principal ─────────────────────────────────────────────────
 
 /**
@@ -774,8 +859,44 @@ async function extraerEvento(url, textoMensaje = "") {
   const advertencias = [];
   let afiche = null;
 
+  // ── YouTube: se pide aparte, por oEmbed ──
+  //
+  // La página normal de YouTube no sirve: devuelve avisos de cookies y un
+  // título poco útil ("Tráiler Oficial"). oEmbed es la única vía que sigue
+  // abierta sin credenciales y da el título real, el canal y la miniatura.
+  const youtube = crudo ? await datosDeYouTube(url) : null;
+
+  // Si la página no dio ninguna imagen pero YouTube sí tiene miniatura, se
+  // usa esa: es la portada real del video.
+  if (
+    crudo &&
+    youtube &&
+    youtube.miniatura &&
+    (!crudo.imagenesEnVivo || crudo.imagenesEnVivo.length === 0)
+  ) {
+    const bajada = await descargarFoto(youtube.miniatura);
+    if (bajada) {
+      crudo.imagenesEnVivo = [
+        { base64: bajada.buf.toString("base64"), tipo: bajada.tipo },
+      ];
+      crudo.imagenEnVivo = crudo.imagenesEnVivo[0];
+      fuentes.imagenUrl = "youtube";
+    }
+  }
+
   const eventoJsonLd = crudo ? buscarEventoJsonLd(crudo.jsonLd) : null;
   if (eventoJsonLd) fuentes.jsonLd = true;
+
+  // Página tras un muro de login: no hay nada que leer.
+  //
+  // Le pasa a los enlaces facebook.com/share/... (reels y publicaciones
+  // compartidas), que redirigen a la pantalla de inicio de sesión. Se avisa
+  // explícitamente para que el moderador no crea que el bot falló.
+  if (crudo && crudo.esMuroDeLogin) {
+    advertencias.push(
+      "La página exige iniciar sesión (muro de login): no se pudo leer el contenido."
+    );
+  }
 
   // Aplicar la configuración del afiche y, si se puede, leerlo.
   //
@@ -819,6 +940,7 @@ async function extraerEvento(url, textoMensaje = "") {
     for (const [valor, fuente] of [
       [crudo.ogTitulo, "og"],
       [crudo.twitterTitulo, "twitter"],
+      [youtube && youtube.titulo, "youtube"],
       [crudo.h1, "html"],
       [crudo.tituloDocumento, "html"],
     ]) {
@@ -870,6 +992,12 @@ async function extraerEvento(url, textoMensaje = "") {
   if (!imagenUrl && crudo) {
     imagenUrl = crudo.ogImagen || crudo.twitterImagen || null;
     if (imagenUrl) fuentes.imagenUrl = crudo.ogImagen ? "og" : "twitter";
+  }
+  // YouTube: la portada real del video. La página en sí no la da porque
+  // devuelve el aviso de cookies, pero oEmbed sí.
+  if (!imagenUrl && youtube && youtube.miniatura) {
+    imagenUrl = youtube.miniatura;
+    fuentes.imagenUrl = "youtube";
   }
   if (imagenUrl) imagenUrl = imagenUrl.slice(0, 500);
 
@@ -967,8 +1095,12 @@ async function extraerEvento(url, textoMensaje = "") {
     lugar = extraerLugarDeTexto(textoMensaje);
     if (lugar) fuentes.lugar = "caption";
   }
-  // Último recurso: el texto visible de la página
-  if (!lugar && crudo && crudo.textoVisible) {
+  // Último recurso: el texto visible de la página.
+  //
+  // Se exige que la página haya expuesto metadatos reales (og: o JSON-LD).
+  // Sin esa condición el "lugar" salía de pantallas que NO son el evento: el
+  // aviso de cookies de YouTube produjo el lugar "Acaba el Mapa".
+  if (!lugar && crudo && crudo.textoVisible && (crudo.ogTitulo || eventoJsonLd)) {
     lugar = extraerLugarDeTexto(crudo.textoVisible.slice(0, 3000));
     if (lugar) fuentes.lugar = "html";
   }
@@ -1043,6 +1175,7 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
   console.log(`[Extractor] ${urls.length} URL(s) encontradas: ${urls.join(", ")}`);
 
   const posts = [];
+  const descartados = [];
 
   for (const url of urls) {
     try {
@@ -1075,6 +1208,21 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
             `[Extractor] Carrusel: ${fotosPermanentes.length}/${fotos.length} fotos guardadas en el CDN`
           );
         }
+      }
+
+      // Un post sin NADA no es un candidato: es ruido.
+      //
+      // Le pasa a los enlaces que dan muro de login (facebook.com/share/...):
+      // no hay título, ni fecha, ni lugar, ni imagen. Guardarlos solo llena la
+      // cola de moderación con filas vacías. Se cuentan aparte en el resumen.
+      const tieneAlgo = Boolean(
+        datos.titulo || datos.fecha || datos.lugar || (fotosPermanentes.length > 0)
+      );
+
+      if (!tieneAlgo) {
+        descartados.push({ url, motivo: datos.advertencias[0] || "sin datos legibles" });
+        console.log(`[Extractor] Descartado (sin datos): ${url}`);
+        continue;
       }
 
       const post = await prisma.postSocial.create({
@@ -1115,6 +1263,10 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
     } catch (err) {
       console.error(`[Extractor] Error procesando ${url}:`, err.message);
     }
+  }
+
+  if (descartados.length > 0) {
+    console.log(`[Extractor] ${descartados.length} enlace(s) descartado(s) por no traer datos`);
   }
 
   return posts;
