@@ -33,6 +33,21 @@ export interface PostBotItem {
   grupoId: string | null;
   confianzaIA: number | null;
   fechaDeteccion: Date;
+  /** Fotos del carrusel (además de `imagenUrl`, que es la portada). */
+  multimedia?: unknown;
+}
+
+/**
+ * Fotos del carrusel guardadas en el post.
+ *
+ * El campo llega como JSON desde la base de datos, así que se comprueba
+ * que sea un arreglo antes de usarlo. La primera es la portada.
+ */
+function fotosDelPost(post: PostBotItem): string[] {
+  if (!Array.isArray(post.multimedia)) return [];
+  return post.multimedia.filter(
+    (u): u is string => typeof u === "string" && u.trim().length > 0
+  );
 }
 
 /** Nombres legibles de los grupos configurados en el worker. */
@@ -141,6 +156,7 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
         const faltan = camposFaltantes(post);
         const puedeAprobar = faltan.length === 0;
         const msg = mensajes[post.id];
+        const fotos = fotosDelPost(post);
 
         return (
           <div
@@ -204,6 +220,32 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
                 <p className="line-clamp-3 text-sm text-zinc-600 dark:text-zinc-400">
                   {post.descripcion || post.textoOriginal || "(sin descripción)"}
                 </p>
+
+                {/* Carrusel: si el post traía varias fotos se ven todas, y al
+                    aprobar pasan al evento en lugar de perderse. */}
+                {fotos.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {fotos.map((foto, i) => (
+                      <a
+                        key={foto}
+                        href={foto}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`Foto ${i + 1} de ${fotos.length}`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={foto}
+                          alt=""
+                          className="h-12 w-12 rounded-lg border border-zinc-200 object-cover transition hover:scale-105 dark:border-zinc-700"
+                        />
+                      </a>
+                    ))}
+                    <span className="self-center text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+                      {fotos.length} fotos
+                    </span>
+                  </div>
+                )}
 
                 {post.urlOriginal && (
                   <a

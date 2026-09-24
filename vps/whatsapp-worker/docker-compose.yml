@@ -20,6 +20,11 @@ services:
       - BUNNY_API_KEY=${BUNNY_API_KEY}
       - BUNNY_PULL_ZONE_URL=${BUNNY_PULL_ZONE_URL}
       - REHOSPEDAR_IMAGENES=${REHOSPEDAR_IMAGENES:-true}
+      # Gemini: lectura de los afiches con visión artificial.
+      # GEMINI_API_KEYS acepta VARIAS keys separadas por coma (cascada).
+      - GEMINI_API_KEYS=${GEMINI_API_KEYS}
+      - GEMINI_MODELOS=${GEMINI_MODELOS}
+      - MAX_FOTOS_AFICHE=${MAX_FOTOS_AFICHE:-6}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
       - HERMES_WEBHOOK_URL=${HERMES_WEBHOOK_URL}
       - HERMES_WEBHOOK_SECRET=${HERMES_WEBHOOK_SECRET}

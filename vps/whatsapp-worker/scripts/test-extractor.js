@@ -16,6 +16,7 @@ const {
   limpiarTitulo,
   esTituloGenerico,
   tituloDesdeCaption,
+  esSoloUrl,
   buscarEventoJsonLd,
 } = require("../lib/url-extractor");
 
@@ -240,6 +241,37 @@ check('"Sign in" → null', limpiarLugar("Sign in"), null);
 check('"Log in" → null', limpiarLugar("Log in"), null);
 check('"Facebook" → null', limpiarLugar("Facebook"), null);
 
+// ─── Casos reales detectados en producción ───
+console.log("\n=== 14. Títulos basura vistos en datos reales ===");
+check('"Ordner – Google Drive" es genérico', esTituloGenerico("Ordner – Google Drive"), true);
+check('"Google Drive" es genérico', esTituloGenerico("Google Drive"), true);
+check('"YouTube" es genérico', esTituloGenerico("YouTube"), true);
+check(
+  '"TUCUMÁN Grupo de Danza Pluricultural" NO es genérico',
+  esTituloGenerico("TUCUMÁN Grupo de Danza Pluricultural"),
+  false
+);
+check(
+  '"Loja es Arte y Cultura" NO es genérico',
+  esTituloGenerico("Loja es Arte y Cultura"),
+  false
+);
+
+console.log("\n=== 15. Descripciones que solo son una URL ===");
+check(
+  "descripción que es solo el enlace",
+  esSoloUrl("https://www.facebook.com/share/p/1dD9jNwE4m/"),
+  true
+);
+check("descripción vacía", esSoloUrl(""), true);
+check(
+  "descripción real de un evento",
+  esSoloUrl(
+    "Te invitamos a la exposición de arte plástico Entre lo concreto y lo invisible en el Teatro Bolívar"
+  ),
+  false
+);
+
 console.log(`\n─────────────────────────────────────────`);
 console.log(`Resultado: ${pasaron} OK, ${fallaron} FALLA`);
 
@@ -252,7 +284,17 @@ if (url) {
   extraerEvento(url, process.env.TEXTO_MENSAJE || "")
     .then((d) => {
       console.log("\nResultado de la extracción:");
-      console.log(JSON.stringify(d, null, 2));
+      // No volcar el base64 de la imagen: son megabytes de texto.
+      const resumido = {
+        ...d,
+        imagenEnVivo: d.imagenEnVivo
+          ? {
+              tipo: d.imagenEnVivo.tipo,
+              pesoKB: Math.round((d.imagenEnVivo.base64.length * 3) / 4 / 1024),
+            }
+          : null,
+      };
+      console.log(JSON.stringify(resumido, null, 2));
 
       console.log("\nResumen:");
       console.log(`  JSON-LD encontrado : ${d.jsonLdEncontrado}`);
@@ -260,6 +302,13 @@ if (url) {
       console.log(`  Fecha              : ${d.fecha ? d.fecha.toISOString() : "(no detectada)"}`);
       console.log(`  Lugar              : ${d.lugar}`);
       console.log(`  Imagen             : ${d.imagenUrl}`);
+      console.log(
+        `  Imagen capturada   : ${
+          d.imagenEnVivo
+            ? `${d.imagenEnVivo.tipo} (${Math.round((d.imagenEnVivo.base64.length * 3) / 4 / 1024)} KB, lista para subir a Bunny)`
+            : "no"
+        }`
+      );
       console.log(`  Confianza          : ${d.confianza}`);
       console.log(`  Fuentes            : ${JSON.stringify(d.fuentes)}`);
       console.log(`  Faltan             : ${d.camposFaltantes.join(", ") || "(ninguno)"}`);

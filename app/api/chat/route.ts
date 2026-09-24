@@ -146,6 +146,69 @@ function extraerIntencionBusqueda(query: string) {
   };
 }
 
+/** Normaliza texto para comparar nombres sin depender de acentos ni mayúsculas */
+function sinAcentos(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+/**
+ * Mensaje de respaldo del flujo de venta, un paso por vez (por si la IA no responde).
+ * Se construye SOLO con los datos cargados del aliado en el superadmin.
+ */
+function plantillaVentaPaso(
+  aliado: {
+    nombre: string;
+    tipo?: string;
+    estrellas: number | null;
+    ubicacion: string;
+    descripcion: string;
+    numeroCuartos: number | null;
+    servicios: string | null;
+    rangoPrecio: string | null;
+    telefono: string | null;
+  },
+  habitaciones: { nombre: string; precio: string | null; caracteristicas: string | null }[],
+  paso: number
+): string {
+  const estrellas = aliado.estrellas ? ` ${"⭐".repeat(Math.min(5, Math.max(1, aliado.estrellas)))}` : "";
+  const categorias = habitaciones.map((h) => `${h.nombre}${h.precio ? ` (${h.precio})` : ""}`);
+  const esHospedaje = !aliado.tipo || aliado.tipo === "HOSPEDAJE";
+  const esCafeteria = aliado.tipo === "CAFETERIA";
+  const palabraAliado = esHospedaje ? "hotel" : esCafeteria ? "cafetería" : "restaurante";
+  const otroAliado = esHospedaje ? "otro hotel" : esCafeteria ? "otra cafetería" : "otro restaurante";
+  const palabraCategorias = esHospedaje
+    ? "tipos de habitación"
+    : esCafeteria
+    ? "especialidades de la casa"
+    : "opciones del menú";
+
+  switch (paso) {
+    case 2:
+      return `Contamos con ${habitaciones.length} ${palabraCategorias}: ${categorias
+        .slice(0, 3)
+        .join(" · ")}. ¿Cuál te llama más la atención?`;
+    case 3:
+      return `Los precios van así: ${categorias.join(" · ")}. ${
+        aliado.rangoPrecio ? `En general ${aliado.rangoPrecio}. ` : ""
+      }¿Querés que te cuente qué incluye cada una?`;
+    case 4:
+      return `Está en ${aliado.ubicacion}. ${
+        esHospedaje && aliado.numeroCuartos ? `${aliado.numeroCuartos} habitaciones en total. ` : ""
+      }${aliado.servicios ? `Incluye ${aliado.servicios}. ` : ""}¿Te gustaría reservar?`;
+    case 5:
+      return `${aliado.telefono ? "Escribinos por WhatsApp y te aseguramos el lugar. " : ""}${
+        aliado.rangoPrecio ? `Precios ${aliado.rangoPrecio}. ` : ""
+      }¿Reservamos ahora o preferís que te muestre ${otroAliado}?`;
+    default:
+      return `¡Excelente elección! ${aliado.nombre}${estrellas} te espera en ${aliado.ubicacion}. Tiene ${
+        habitaciones.length || "varias"
+      } ${palabraCategorias}. ¿Querés ver ${esHospedaje ? "las habitaciones" : "las opciones"} o los precios?`;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -399,6 +462,7 @@ export async function POST(req: NextRequest) {
       where: { activo: true },
       orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
       take: 20,
+      include: { habitaciones: { orderBy: [{ orden: "asc" }, { id: "asc" }] } },
     });
 
     const atractivos = await prisma.atractivoCantonal.findMany({
@@ -457,10 +521,17 @@ export async function POST(req: NextRequest) {
 
     // ─── 3. FORMATEO DE CONTEXTO PARA EL SYSTEM PROMPT ───
     const aliadosContexto = aliadosConDistancia
-      .map(
-        (a) =>
-          `[ID:${a.id}] ${a.nombre} | Tipo:${a.tipo} | Dirección:${a.ubicacion}${a.distanciaTexto} | Precio:${a.rangoPrecio || "Consultar"} | WhatsApp:${a.telefono || ""} | Web:${a.websiteUrl || ""} | Maps:${a.mapaUrl || ""} | Servicios:${a.servicios || ""} | Desc:${a.descripcion}`
-      )
+      .map((a) => {
+        const tiposHabitacion = (a.habitaciones || [])
+          .map(
+            (h) =>
+              `${h.nombre}${h.precio ? ` (${h.precio})` : ""}${
+                h.caracteristicas ? `: ${h.caracteristicas}` : ""
+              }`
+          )
+          .join(" / ");
+        return `[ID:${a.id}] ${a.nombre} | Tipo:${a.tipo} | Dirección:${a.ubicacion}${a.distanciaTexto} | Precio:${a.rangoPrecio || "Consultar"} | WhatsApp:${a.telefono || ""} | Web:${a.websiteUrl || ""} | Maps:${a.mapaUrl || ""} | Servicios:${a.servicios || ""}${tiposHabitacion ? ` | Tipos de habitación:${tiposHabitacion}` : ""} | Desc:${a.descripcion}`;
+      })
       .join("\n");
 
     const atractivosContexto = atractivos
@@ -516,10 +587,183 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
       ? `\nUBICACIÓN GPS DEL USUARIO: Zona "${ubicacion.zona}" (${ubicacion.ciudad || "Loja"}). Solo si el usuario pregunta dónde comer, dormir o salir cerca, recomienda el aliado comercial más cercano.`
       : "";
 
+    // ─── FLUJO DE VENTA INTERACTIVO (5 pasos) ───
+    // "otro hotel / más opciones" reinicia el flujo y vuelve a mostrar la lista
+    const pideOtraOpcion =
+      /\botr[oa]s?\b|más opciones|mas opciones|ver todos|ver opciones|otras alternativas|otras opciones/.test(
+        lowerUser
+      );
+
+    const quiereReservar = /reservar|reserva|disponibilidad|disponible|apartar|booking/.test(lowerUser);
+    const quiereServicios =
+      /servicio|incluye|comodidad|amenidad|qué tiene|que tiene|ubicaci|dónde queda|donde queda|cómo llego|como llego|desayun|piscina|wifi|estacionamiento|parqueadero/.test(
+        lowerUser
+      );
+    const quierePrecios = /precio|cuesta|cuánto|cuanto|tarifa|valor|cost|barato|económic|economic/.test(lowerUser);
+    const quiereHabitaciones =
+      /habitaci|cuarto|pieza|tipos|foto|imagen|galer|categoría|categoria|suite|cama|especialidad|menú|menu|plato|carta|opciones|postre|bebida/.test(
+        lowerUser
+      );
+
+    const consultaNorm = sinAcentos(lowerUser);
+    const aliadoEspecifico = aliados.find(
+      (a) =>
+        consultaNorm.includes(sinAcentos(a.nombre)) ||
+        (a.nombre.toLowerCase().includes("gran victoria") && lowerUser.includes("victoria")) ||
+        (a.nombre.toLowerCase().includes("puerta del sol") && lowerUser.includes("puerta del sol"))
+    );
+
+    // Si no repite el nombre pero venía hablando de un hotel, seguimos el flujo con ese hotel
+    const textoReciente = sinAcentos(
+      messages
+        .slice(-2)
+        .map((m: any) => m.content || m.text || "")
+        .join(" ")
+    );
+    const hotelEnConversacion = aliados.find((a) => textoReciente.includes(sinAcentos(a.nombre)));
+
+    const continuarFlujo = quiereReservar || quiereServicios || quierePrecios || quiereHabitaciones;
+    const aliadoVenta =
+      aliadoEspecifico || (continuarFlujo ? hotelEnConversacion : undefined);
+
+    const esModoVenta = !!aliadoVenta && !pideOtraOpcion;
+
+    // Paso actual del flujo de venta (1..5)
+    let pasoVenta = 0;
+    if (esModoVenta) {
+      if (quiereReservar) pasoVenta = 5;
+      else if (quiereServicios) pasoVenta = 4;
+      else if (quierePrecios) pasoVenta = 3;
+      else if (quiereHabitaciones) pasoVenta = 2;
+      else pasoVenta = 1;
+    }
+
+    const habitacionesVenta = aliadoVenta?.habitaciones || [];
+
+    // Etiquetas según el tipo de aliado (hotel / restaurante / cafetería)
+    const tipoAliadoVenta = aliadoVenta?.tipo;
+    const palabraAliado =
+      tipoAliadoVenta === "GASTRONOMIA" ? "restaurante" : tipoAliadoVenta === "CAFETERIA" ? "cafetería" : "hotel";
+    const palabraCategorias =
+      tipoAliadoVenta === "HOSPEDAJE"
+        ? "tipos de habitación"
+        : tipoAliadoVenta === "CAFETERIA"
+        ? "especialidades de la casa"
+        : "opciones del menú";
+    const verboCategorias =
+      tipoAliadoVenta === "HOSPEDAJE"
+        ? "Ver habitaciones de"
+        : tipoAliadoVenta === "CAFETERIA"
+        ? "Ver especialidades de"
+        : "Ver el menú de";
+    const pluralAliado =
+      tipoAliadoVenta === "GASTRONOMIA" ? "restaurantes" : tipoAliadoVenta === "CAFETERIA" ? "cafeterías" : "hoteles";
+    const otroAliado =
+      tipoAliadoVenta === "GASTRONOMIA"
+        ? "otro restaurante"
+        : tipoAliadoVenta === "CAFETERIA"
+        ? "otra cafetería"
+        : "otro hotel";
+
+    const listaCategorias = habitacionesVenta
+      .map(
+        (h) =>
+          `${h.nombre}${h.precio ? ` (${h.precio})` : ""}${h.caracteristicas ? ` — ${h.caracteristicas}` : ""}`
+      )
+      .join("\n  • ");
+    const precioDesde = habitacionesVenta.find((h) => h.precio)?.precio;
+    const textoCategorias = habitacionesVenta.length
+      ? `Tiene ${habitacionesVenta.length} ${palabraCategorias}:\n  • ${listaCategorias}`
+      : "";
+    const textoPrecios = precioDesde
+      ? `Desde ${precioDesde}${aliadoVenta?.rangoPrecio ? ` (rango general ${aliadoVenta.rangoPrecio})` : ""}`
+      : aliadoVenta?.rangoPrecio || "Consultar precios por WhatsApp";
+
+    const datosVenta = aliadoVenta
+      ? [
+          aliadoVenta.descripcion,
+          `Estrellas: ${aliadoVenta.estrellas ?? "sin categoría"}`,
+          tipoAliadoVenta === "HOSPEDAJE" && aliadoVenta.numeroCuartos
+            ? `Habitaciones: ${aliadoVenta.numeroCuartos}`
+            : "",
+          `Ubicación: ${aliadoVenta.ubicacion}`,
+          textoCategorias,
+          `Servicios: ${aliadoVenta.servicios || "s/d"}`,
+          `Precio: ${textoPrecios}`,
+          aliadoVenta.telefono ? `WhatsApp de reservas: ${aliadoVenta.telefono}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : "";
+
+    // Instrucción por paso: cada paso es CORTO y termina preguntando algo (no volcar todo)
+    const instruccionPaso =
+      pasoVenta === 1
+        ? `PASO 1 DE 5 (ENGANCHE): saludá y presentá el ${palabraAliado} en 2 frases cortas y atractivas (nombre, estrellas, zona) y decí que tiene ${habitacionesVenta.length || "varias"} ${palabraCategorias}. NO menciones precios ni servicios todavía. Cerrá preguntando si quiere ver ${tipoAliadoVenta === "HOSPEDAJE" ? "las habitaciones" : "las opciones"} o los precios.`
+        : pasoVenta === 2
+        ? `PASO 2 DE 5 (${palabraCategorias.toUpperCase()}): contá que hay ${habitacionesVenta.length} ${palabraCategorias}, nombrá 2 o 3 con su precio más atractivo y preguntá cuál le llama más la atención. NO listes servicios ni ubicación.`
+        : pasoVenta === 3
+        ? `PASO 3 DE 5 (PRECIOS): explicá el precio de cada categoría de forma clara y destacá la mejor relación calidad/precio. Preguntá si quiere saber qué incluye cada una. NO repitas la descripción general del hotel.`
+        : pasoVenta === 4
+        ? `PASO 4 DE 5 (QUÉ INCLUYE): contá la ubicación y 3 o 4 servicios destacados que justifiquen la reserva. Preguntá si le gustaría reservar. NO repitas precios de golpe (podés mencionar "desde X").`
+        : pasoVenta === 5
+        ? `PASO 5 DE 5 (CIERRE): invitá a reservar por WhatsApp, transmití urgencia suave (disponibilidad limitada) y preguntá si reservamos ahora o si prefiere ver ${otroAliado}. Máximo 3 frases.`
+        : "";
+
+    const guiaVenta = esModoVenta
+      ? `
+════════ MODO VENTA INTERACTIVA — PASO ${pasoVenta} DE 5 ════════
+Estás vendiendo "${aliadoVenta!.nombre}" en una CONVERSACIÓN de 5 pasos. El usuario está en el PASO ${pasoVenta}.
+${instruccionPaso}
+
+REGLAS DEL PASO (MUY IMPORTANTE):
+- Escribí MÁXIMO 3 frases (una es la pregunta final). Nada de listas largas ni párrafos con toda la información.
+- NO adelantes información de los pasos siguientes: se la vas a ir contando de a poco.
+- NO vuelvas a presentar el hotel como si fuera la primera vez si ya está en la conversación.
+- Usá solo datos reales de la ficha de abajo. Tono vendedor, cálido y con emojis (1 o 2, no más).
+- Terminá SIEMPRE con una pregunta corta que invite a seguir.
+- Devolvé SIEMPRE "aliadosRecomendadosIds": [${aliadoVenta!.id}] y dejá eventosRecomendadosIds y atractivosRecomendadosIds VACÍOS.
+- El campo "texto" NUNCA puede quedar vacío ni con espacios en blanco.
+
+EJEMPLO DEL FORMATO ESPERADO (adaptá el contenido a este paso):
+{"texto": "¡Buena elección! Este hotel boutique 4⭐ está en el Centro Histórico y tiene 3 tipos de habitación. ¿Querés que te muestre las habitaciones o preferís ver los precios? 😊", "eventosRecomendadosIds": [], "aliadosRecomendadosIds": [${aliadoVenta!.id}], "atractivosRecomendadosIds": []}
+
+FICHA REAL DEL ALIADO (usá solo esto):
+${datosVenta}`
+      : "";
+
+    // Botones de respuesta rápida para que el usuario avance el flujo con un toque
+    const nombreVenta = aliadoVenta?.nombre || "";
+    const respuestasRapidas: string[] =
+      pasoVenta === 1
+        ? [
+            `📸 ${verboCategorias} ${nombreVenta}`,
+            `💰 Ver precios de ${nombreVenta}`,
+            `📍 ¿Dónde queda ${nombreVenta}?`,
+          ]
+        : pasoVenta === 2
+        ? [
+            `💰 Ver precios de ${nombreVenta}`,
+            `✨ Qué incluye ${nombreVenta}`,
+            `📍 ¿Dónde queda ${nombreVenta}?`,
+          ]
+        : pasoVenta === 3
+        ? [
+            `✨ Qué incluye ${nombreVenta}`,
+            `📸 ${verboCategorias} ${nombreVenta}`,
+            `💬 Quiero reservar en ${nombreVenta}`,
+          ]
+        : pasoVenta === 4
+        ? [`💰 Ver precios de ${nombreVenta}`, `💬 Quiero reservar en ${nombreVenta}`, `🔎 Ver ${pluralAliado}`]
+        : pasoVenta === 5
+        ? [`🔎 Ver ${pluralAliado}`]
+        : [];
+
     const systemPrompt = `Eres el asistente turístico y cultural oficial de la Agenda Cultural Loja (Ecuador).
 ${detalleUbicacion}
 ${detalleRango}
 ${guiaBusqueda}
+${guiaVenta}
 
 FECHA ACTUAL: ${fechaHoyStr}.
 
@@ -530,6 +774,7 @@ TONO Y ESTILO DE CONVERSACIÓN (NATURAL, AMABLE Y ENGAGEMENT):
 4. RELEVANCIA TEMÁTICA:
    - Mantente enfocado en lo que el usuario preguntó. Si pregunta por un evento, habla de ese evento.
    - Solo sugiere hospedaje o gastronomía si el usuario lo menciona o pregunta qué hacer de noche/dónde salir.
+4.1 NATURALEZA PRIMERO: si el usuario pide naturaleza, rutas, parques, cascadas, cerros, senderismo, miradores, ríos o actividades al aire libre y NO pidió eventos de cartelera, NO recomiendes eventos: responde con los ATRACTIVOS CANTONALES y usa sus IDs en "atractivosRecomendadosIds".
 5. CERO ALUCINACIÓN: Solo asocia IDs de la lista EVENTOS DISPONIBLES.
 5.1 ALIADOS COMERCIALES SON PRIORIDAD: si el usuario pregunta por hospedaje, hoteles, dónde dormir o dónde comer, incluye SIEMPRE en "aliadosRecomendadosIds" TODOS los IDs de los aliados comerciales prioritarios de la lista ALIADOS COMERCIALES (máximo 3), no solo uno o dos.
 6. NO REPITAS datos obvios ni vuelvas a mandar la misma tarjeta si ya se la mostraste al usuario.
@@ -665,6 +910,18 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
       lowerUser.includes("mañana") || lowerUser.includes("semana") ||
       lowerUser.includes("fin de semana") || !!rangoFecha;
 
+    // El usuario pidió EVENTOS explícitamente (no adivinamos: palabras de cartelera o fecha)
+    const esEventoExplicito =
+      lowerUser.includes("evento") || lowerUser.includes("cartelera") ||
+      lowerUser.includes("concierto") || lowerUser.includes("festival") ||
+      lowerUser.includes("teatro") || lowerUser.includes("obra") ||
+      lowerUser.includes("música") || lowerUser.includes("musica") ||
+      lowerUser.includes("feria") || lowerUser.includes("exposici") ||
+      lowerUser.includes("agenda") || lowerUser.includes("presentaci") ||
+      lowerUser.includes("hoy") || lowerUser.includes("mañana") ||
+      lowerUser.includes("fin de semana") || lowerUser.includes("finde") ||
+      !!rangoFecha;
+
     const esSaludo =
       /^(hola|buenas|buenos|saludos|hey|hi|ola)[?!\s.]*$/.test(lowerUser.trim()) ||
       lowerUser.trim() === "hola?";
@@ -672,8 +929,28 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
     const esNaturaleza =
       lowerUser.includes("naturaleza") || lowerUser.includes("canton") ||
       lowerUser.includes("cantón") || lowerUser.includes("ruta") ||
-      lowerUser.includes("parque") || lowerUser.includes("reserva") ||
-      lowerUser.includes("vilcabamba") || lowerUser.includes("podocarpus");
+      lowerUser.includes("parque") || /\breservas?\b/.test(lowerUser) ||
+      lowerUser.includes("vilcabamba") || lowerUser.includes("podocarpus") ||
+      lowerUser.includes("cascada") || lowerUser.includes("cerro") ||
+      lowerUser.includes("senderis") || lowerUser.includes("montaña") ||
+      lowerUser.includes("bosque") || lowerUser.includes("mirador") ||
+      lowerUser.includes("ecoturis") || lowerUser.includes("aire libre") ||
+      lowerUser.includes("rio") || lowerUser.includes("río") ||
+      lowerUser.includes("camping") || lowerUser.includes("paisaje") ||
+      lowerUser.includes("mandango") || lowerUser.includes("picachos") ||
+      lowerUser.includes("puyango") || lowerUser.includes("termal") ||
+      lowerUser.includes("visitar") || lowerUser.includes("visita") ||
+      lowerUser.includes("conocer") || lowerUser.includes("atractiv") ||
+      lowerUser.includes("turismo") || lowerUser.includes("turístic") ||
+      lowerUser.includes("turistico") || lowerUser.includes("turístico") ||
+      lowerUser.includes("lugares");
+
+    // Cafeterías: preferencia cuando el usuario pregunta por café
+    const esCafe =
+      lowerUser.includes("café") || lowerUser.includes("cafe") ||
+      lowerUser.includes("cafeter") || lowerUser.includes("barista") ||
+      lowerUser.includes("espresso") || lowerUser.includes("capuchino") ||
+      lowerUser.includes("latte") || lowerUser.includes("tostado");
 
     // Gastronomía = también es un aliado comercial prioritario
     const esGastronomia =
@@ -691,13 +968,17 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
     // ─── ALIADOS COMERCIALES = PRIORIDAD ───
     // Se muestran SIEMPRE completos (máx. 3 tarjetas) cuando el usuario busca hospedaje o gastronomía.
     const aliadosComerciales = aliados.filter(
-      (a) => a.tipo === "HOSPEDAJE" || a.tipo === "GASTRONOMIA"
+      (a) => a.tipo === "HOSPEDAJE" || a.tipo === "GASTRONOMIA" || a.tipo === "CAFETERIA"
     );
-    const aliadosAfines =
-      esGastronomia && !esHospedaje
-        ? aliados.filter((a) => a.tipo === "GASTRONOMIA")
-        : aliados.filter((a) => a.tipo === "HOSPEDAJE");
-    // Prioridad: afines al tema > resto de aliados comerciales > cualquier aliado activo
+    // Prioridad por tema: cafeterías si piden café, restaurantes si piden comer, hoteles si buscan dormir
+    const aliadosAfines = esCafe
+      ? aliados.filter((a) => a.tipo === "CAFETERIA")
+      : esGastronomia && !esHospedaje
+      ? aliados.filter((a) => a.tipo === "GASTRONOMIA")
+      : aliados.filter((a) => a.tipo === "HOSPEDAJE");
+    // Prioridad: si el usuario pidió un tema (dormir / comer / café) se muestran SOLO los aliados de ese rubro.
+    // Si no hay tema claro, se muestran todos los comerciales.
+    const hayTemaAliado = esCafe || esGastronomia || esHospedaje;
     const idsPrioridadAliados = Array.from(
       new Set([
         ...aliadosAfines.map((a) => a.id),
@@ -705,25 +986,33 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
         ...aliados.map((a) => a.id),
       ])
     );
-    const baseAliados = idsPrioridadAliados
-      .map((id) => aliados.find((a) => a.id === id))
-      .filter((a): a is (typeof aliados)[number] => Boolean(a))
-      .slice(0, 3);
+    const baseAliados = (
+      hayTemaAliado && aliadosAfines.length > 0
+        ? aliadosAfines
+        : aliadosComerciales.length > 0
+        ? aliadosComerciales
+        : aliados
+    ).slice(0, 6);
+
+    // (La detección del MODO VENTA y sus datos se calculan arriba, antes de construir el prompt)
 
     console.log("[Chat Debug] AI Content raw length:", aiContent.length, "Parsed text:", parsedResult.texto);
 
     // Heurístico ÚNICAMENTE si la IA falló por completo y vino vacía
     if (!parsedResult.texto || parsedResult.texto.trim().length === 0) {
-      if (esSaludo) {
+      if (esModoVenta && aliadoVenta) {
+        // El flujo de venta NUNCA debe caer en textos de cartelera
+        parsedResult.texto = plantillaVentaPaso(aliadoVenta, habitacionesVenta, pasoVenta);
+      } else if (esSaludo) {
         parsedResult.texto = "¡Hola! 👋 Bienvenido a la Agenda Cultural de Loja. ¿Qué planes o eventos buscas para hoy?";
-      } else if (esHospedaje || esGastronomia) {
+      } else if ((esHospedaje || esGastronomia) && !esModoVenta) {
         parsedResult.texto = "Aquí tienes excelentes opciones recomendadas en Loja:";
         if (parsedResult.aliadosRecomendadosIds.length === 0) {
           parsedResult.aliadosRecomendadosIds = baseAliados.map((a) => a.id);
         }
       } else if (eventosParaContexto.length > 0) {
         parsedResult.texto = "Aquí tienes los eventos relacionados disponibles en cartelera. ¿Te gustaría saber más detalles de alguno?";
-        parsedResult.eventosRecomendadosIds = eventosParaContexto.slice(0, 4).map((e: any) => e.id);
+        parsedResult.eventosRecomendadosIds = eventosParaContexto.slice(0, 6).map((e: any) => e.id);
       } else {
         parsedResult.texto = "Por el momento no encuentro eventos específicos para esa consulta en cartelera. ¿Te gustaría explorar otras fechas o actividades?";
       }
@@ -738,22 +1027,40 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
         // No hay eventos para esa fecha: NUNCA mostrar tarjetas de eventos de otros días
         parsedResult.eventosRecomendadosIds = [];
       } else if (parsedResult.eventosRecomendadosIds.length === 0) {
-        parsedResult.eventosRecomendadosIds = eventosParaContexto.slice(0, 4).map((e: any) => e.id);
+        parsedResult.eventosRecomendadosIds = eventosParaContexto.slice(0, 6).map((e: any) => e.id);
       }
     } else if (esEvento && parsedResult.eventosRecomendadosIds.length === 0 && eventosParaContexto.length > 0) {
-      parsedResult.eventosRecomendadosIds = eventosParaContexto.slice(0, 4).map((e: any) => e.id);
+      parsedResult.eventosRecomendadosIds = eventosParaContexto.slice(0, 6).map((e: any) => e.id);
     }
 
-    const aliadoEspecifico = aliados.find((a) =>
-      lowerUser.includes(a.nombre.toLowerCase()) ||
-      (a.nombre.toLowerCase().includes("gran victoria") && lowerUser.includes("victoria")) ||
-      (a.nombre.toLowerCase().includes("puerta del sol") && lowerUser.includes("puerta del sol"))
-    );
+    // ─── NATURALEZA MANDA ───
+    // Si piden naturaleza/rutas/parques y NO pidieron eventos explícitamente,
+    // no mezclamos cartelera: se muestran solo los atractivos cantonales.
+    if (esNaturaleza && !esEventoExplicito && atractivos.length > 0) {
+      parsedResult.eventosRecomendadosIds = [];
+      if (parsedResult.atractivosRecomendadosIds.length === 0) {
+        parsedResult.atractivosRecomendadosIds = atractivos.slice(0, 6).map((at) => at.id);
+      }
+    }
 
     // Solo recomendar aliados si el usuario preguntó explícitamente por hospedaje, comida o por un aliado puntual
-    if (!esHospedaje && !esGastronomia && !aliadoEspecifico) {
+    if (esModoVenta && aliadoVenta) {
+      // ─── FLUJO DE VENTA: una sola ficha (con su paso actual), sin eventos ni atractivos ───
+      parsedResult.aliadosRecomendadosIds = [aliadoVenta.id];
+      parsedResult.eventosRecomendadosIds = [];
+      parsedResult.atractivosRecomendadosIds = [];
+
+      const textoGenerico =
+        !parsedResult.texto ||
+        parsedResult.texto.trim().length < 40 ||
+        parsedResult.texto.trim() === "Aquí tienes la información:" ||
+        parsedResult.texto.trim() === "Aquí tienes excelentes opciones recomendadas en Loja:";
+      if (textoGenerico) {
+        parsedResult.texto = plantillaVentaPaso(aliadoVenta, habitacionesVenta, pasoVenta);
+      }
+    } else if (!esHospedaje && !esGastronomia && !pideOtraOpcion) {
       parsedResult.aliadosRecomendadosIds = [];
-    } else if (!aliadoEspecifico) {
+    } else {
       // Los aliados comerciales son PRIORIDAD: se completan SIEMPRE todos (máx. 3 tarjetas),
       // respetando primero lo que la IA recomendó y rellenando con los aliados prioritarios.
       const idsValidosIA = parsedResult.aliadosRecomendadosIds.filter((id) =>
@@ -761,20 +1068,15 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
       );
       parsedResult.aliadosRecomendadosIds = Array.from(
         new Set([...idsValidosIA, ...baseAliados.map((a) => a.id)])
-      ).slice(0, 3);
+      ).slice(0, 6);
     }
 
-    if (aliadoEspecifico) {
-      parsedResult.aliadosRecomendadosIds = [aliadoEspecifico.id];
-      const textoGenerico = !parsedResult.texto || parsedResult.texto.trim().length < 20 || parsedResult.texto === "Aquí tienes la información:";
-      if (textoGenerico) {
-        parsedResult.texto = `¡Excelente elección! ${aliadoEspecifico.nombre} se ubica en ${aliadoEspecifico.ubicacion}. Reserva directa por WhatsApp disponible.`;
-      }
+    if (esNaturaleza && !esModoVenta && parsedResult.atractivosRecomendadosIds.length === 0 && atractivos.length > 0) {
+      parsedResult.atractivosRecomendadosIds = atractivos.slice(0, 6).map((at) => at.id);
     }
 
-    if (esNaturaleza && parsedResult.atractivosRecomendadosIds.length === 0 && atractivos.length > 0) {
-      parsedResult.atractivosRecomendadosIds = atractivos.slice(0, 2).map((at) => at.id);
-    }
+    // En modo venta la ficha del aliado viaja en el mensaje, junto con el paso actual y los botones del flujo
+    const aliadoDetalle = esModoVenta ? aliadoVenta : null;
 
     // Resolver tarjetas de eventos a mostrar a partir de los eventos analizados en el contexto
     const fullEventos = eventosParaContexto.filter((e) =>
@@ -807,6 +1109,9 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
       eventos: fullEventos,
       aliados: fullAliados,
       atractivos: fullAtractivos,
+      aliadoDetalle: aliadoDetalle || null,
+      ventaPaso: pasoVenta || null,
+      respuestasRapidas,
     });
   } catch (error: any) {
     console.error("Error en /api/chat:", error);

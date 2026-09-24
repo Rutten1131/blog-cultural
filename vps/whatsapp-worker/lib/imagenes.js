@@ -4,12 +4,13 @@
  * POR QUÉ:
  *   Las URLs de imagen de Facebook e Instagram
  *   (`scontent-*.fbcdn.net`, `cdninstagram.com`) son enlaces firmados
- *   TEMPORALES que caducan en pocos días. Si se guardan tal cual, la
- *   imagen del evento se rompe poco después de publicarlo.
+ *   TEMPORALES que caducan en pocos días.
  *
- * SOLUCIÓN:
- *   Al detectar el post, se descarga la imagen y se sube a Bunny (el
- *   mismo CDN que ya usa el proyecto), guardando la URL permanente.
+ * DOS VÍAS DE DESCARGA:
+ *   1. `bufferDirecto` — los bytes que ya bajó el navegador (Puppeteer)
+ *      desde dentro de la propia página. Es la única forma que funciona
+ *      con Instagram y Facebook, que devuelven HTTP 403 a un fetch normal.
+ *   2. Descarga HTTP normal — para todo lo demás (webs, CDN abiertos).
  *
  * Reutiliza el mismo endpoint que `scripts/upload-images-to-cdn.ts`.
  */
@@ -44,27 +45,96 @@ function yaEnCdn(url) {
 }
 
 /**
- * Descarga una imagen remota y la sube a Bunny CDN.
- *
- * Nunca lanza: si algo falla devuelve null y el post se guarda sin
- * imagen, en vez de romper todo el escaneo.
- *
- * @param {string} urlOriginal
- * @param {string} etiqueta - prefijo del nombre de archivo
- * @returns {Promise<string|null>} URL permanente, o null si no se pudo
+ * Sube bytes ya validados a Bunny.
+ * @returns {Promise<string|null>} URL pública, o null si no se pudo
  */
-async function rehospedarImagen(urlOriginal, etiqueta = "evento") {
-  if (!urlOriginal || typeof urlOriginal !== "string") return null;
+async function subirADisco(buffer, tipo, etiqueta) {
+  const extension = TIPOS_PERMITIDOS[tipo];
 
-  // Ya es nuestra: no hay nada que hacer.
-  if (yaEnCdn(urlOriginal)) return urlOriginal;
+  if (!extension) {
+    console.warn(`[Imagen] Tipo no soportado (${tipo || "desconocido"}): no se sube`);
+    return null;
+  }
 
-  if (!configurado()) {
+  if (buffer.length === 0) {
+    console.warn("[Imagen] Los bytes vinieron vacíos");
+    return null;
+  }
+
+  if (buffer.length > TAMANO_MAXIMO) {
     console.warn(
-      "[Imagen] Bunny no configurado (faltan BUNNY_*): se deja la URL original, que puede caducar."
+      `[Imagen] Demasiado grande (${(buffer.length / 1024 / 1024).toFixed(1)} MB): no se sube`
     );
     return null;
   }
+
+  const hash = crypto.createHash("sha1").update(buffer).digest("hex").slice(0, 12);
+  const ruta = `bot-whatsapp/${etiqueta}-${Date.now()}-${hash}.${extension}`;
+
+  try {
+    const res = await fetch(`https://storage.bunnycdn.com/${ZONA}/${ruta}`, {
+      method: "PUT",
+      headers: {
+        AccessKey: CLAVE,
+        "Content-Type": "application/octet-stream",
+      },
+      body: new Uint8Array(buffer),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!res.ok) {
+      const detalle = (await res.text().catch(() => "")).slice(0, 150);
+      console.warn(`[Imagen] Bunny respondió ${res.status}: ${detalle}`);
+      return null;
+    }
+
+    return `${PULL}/${ruta}`;
+  } catch (err) {
+    console.warn(`[Imagen] Error subiendo a Bunny: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Deja una imagen en nuestro CDN.
+ *
+ * Nunca lanza: si algo falla devuelve null y el post se guarda sin imagen,
+ * en vez de romper todo el escaneo.
+ *
+ * @param {string} urlOriginal
+ * @param {string} etiqueta - prefijo del nombre de archivo
+ * @param {{base64: string, tipo: string}|null} bufferDirecto
+ *        Bytes ya descargados por el navegador (vía preferente).
+ * @returns {Promise<string|null>} URL permanente, o null
+ */
+async function rehospedarImagen(urlOriginal, etiqueta = "evento", bufferDirecto = null) {
+  if (!configurado()) {
+    console.warn(
+      "[Imagen] Bunny no configurado (faltan BUNNY_*): la URL original puede caducar."
+    );
+    return null;
+  }
+
+  // ── Vía 1: los bytes que ya bajó el navegador ──
+  if (bufferDirecto && typeof bufferDirecto.base64 === "string") {
+    try {
+      const buffer = Buffer.from(bufferDirecto.base64, "base64");
+      const subida = await subirADisco(buffer, bufferDirecto.tipo, etiqueta);
+      if (subida) {
+        console.log(
+          `[Imagen] Re-alojada desde el navegador (${(buffer.length / 1024).toFixed(0)} KB) → ${subida}`
+        );
+        return subida;
+      }
+      // Si falló, se intenta la vía normal como respaldo.
+    } catch (err) {
+      console.warn(`[Imagen] Buffer del navegador inválido: ${err.message}`);
+    }
+  }
+
+  // ── Vía 2: descarga HTTP normal ──
+  if (!urlOriginal || typeof urlOriginal !== "string") return null;
+  if (yaEnCdn(urlOriginal)) return urlOriginal;
 
   try {
     const res = await fetch(urlOriginal, {
@@ -87,65 +157,19 @@ async function rehospedarImagen(urlOriginal, etiqueta = "evento") {
       .trim()
       .toLowerCase();
 
-    const extension = TIPOS_PERMITIDOS[tipo];
-    if (!extension) {
-      console.warn(
-        `[Imagen] Tipo no soportado (${tipo || "desconocido"}): no se re-aloja`
-      );
-      return null;
-    }
-
     const buffer = Buffer.from(await res.arrayBuffer());
+    const subida = await subirADisco(buffer, tipo, etiqueta);
 
-    if (buffer.length === 0) {
-      console.warn("[Imagen] La imagen vino vacía");
-      return null;
-    }
-
-    if (buffer.length > TAMANO_MAXIMO) {
-      console.warn(
-        `[Imagen] Demasiado grande (${(buffer.length / 1024 / 1024).toFixed(1)} MB): no se re-aloja`
+    if (subida) {
+      console.log(
+        `[Imagen] Re-alojada (${(buffer.length / 1024).toFixed(0)} KB) → ${subida}`
       );
-      return null;
     }
-
-    // Nombre estable: permite detectar duplicados y cachear bien.
-    const hash = crypto
-      .createHash("sha1")
-      .update(buffer)
-      .digest("hex")
-      .slice(0, 12);
-
-    const ruta = `bot-whatsapp/${etiqueta}-${Date.now()}-${hash}.${extension}`;
-
-    const subida = await fetch(
-      `https://storage.bunnycdn.com/${ZONA}/${ruta}`,
-      {
-        method: "PUT",
-        headers: {
-          AccessKey: CLAVE,
-          "Content-Type": "application/octet-stream",
-        },
-        body: new Uint8Array(buffer),
-        signal: AbortSignal.timeout(30000),
-      }
-    );
-
-    if (!subida.ok) {
-      const detalle = (await subida.text().catch(() => "")).slice(0, 150);
-      console.warn(`[Imagen] Bunny respondió ${subida.status}: ${detalle}`);
-      return null;
-    }
-
-    const publica = `${PULL}/${ruta}`;
-    console.log(
-      `[Imagen] Re-alojada (${(buffer.length / 1024).toFixed(0)} KB) → ${publica}`
-    );
-    return publica;
+    return subida;
   } catch (err) {
     console.warn(`[Imagen] Error re-alojando: ${err.message}`);
     return null;
   }
 }
 
-module.exports = { rehospedarImagen, configurado, yaEnCdn };
+module.exports = { rehospedarImagen, subirADisco, configurado, yaEnCdn };

@@ -83,6 +83,14 @@ async function main() {
   await conn.query(CREATE_MENSAJES_PROCESADOS);
   console.log("[Schema] wa_mensajes_procesados → OK");
 
+  // Carrusel: todas las fotos del post, no solo la portada.
+  // MariaDB admite ADD COLUMN IF NOT EXISTS, así que es idempotente.
+  await conn.query(`
+    ALTER TABLE \`posts_social\`
+      ADD COLUMN IF NOT EXISTS \`multimedia\` JSON NULL
+  `);
+  console.log("[Schema] posts_social.multimedia → OK");
+
   const rows = await conn.query("SHOW TABLES LIKE 'posts_social'");
   if (rows.length === 0) {
     throw new Error("La tabla posts_social no se pudo crear");

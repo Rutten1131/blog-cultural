@@ -81,6 +81,14 @@ export async function aprobarPostBot(
     // Para el slug se necesita "YYYY-MM-DD" en zona Loja → opción "iso".
     const slug = generarSlug(nombre, formatFechaLoja(fecha, "iso"), lugar);
 
+    // Las fotos del carrusel viajan con el evento. Si solo hay una, no hace
+    // falta el arreglo: `imagenUrl` ya la cubre.
+    const fotos = Array.isArray(post.multimedia)
+      ? post.multimedia.filter(
+          (u): u is string => typeof u === "string" && u.trim().length > 0
+        )
+      : [];
+
     // Evitar duplicados: si ya existe un evento con ese slug, no se repite.
     const existente = await prisma.evento.findUnique({ where: { slug } });
     if (existente) {
@@ -109,6 +117,7 @@ export async function aprobarPostBot(
         lugar,
         descripcion,
         imagenUrl: post.imagenUrl,
+        multimedia: fotos.length > 1 ? fotos : undefined,
         nombreGestor: GESTOR_BOT,
         confianzaClasificacion: post.confianzaIA,
         // Queda PENDIENTE: no se publica hasta que un humano lo apruebe

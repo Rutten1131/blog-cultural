@@ -151,6 +151,8 @@ model Aliado {
   rangoPrecio String?     @db.VarChar(100) // Ej: "$35 - $65 / noche"
   servicios   String?     @db.Text         // Ej: "Wifi fibra, Desayuno buffet, Parqueadero privado"
   cuartos     String?     @db.Text         // Ej: "Matrimoniales, Suites ejecutivas, Familiares"
+  numeroCuartos Int?                       // Cantidad de habitaciones del establecimiento
+  estrellas   Int?                         // Categoría / cantidad de estrellas (1-5)
   telefono    String?     @db.VarChar(50)  // WhatsApp internacional ej: 593991234567
   websiteUrl  String?     @db.VarChar(255)
   redesUrl    String?     @db.VarChar(255) // Instagram / Facebook / TikTok
@@ -158,14 +160,32 @@ model Aliado {
   destacado   Boolean     @default(true)
   activo      Boolean     @default(true)
   createdAt   DateTime    @default(now())
+  habitaciones AliadoHabitacion[]
 
   @@index([tipo, activo])
   @@map("aliados")
 }
 
+/// Categorías / tipos de habitación de un aliado (precio, características y galería de imágenes)
+model AliadoHabitacion {
+  id              Int      @id @default(autoincrement())
+  aliadoId        Int
+  aliado          Aliado   @relation(fields: [aliadoId], references: [id], onDelete: Cascade)
+  nombre          String   @db.VarChar(150) // Ej: "Suite Ejecutiva con balcón"
+  precio          String?  @db.VarChar(100) // Ej: "$65 / noche"
+  caracteristicas String?  @db.Text         // Qué incluye / qué tiene
+  imagenes        String?  @db.Text         // JSON array de URLs para el carrusel
+  orden           Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([aliadoId])
+  @@map("aliado_habitaciones")
+}
+
 enum TipoAliado {
   HOSPEDAJE
   GASTRONOMIA
+  CAFETERIA
   EXPERIENCIA
   TRANSPORTE
   CANTON_GAD
@@ -239,6 +259,9 @@ model PostSocial {
   titulo         String?        @db.VarChar(255)
   descripcion    String?        @db.Text
   imagenUrl      String?        @db.VarChar(500)
+  // Todas las fotos del carrusel (la primera es la portada de imagenUrl).
+  // Se guardan ya re-alojadas en Bunny: las URLs de Instagram/Facebook caducan.
+  multimedia     Json?
   fechaPublicacion DateTime?
   lugar          String?        @db.VarChar(255)
   estado         EstadoPost     @default(PENDIENTE)
