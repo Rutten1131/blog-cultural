@@ -505,21 +505,21 @@ export function ChatbotWidget() {
                   </div>
                 )}
 
-                {/* ESCENARIO B2B: TARJETAS ESTILO E-COMMERCE DE ALIADOS */}
+                {/* ESCENARIO B2B: TARJETAS COMPACTAS DE ALIADOS (LAS 3 VISIBLES SIN SCROLL) */}
                 {m.aliados && m.aliados.length > 0 && (
                   <div className="w-full mt-3 space-y-3">
                     <div className="text-[11px] font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1.5 px-1">
                       <span>⭐ Opciones Recomendadas en Loja:</span>
                     </div>
 
-                    <div className="flex gap-3 overflow-x-auto pb-2 pt-1 no-scrollbar snap-x">
-                      {m.aliados.map((aliado) => (
+                    <div className="grid grid-cols-3 gap-2 pt-1 items-stretch">
+                      {m.aliados.slice(0, 3).map((aliado) => (
                         <div
                           key={aliado.id}
-                          className="min-w-[260px] max-w-[280px] bg-white border border-purple-100 rounded-2xl overflow-hidden shadow-lg shadow-purple-900/5 flex flex-col justify-between snap-start"
+                          className="bg-white border border-purple-100 rounded-xl overflow-hidden shadow-md shadow-purple-900/5 flex flex-col min-w-0"
                         >
                           {/* Foto del Hotel/Comercio */}
-                          <div className="relative h-32 w-full bg-purple-50">
+                          <div className="relative h-20 w-full bg-purple-50 shrink-0">
                             {aliado.imagenUrl ? (
                               <img
                                 src={aliado.imagenUrl}
@@ -527,51 +527,53 @@ export function ChatbotWidget() {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="h-full flex items-center justify-center text-3xl">
+                              <div className="h-full flex items-center justify-center text-2xl">
                                 🏨
                               </div>
                             )}
-                            <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] text-purple-800 font-bold border border-purple-200 shadow-sm">
-                              ⭐ Patrocinador Oficial
+                            <div className="absolute top-1 left-1 bg-white/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] text-purple-800 font-bold border border-purple-200 shadow-sm">
+                              ⭐ Aliado
                             </div>
                             {aliado.rangoPrecio && (
-                              <div className="absolute bottom-2 right-2 bg-gradient-to-r from-purple-700 to-pink-600 text-white font-bold px-2 py-0.5 rounded-lg text-xs shadow-md">
+                              <div className="absolute bottom-1 right-1 bg-gradient-to-r from-purple-700 to-pink-600 text-white font-bold px-1.5 py-0.5 rounded text-[9px] shadow-md">
                                 {aliado.rangoPrecio}
                               </div>
                             )}
                           </div>
 
-                          {/* Info Detallada */}
-                          <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
-                            <div>
-                              <h4 className="font-bold text-neutral-900 text-sm leading-tight">
+                          {/* Info Compacta */}
+                          <div className="p-2 flex-1 flex flex-col justify-between gap-1.5 min-w-0">
+                            <div className="space-y-1 min-w-0">
+                              <h4 className="font-bold text-neutral-900 text-[10px] leading-tight line-clamp-2">
                                 {aliado.nombre}
                               </h4>
-                              <p className="text-[11px] text-neutral-600 mt-1 line-clamp-2">
-                                {aliado.descripcion}
-                              </p>
-
-                              <div className="mt-2 space-y-1 text-[11px] text-neutral-700">
-                                <p className="flex items-center gap-1">
-                                  <span>📍</span>
-                                  <span className="truncate">{aliado.ubicacion}</span>
+                              {aliado.descripcion && (
+                                <p className="text-[9px] text-neutral-600 leading-snug line-clamp-3">
+                                  {aliado.descripcion}
                                 </p>
+                              )}
+
+                              <div className="space-y-0.5 text-[9px] leading-snug text-neutral-700">
+                                {aliado.ubicacion && (
+                                  <p className="line-clamp-2">
+                                    <span>📍</span> {aliado.ubicacion}
+                                  </p>
+                                )}
                                 {aliado.cuartos && (
-                                  <p className="flex items-center gap-1 text-purple-800 font-medium">
-                                    <span>🛏️</span>
-                                    <span className="truncate">{aliado.cuartos}</span>
+                                  <p className="text-purple-800 font-medium line-clamp-2">
+                                    <span>🛏️</span> {aliado.cuartos}
                                   </p>
                                 )}
                                 {aliado.servicios && (
-                                  <p className="flex items-center gap-1 text-neutral-500 truncate">
+                                  <p className="text-neutral-500 line-clamp-2">
                                     <span>✨</span> {aliado.servicios}
                                   </p>
                                 )}
                               </div>
                             </div>
 
-                            {/* Botones de Acción Comercial E-Commerce */}
-                            <div className="pt-2 border-t border-purple-100 flex flex-col gap-1.5">
+                            {/* Botones de Acción Comercial */}
+                            <div className="pt-1.5 border-t border-purple-100 flex flex-col gap-1">
                               {aliado.telefono && (
                                 <a
                                   href={`https://wa.me/${aliado.telefono.replace(
@@ -582,21 +584,23 @@ export function ChatbotWidget() {
                                   )}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-700/20"
+                                  title="Reservar por WhatsApp"
+                                  className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[9px] rounded-lg flex items-center justify-center gap-1 transition-all shadow-sm shadow-emerald-700/20"
                                 >
-                                  <span>💬</span> Reservar por WhatsApp
+                                  <span>💬</span> Reservar
                                 </a>
                               )}
 
-                              <div className="flex flex-wrap gap-1.5">
+                              <div className="flex gap-1">
                                 {aliado.mapaUrl && (
                                   <a
                                     href={aliado.mapaUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 min-w-[70px] py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 border border-purple-100 transition-all"
+                                    title="Ver ubicación en el mapa"
+                                    className="flex-1 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 text-[11px] font-bold rounded-md flex items-center justify-center border border-purple-100 transition-all"
                                   >
-                                    <span>📍</span> Ubicación
+                                    📍
                                   </a>
                                 )}
                                 {aliado.websiteUrl && (
@@ -604,9 +608,10 @@ export function ChatbotWidget() {
                                     href={aliado.websiteUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 min-w-[70px] py-1.5 bg-pink-50 hover:bg-pink-100 text-pink-700 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 border border-pink-100 transition-all"
+                                    title="Sitio web"
+                                    className="flex-1 py-1 bg-pink-50 hover:bg-pink-100 text-pink-700 text-[11px] font-bold rounded-md flex items-center justify-center border border-pink-100 transition-all"
                                   >
-                                    <span>🌐</span> Web
+                                    🌐
                                   </a>
                                 )}
                                 {aliado.redesUrl && (
@@ -614,9 +619,10 @@ export function ChatbotWidget() {
                                     href={aliado.redesUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 min-w-[70px] py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 border border-neutral-200 transition-all"
+                                    title="Redes sociales"
+                                    className="flex-1 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-[11px] font-bold rounded-md flex items-center justify-center border border-neutral-200 transition-all"
                                   >
-                                    <span>📱</span> Redes
+                                    📱
                                   </a>
                                 )}
                               </div>

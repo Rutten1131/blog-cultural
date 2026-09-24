@@ -398,7 +398,7 @@ export async function POST(req: NextRequest) {
     const aliados = await prisma.aliado.findMany({
       where: { activo: true },
       orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
-      take: 8,
+      take: 20,
     });
 
     const atractivos = await prisma.atractivoCantonal.findMany({
@@ -531,6 +531,7 @@ TONO Y ESTILO DE CONVERSACIÓN (NATURAL, AMABLE Y ENGAGEMENT):
    - Mantente enfocado en lo que el usuario preguntó. Si pregunta por un evento, habla de ese evento.
    - Solo sugiere hospedaje o gastronomía si el usuario lo menciona o pregunta qué hacer de noche/dónde salir.
 5. CERO ALUCINACIÓN: Solo asocia IDs de la lista EVENTOS DISPONIBLES.
+5.1 ALIADOS COMERCIALES SON PRIORIDAD: si el usuario pregunta por hospedaje, hoteles, dónde dormir o dónde comer, incluye SIEMPRE en "aliadosRecomendadosIds" TODOS los IDs de los aliados comerciales prioritarios de la lista ALIADOS COMERCIALES (máximo 3), no solo uno o dos.
 6. NO REPITAS datos obvios ni vuelvas a mandar la misma tarjeta si ya se la mostraste al usuario.
 
 ALIADOS COMERCIALES:
@@ -674,16 +675,51 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
       lowerUser.includes("parque") || lowerUser.includes("reserva") ||
       lowerUser.includes("vilcabamba") || lowerUser.includes("podocarpus");
 
+    // Gastronomía = también es un aliado comercial prioritario
+    const esGastronomia =
+      lowerUser.includes("comer") || lowerUser.includes("comida") ||
+      lowerUser.includes("gastronom") || lowerUser.includes("restaurant") ||
+      lowerUser.includes("restaurante") || lowerUser.includes("cafeter") ||
+      lowerUser.includes("café") || lowerUser.includes("cafe") ||
+      lowerUser.includes("desayun") || lowerUser.includes("almorz") ||
+      lowerUser.includes("cenar") || lowerUser.includes("cena") ||
+      lowerUser.includes("pizza") || lowerUser.includes("parrillad") ||
+      lowerUser.includes("marisc") || lowerUser.includes("típic") ||
+      lowerUser.includes("tipic") || lowerUser.includes("donde comer") ||
+      lowerUser.includes("dónde comer");
+
+    // ─── ALIADOS COMERCIALES = PRIORIDAD ───
+    // Se muestran SIEMPRE completos (máx. 3 tarjetas) cuando el usuario busca hospedaje o gastronomía.
+    const aliadosComerciales = aliados.filter(
+      (a) => a.tipo === "HOSPEDAJE" || a.tipo === "GASTRONOMIA"
+    );
+    const aliadosAfines =
+      esGastronomia && !esHospedaje
+        ? aliados.filter((a) => a.tipo === "GASTRONOMIA")
+        : aliados.filter((a) => a.tipo === "HOSPEDAJE");
+    // Prioridad: afines al tema > resto de aliados comerciales > cualquier aliado activo
+    const idsPrioridadAliados = Array.from(
+      new Set([
+        ...aliadosAfines.map((a) => a.id),
+        ...aliadosComerciales.map((a) => a.id),
+        ...aliados.map((a) => a.id),
+      ])
+    );
+    const baseAliados = idsPrioridadAliados
+      .map((id) => aliados.find((a) => a.id === id))
+      .filter((a): a is (typeof aliados)[number] => Boolean(a))
+      .slice(0, 3);
+
     console.log("[Chat Debug] AI Content raw length:", aiContent.length, "Parsed text:", parsedResult.texto);
 
     // Heurístico ÚNICAMENTE si la IA falló por completo y vino vacía
     if (!parsedResult.texto || parsedResult.texto.trim().length === 0) {
       if (esSaludo) {
         parsedResult.texto = "¡Hola! 👋 Bienvenido a la Agenda Cultural de Loja. ¿Qué planes o eventos buscas para hoy?";
-      } else if (esHospedaje) {
+      } else if (esHospedaje || esGastronomia) {
         parsedResult.texto = "Aquí tienes excelentes opciones recomendadas en Loja:";
         if (parsedResult.aliadosRecomendadosIds.length === 0) {
-          parsedResult.aliadosRecomendadosIds = aliados.slice(0, 2).map((a) => a.id);
+          parsedResult.aliadosRecomendadosIds = baseAliados.map((a) => a.id);
         }
       } else if (eventosParaContexto.length > 0) {
         parsedResult.texto = "Aquí tienes los eventos relacionados disponibles en cartelera. ¿Te gustaría saber más detalles de alguno?";
@@ -715,16 +751,17 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
     );
 
     // Solo recomendar aliados si el usuario preguntó explícitamente por hospedaje, comida o por un aliado puntual
-    if (!esHospedaje && !aliadoEspecifico) {
+    if (!esHospedaje && !esGastronomia && !aliadoEspecifico) {
       parsedResult.aliadosRecomendadosIds = [];
-    } else if (esHospedaje && parsedResult.aliadosRecomendadosIds.length === 0) {
-      parsedResult.aliadosRecomendadosIds = aliados
-        .filter((a) => a.tipo === "HOSPEDAJE" || a.tipo === "GASTRONOMIA")
-        .slice(0, 2)
-        .map((a) => a.id);
-      if (parsedResult.aliadosRecomendadosIds.length === 0) {
-        parsedResult.aliadosRecomendadosIds = aliados.slice(0, 2).map((a) => a.id);
-      }
+    } else if (!aliadoEspecifico) {
+      // Los aliados comerciales son PRIORIDAD: se completan SIEMPRE todos (máx. 3 tarjetas),
+      // respetando primero lo que la IA recomendó y rellenando con los aliados prioritarios.
+      const idsValidosIA = parsedResult.aliadosRecomendadosIds.filter((id) =>
+        baseAliados.some((a) => a.id === id)
+      );
+      parsedResult.aliadosRecomendadosIds = Array.from(
+        new Set([...idsValidosIA, ...baseAliados.map((a) => a.id)])
+      ).slice(0, 3);
     }
 
     if (aliadoEspecifico) {
