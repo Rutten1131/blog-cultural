@@ -326,6 +326,19 @@ function idDeUrl(url) {
 }
 
 /**
+ * URL sin adornos, para comparar dos enlaces del mismo post.
+ *
+ * El mismo post se comparte con parámetros distintos según el dispositivo:
+ * medido en la cola real, unos mensajes traen `?mibextid=wwX` y otros
+ * `?mibextid=wwXI`. Comparar la URL cruda fallaría; se quita la query, el
+ * hash y la barra final. El valor guardado en `urlOriginal` no se toca.
+ */
+function normalizarUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  return url.split("#")[0].split("?")[0].replace(/\/+$/, "");
+}
+
+/**
  * Tipos que sí son imágenes de verdad.
  *
  * Ojo: Facebook sirve `image/x.fb.keyframes`, que NO es una foto sino un
@@ -1193,14 +1206,6 @@ async function extractFromTextOnly(text, grupoId, prisma) {
 
   const textoOriginal = text.slice(0, 5000);
 
-  // Sin URL no hay otra clave de dedupe, y el mismo texto puede repetirse en un
-  // escaneo (los mensajes con adjunto no se marcan como procesados a propósito).
-  const yaExiste = await prisma.postSocial.findFirst({
-    where: { textoOriginal, grupoId: grupoId || null },
-    select: { id: true },
-  });
-  if (yaExiste) return null;
-
   // extraerRangoDeTexto ya cubre "del 4 al 6 de octubre [de 2026]" y devuelve
   // `.fecha` como Date normalizado en zona Loja (17:00 UTC si es "solo día").
   const infoFecha = extraerRangoDeTexto(text);
@@ -1212,6 +1217,16 @@ async function extractFromTextOnly(text, grupoId, prisma) {
   // Sin fecha ni lugar no hay evento: un párrafo con solo "titulo" es charla
   // ("buenos días a todos") y la cola ya tiene ruido de sobra.
   if (!infoFecha && !lugar) return null;
+
+  // Dedupe por contenido, NO por el texto exacto: dos copias reales del mismo
+  // mensaje diferían en 1 carácter (823 vs 824) y el texto exacto no las veía.
+  // El título y la fecha salen del mismo texto, así que son estables.
+  // Va DESPUÉS de calcularlos (si no, sería un ReferenceError por el `let`).
+  const yaExiste = await prisma.postSocial.findFirst({
+    where: { titulo, fechaPublicacion: infoFecha ? infoFecha.fecha : null, lugar },
+    select: { id: true },
+  });
+  if (yaExiste) return null;
 
   const confianza =
     (titulo ? 0.1 : 0) + (infoFecha ? 0.15 : 0) + (lugar ? 0.1 : 0);
@@ -1256,10 +1271,32 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
 
   const posts = [];
   const descartados = [];
+  const duplicados = [];
 
   for (const url of urls) {
     try {
       const datos = await extraerEvento(url, text);
+
+      // ── Dedupe (P5) ──
+      // El mismo evento se comparte varias veces en el grupo: en la primera cola
+      // real, 4 de 15 filas eran repetidas y los 3 grupos compartían el mismo
+      // enlace. Se compara la URL normalizada contra lo ya guardado, ANTES de
+      // subir nada al CDN.
+      const urlNorm = normalizarUrl(datos.urlOriginal);
+      if (urlNorm) {
+        const existente = await prisma.$queryRaw`
+          SELECT id FROM posts_social
+          WHERE TRIM(TRAILING '/' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(urlOriginal, '?', 1), '#', 1))
+                = ${urlNorm}
+          LIMIT 1
+        `;
+        const idExistente = Array.isArray(existente) && existente[0] ? existente[0].id : null;
+        if (idExistente) {
+          duplicados.push({ url, id: idExistente });
+          console.log(`[Extractor] Ya estaba guardado (post #${idExistente}), se omite: ${url}`);
+          continue;
+        }
+      }
 
       // Subir TODAS las fotos del carrusel a Bunny.
       //
@@ -1358,6 +1395,13 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
 
   if (descartados.length > 0) {
     console.log(`[Extractor] ${descartados.length} enlace(s) descartado(s) por no traer datos`);
+  }
+
+  if (duplicados.length > 0) {
+    console.log(
+      `[Extractor] ${duplicados.length} enlace(s) ya estaban guardados: ` +
+        duplicados.map((d) => `${d.url} → #${d.id}`).join(", ")
+    );
   }
 
   return posts;

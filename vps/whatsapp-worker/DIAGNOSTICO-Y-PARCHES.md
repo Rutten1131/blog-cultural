@@ -1026,6 +1026,110 @@ es como efectivamente escribe (los posts reales usan `📍 Iglesia Catedral`).
 - Efecto colateral cosmético: los mensajes con adjunto se cuentan otra vez en `mensajesNuevos` en cada
   pasada (nunca se marcan). Para eso está `mensajesEnEspera`, que los separa del resto.
 
+---
+
+# 14. Dedupe por contenido (P5) aplicado (2026-09-24)
+
+## 14.1 Qué se midió antes de elegir la clave
+
+La cola real tenía 3 grupos de repetidos. **Los tres comparten el mismo `urlOriginal`:**
+
+```
+ids 8,10     ×2  https://www.facebook.com/share/p/14yiwxphqrB/?mibextid=wwX
+ids 9,12     ×2  https://www.facebook.com/share/p/1CJc6tQC5y/?mibextid=wwXI
+ids 13,14,15 ×3  https://www.facebook.com/share/p/1JHEmJUMY7/?mibextid=wwXI
+```
+
+Y al comparar por `textoOriginal` **falla uno**: el texto de `#13` tiene **824** caracteres y el de
+`#14`/`#15` **823**. Es decir, dos copias del mismo mensaje diferían en **un carácter** → la clave por
+texto exacto (la que se había puesto en `extractFromTextOnly`) no las habría detectado.
+
+| Clave | Grupos con repetidos | ¿Detecta los 4 repetidos? |
+|---|---|---|
+| `urlOriginal` (cruda) | 3 | ✅ |
+| `titulo` | 3 | ✅ |
+| `textoOriginal` (exacto) | 3 | ❌ se le escapa `#13` |
+| `titulo`+`fecha`+`lugar` | 3 | ✅ |
+
+**Conclusión: la clave es la URL** (15 filas → 11 URLs distintas, exactamente igual que los títulos).
+
+## 14.2 Por qué la URL cruda no alcanza: `normalizarUrl()`
+
+En la propia cola aparecen dos variantes del mismo enlace según el dispositivo que lo compartió:
+
+| Param | ids |
+|---|---|
+| `?mibextid=wwX` | 8, 10 |
+| `?mibextid=wwXI` | 9, 12, 13, 14, 15 |
+
+Un mismo post compartido desde otro teléfono traería otra variante y comparar la cadena cruda **fallaría**.
+Se compara la URL **sin query, sin hash y sin barra final**; lo que se guarda en `urlOriginal` no se toca.
+
+```js
+function normalizarUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  return url.split("#")[0].split("?")[0].replace(/\/+$/, "");
+}
+```
+
+Del lado de la BD se normaliza igual, en SQL, para no necesitar columna nueva:
+
+```sql
+WHERE TRIM(TRAILING '/' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(urlOriginal, '?', 1), '#', 1)) = ?
+```
+
+**Nota:** `idDeUrl()` **no** sirve para esto — a pesar del nombre, extrae un nombre de archivo del CDN
+(`17898037…_n`), no el identificador del post.
+
+## 14.3 Dónde se aplica
+
+| Punto | Clave | Por qué ahí |
+|---|---|---|
+| `extractAndProcessUrls` (posts con enlace) | URL normalizada | Va **después** de `extraerEvento` y **antes** de subir las fotos a Bunny: si el post ya está, no se repite la subida al CDN |
+| `extractFromTextOnly` (posts sin enlace) | `titulo` + `fechaPublicacion` + `lugar` | No hay URL; y el texto exacto se descarta por lo de §14.1 |
+
+Los posts ya guardados **no se tocan**: esto evita los duplicados **nuevos**.
+
+## 14.4 La trampa de orden, otra vez (misma clase que §12.1)
+
+En `extractFromTextOnly` el dedupe usa `titulo`, `infoFecha` y `lugar`, así que **tiene** que ir después de
+calcularlos: si se deja arriba (junto a `textoOriginal`) es un
+`ReferenceError: Cannot access 'titulo' before initialization` — y `node --check` no lo detecta porque es
+sintácticamente válido. **Se detectó leyendo el flujo, no con el linter.** Igual que el hundimiento de §12.1.
+
+## 14.5 Pruebas ejecutadas (todas contra la BD real, con limpieza)
+
+| Comprobación | Resultado |
+|---|---|
+| Las 11 URLs distintas se reconocen a sí mismas | ✅ 11/11 |
+| Variante `?mibextid=wwX` sobre la URL de `#8` | ✅ → post #8 |
+| Variante `?mibextid=wwXI` | ✅ → post #8 |
+| Variante `?mibextid=OTRA_COSA&x=1` | ✅ → post #8 |
+| URL con barra final | ✅ → post #8 |
+| Miso texto con **1 carácter** de diferencia (el caso `#13`/`#14`) | ✅ devuelve `null` |
+| El texto idéntico | ✅ devuelve `null` |
+| Limpieza | ✅ 1 fila de prueba borrada · la cola volvió a **15** |
+
+## 14.6 Queda pendiente: los 4 repetidos que ya están guardados
+
+El código no limpia el pasado. Las filas redundantes son:
+
+| Se queda | Se puede borrar | Por qué |
+|---|---|---|
+| #8 | #10 | mismo `urlOriginal`, mismo título, mismo texto |
+| #9 | #12 | ídem |
+| #13 | #14, #15 | ídem (el texto difiere en 1 carácter, sin efecto) |
+
+Borrar `#10, #12, #14, #15` deja la cola en **11 posts, sin repetidos**, sin perder información: su contenido
+es idéntico al de la fila que se conserva. **Pendiente de aprobación** (es un `DELETE` en producción).
+
+## 14.7 Nota de rendimiento
+
+La consulta de dedupe recorre la tabla (no hay índice sobre `urlOriginal`; los índices actuales son
+`estado`, `fechaDeteccion` y `origen`). Con 15 filas es irrelevante; si la tabla pasa de unos miles de
+filas conviene añadir el índice.
+
+
 
 
 
