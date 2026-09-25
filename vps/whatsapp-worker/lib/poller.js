@@ -19,6 +19,7 @@ const {
 const {
   extractAndProcessUrls,
   extractFromTextOnly,
+  extractFromImage,
   extractUrls,
 } = require("./url-extractor");
 
@@ -133,6 +134,18 @@ async function escanearGrupo(prisma, jid, opciones = {}) {
         } catch (err) {
           resumen.errores.push(`extracción ${mensajeId}: ${err.message}`);
         }
+      } else if (contenido.imageMessage) {
+        // Afiche suelto: la imagen es la fuente del evento. Si no se puede leer
+        // (Evolution caído, Gemini saturado) `extractFromImage` lanza, y aquí se
+        // deja el mensaje SIN marcar para reintentarlo en el próximo escaneo.
+        try {
+          const post = await extractFromImage(msg, texto, jid, prisma);
+          posts = post ? [post] : [];
+        } catch (err) {
+          resumen.errores.push(`afiche ${mensajeId}: ${err.message}`);
+          resumen.mensajesEnEspera++;
+          continue;
+        }
       } else if (texto && texto.trim().length > 10) {
         // Sin enlace pero con texto propio: puede describir el evento entero.
         try {
@@ -145,12 +158,9 @@ async function escanearGrupo(prisma, jid, opciones = {}) {
 
       resumen.postsCreados += posts.length;
 
-      // Adjunto sin enlace: el afiche es la fuente buena y todavía no podemos
-      // leerlo. Se deja SIN marcar como procesado para que, cuando exista la
-      // descarga de media, este mensaje se vuelva a procesar y el post gane la
-      // imagen. No se duplica nada porque `extractFromTextOnly` dedupea por
-      // texto exacto (y si el mensaje no tenía texto, no creó nada).
-      if (urls.length === 0 && tieneAdjunto) {
+      // PDF, audio o video sin enlace: la tubería para leerlos todavía no existe,
+      // así que se dejan SIN marcar como procesados. No se queman.
+      if (urls.length === 0 && tieneAdjunto && !contenido.imageMessage) {
         resumen.mensajesEnEspera++;
         continue;
       }

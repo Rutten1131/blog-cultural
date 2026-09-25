@@ -25,17 +25,19 @@ export interface ModerarPostState {
   success: boolean;
   error?: string;
   eventoId?: number;
+  publicadoDirecto?: boolean;
 }
 
 /** Etiqueta con la que quedan los eventos creados desde el bot. */
 const GESTOR_BOT = "🤖 Bot WhatsApp — Agenda Cultural";
 
 /**
- * Aprueba un post del bot: lo convierte en un evento pendiente.
+ * Aprueba un post del bot: lo convierte en un evento (publicado o pendiente).
  */
 export async function aprobarPostBot(
   postId: number,
-  moderadoPor: string
+  moderadoPor: string,
+  publicarDirecto: boolean = true
 ): Promise<ModerarPostState> {
   try {
     const post = await prisma.postSocial.findUnique({
@@ -109,6 +111,82 @@ export async function aprobarPostBot(
       };
     }
 
+    // Inferir Categoría y Zona según catálogos existentes en Loja
+    let categoriaId: number | null = null;
+    let zonaId: number | null = null;
+
+    const textoCompleto = `${nombre} ${lugar} ${descripcion}`.toLowerCase();
+
+    // Buscar zona en el texto o lugar
+    const zonas = await prisma.zona.findMany();
+    for (const z of zonas) {
+      const zNorm = z.nombre.toLowerCase();
+      if (textoCompleto.includes(zNorm) || (lugar && lugar.toLowerCase().includes(zNorm))) {
+        zonaId = z.id;
+        break;
+      }
+    }
+    // Si no coincide una parroquia específica y dice "Loja" o es céntrico (San Sebastián/Sagrario/El Valle/Teatro Bolívar)
+    if (!zonaId) {
+      if (
+        textoCompleto.includes("teatro bolívar") ||
+        textoCompleto.includes("catedral") ||
+        textoCompleto.includes("san sebastián") ||
+        textoCompleto.includes("rocafuerte")
+      ) {
+        const sanSeb = zonas.find((z) => z.nombre.toLowerCase().includes("sebastián"));
+        const sagrario = zonas.find((z) => z.nombre.toLowerCase().includes("sagrario"));
+        zonaId = sanSeb?.id || sagrario?.id || null;
+      }
+    }
+
+    // Buscar categoría en base a palabras clave de los catálogos
+    const categorias = await prisma.categoria.findMany();
+    if (
+      textoCompleto.includes("concierto") ||
+      textoCompleto.includes("música") ||
+      textoCompleto.includes("sinfónica") ||
+      textoCompleto.includes("rock") ||
+      textoCompleto.includes("bolero") ||
+      textoCompleto.includes("canta")
+    ) {
+      const cat = categorias.find((c) => c.slug === "musica");
+      if (cat) categoriaId = cat.id;
+    } else if (
+      textoCompleto.includes("teatro") ||
+      textoCompleto.includes("escénic") ||
+      textoCompleto.includes("obra") ||
+      textoCompleto.includes("actor")
+    ) {
+      const cat = categorias.find((c) => c.slug === "teatro");
+      if (cat) categoriaId = cat.id;
+    } else if (
+      textoCompleto.includes("feria") ||
+      textoCompleto.includes("expoferia") ||
+      textoCompleto.includes("mercado") ||
+      textoCompleto.includes("artesan") ||
+      textoCompleto.includes("coleccion")
+    ) {
+      const cat = categorias.find((c) => c.slug === "ferias");
+      if (cat) categoriaId = cat.id;
+    } else if (
+      textoCompleto.includes("danza") ||
+      textoCompleto.includes("circo") ||
+      textoCompleto.includes("artes vivas") ||
+      textoCompleto.includes("fiavl")
+    ) {
+      const cat = categorias.find((c) => c.slug === "artes-vivas");
+      if (cat) categoriaId = cat.id;
+    } else if (
+      textoCompleto.includes("exposición") ||
+      textoCompleto.includes("pintura") ||
+      textoCompleto.includes("galería") ||
+      textoCompleto.includes("arte")
+    ) {
+      const cat = categorias.find((c) => c.slug === "arte-y-exposiciones");
+      if (cat) categoriaId = cat.id;
+    }
+
     const evento = await prisma.evento.create({
       data: {
         nombre,
@@ -120,9 +198,10 @@ export async function aprobarPostBot(
         multimedia: fotos.length > 1 ? fotos : undefined,
         nombreGestor: GESTOR_BOT,
         confianzaClasificacion: post.confianzaIA,
-        // Queda PENDIENTE: no se publica hasta que un humano lo apruebe
-        // en la cola normal. Así nunca aparece solo en la página pública.
-        estado: "PENDIENTE",
+        categoriaId,
+        zonaId,
+        // Publicado directamente a la agenda si el admin lo aprueba
+        estado: publicarDirecto ? "APROBADO" : "PENDIENTE",
       },
     });
 
@@ -132,13 +211,23 @@ export async function aprobarPostBot(
         estado: "APROBADO",
         moderadoPor,
         moderadoAt: new Date(),
-        moderationComentario: `Convertido en evento #${evento.id}`,
+        moderationComentario: `Convertido en evento #${evento.id} (${publicarDirecto ? "Publicado directamente" : "Pendiente"})`,
       },
     });
 
+    // Si se publica directo, notificar a Hermes en el VPS (IA editorial)
+    if (publicarDirecto) {
+      try {
+        const { despacharEventoAHermes } = await import("@/lib/hermes");
+        await despacharEventoAHermes(evento.id, "evento.aprobado");
+      } catch (err) {
+        console.error("[MODERACION] Error al notificar a Hermes:", err);
+      }
+    }
+
     revalidateAll();
 
-    return { success: true, eventoId: evento.id };
+    return { success: true, eventoId: evento.id, publicadoDirecto: publicarDirecto };
   } catch (error: unknown) {
     if (error instanceof Error && error.message.includes("Unique constraint")) {
       return {

@@ -115,13 +115,18 @@ export async function generateStaticParams() {
   }
 }
 
-// ─── Auxiliar: Obtener evento aprobado ────────────────────────────────
+import { getAdminSession } from "@/lib/actions/authAdmin";
+
+// ─── Auxiliar: Obtener evento (aprobado o en preview para admin) ────────
 async function getEventoAprobado(slug: string) {
   try {
+    const session = await getAdminSession();
+    const esAdmin = !!session;
+
     return await prisma.evento.findFirst({
       where: {
         slug,
-        estado: "APROBADO",
+        ...(esAdmin ? {} : { estado: "APROBADO" }),
       },
       include: {
         categoria: true,
@@ -129,7 +134,7 @@ async function getEventoAprobado(slug: string) {
       },
     });
   } catch (error) {
-    console.error(`Error buscando evento aprobado (${slug}):`, error);
+    console.error(`Error buscando evento (${slug}):`, error);
     return null;
   }
 }
@@ -421,7 +426,24 @@ export default async function EventoDetailPage({ params }: PageProps) {
         <Navbar />
 
         <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 flex-1">
-          {/* Navegación y Volver */}
+          {evento.estado !== "APROBADO" && (
+            <div className="mb-6 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 p-4 text-amber-800 dark:text-amber-200 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">👁️</span>
+                <div>
+                  <p className="font-bold text-sm">Modo Vista Previa de Administrador</p>
+                  <p className="text-xs opacity-90">Este evento aún está en estado <strong>{evento.estado}</strong> y no es visible para el público general.</p>
+                </div>
+              </div>
+              <Link
+                href="/admin"
+                className="shrink-0 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl transition shadow-sm"
+              >
+                Volver al Panel
+              </Link>
+            </div>
+          )}
+
           {/* Encabezado dinámico: Back, Breadcrumb y Badges de Categoría y Zona */}
           <EventDetailHeaderClient
             categoria={evento.categoria}

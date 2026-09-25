@@ -19,7 +19,12 @@ const puppeteer = require("puppeteer");
 const fs = require("fs");
 const { fechaDesdeIso, extraerRangoDeTexto } = require("./fechas-es");
 const { rehospedarImagen, configurado: bunnyConfigurado } = require("./imagenes");
-const { leerAfiche, configurado: visionConfigurada } = require("./vision");
+const {
+  leerAfiche,
+  imagenesValidas,
+  configurado: visionConfigurada,
+} = require("./vision");
+const { descargarMedia } = require("./evolution-client");
 
 // ─── Extracción de URLs desde texto ───────────────────────────────────────
 
@@ -1253,6 +1258,128 @@ async function extractFromTextOnly(text, grupoId, prisma) {
   return post;
 }
 
+/**
+ * Crea un post a partir de un afiche adjunto (imagen sin enlace).
+ *
+ * Es la vía que faltaba: 12 de los 50 mensajes del grupo son afiches pegados
+ * sin texto, y hasta ahora quedaban invisibles (se marcaban como procesados
+ * con 0 posts). Aquí la imagen es la fuente del evento.
+ *
+ * Diferencia clave: si el afiche NO se pudo leer, LANZA. El poller deja el
+ * mensaje sin marcar y lo reintenta en 15 minutos. Solo devuelve null cuando
+ * hay un resultado definitivo (no es evento, o el afiche no da fecha ni lugar),
+ * porque en ese caso sí se marca como procesado.
+ *
+ * @param {object} msg - mensaje con `imageMessage`
+ * @param {string} texto - texto del mensaje (pie de foto), puede estar vacío
+ * @param {string} grupoId
+ * @param {import('@prisma/client').PrismaClient} prisma
+ * @returns {Promise<Object|null>}
+ */
+async function extractFromImage(msg, texto, grupoId, prisma) {
+  const media = await descargarMedia(msg);
+  if (!media) throw new Error("Evolution no devolvió el archivo del afiche");
+
+  // Formato que la API no acepta (por ejemplo avif): no hay nada que reintentar.
+  // Ojo: `imagenesValidas` descarta lo que no tenga `base64`, así que se le pasa
+  // el objeto completo, no solo el tipo.
+  if (imagenesValidas([{ base64: media.base64, tipo: media.tipo }]).length === 0) {
+    console.log(`[Afiche] Formato no aceptado por la visión (${media.tipo}): se descarta`);
+    return null;
+  }
+
+  const afiche = await leerAfiche([{ base64: media.base64, tipo: media.tipo }]);
+
+  // `leerAfiche` nunca lanza (es su regla de oro): null aquí significa que no se
+  // pudo leer — Gemini caído, cuota agotada, red. Se lanza para que el poller NO
+  // marque el mensaje y se vuelva a intentar.
+  if (!afiche) throw new Error("No se pudo leer el afiche (la visión no respondió)");
+
+  if (afiche.esEventoCultural === false) {
+    console.log("[Afiche] La visión dice que no anuncia un evento cultural: se descarta");
+    return null;
+  }
+
+  // ── Campos: SIEMPRE antes del dedupe (si no, ReferenceError por el `let`) ──
+  let titulo =
+    typeof afiche.nombre === "string" ? limpiarTitulo(afiche.nombre) : null;
+  if (titulo && esTituloGenerico(titulo)) titulo = null;
+
+  // La fecha viene como texto literal ("Viernes, 25 de Septiembre de 2026") y la
+  // hora aparte: se juntan para que `extraerRangoDeTexto` las normalice (ya sabe
+  // de la zona de Loja y de los años inferidos).
+  const fechaTexto = [afiche.fechaTexto, afiche.horaTexto]
+    .filter((v) => typeof v === "string" && v.trim())
+    .join(" ");
+  const infoFecha = fechaTexto ? extraerRangoDeTexto(fechaTexto) : null;
+  const lugar = limpiarLugar(afiche.lugar);
+
+  if (!infoFecha && !lugar) {
+    console.log("[Afiche] El afiche no dio fecha ni lugar: no entra a la cola");
+    return null;
+  }
+
+  const fechaPublicacion = infoFecha ? infoFecha.fecha : null;
+
+  // Dedupe (misma clave que los posts de texto: título + fecha + lugar).
+  const yaExiste = await prisma.postSocial.findFirst({
+    where: { titulo, fechaPublicacion, lugar },
+    select: { id: true },
+  });
+  if (yaExiste) {
+    console.log(`[Afiche] Ya estaba guardado (post #${yaExiste.id}), se omite`);
+    return null;
+  }
+
+  // La foto se re-aloja desde el buffer (no hay URL pública de la que bajarla).
+  const imagenUrl = await rehospedarImagen(null, "whatsapp", {
+    base64: media.base64,
+    tipo: media.tipo,
+  });
+  if (!imagenUrl) {
+    console.warn("[Afiche] No se pudo re-alojar la foto: el post va sin imagen");
+  }
+
+  const descripcion =
+    typeof afiche.textoDelAfiche === "string"
+      ? afiche.textoDelAfiche.slice(0, 2000)
+      : null;
+
+  // Misma puntuación que `extraerEvento`, con fecha y lugar de fuente "afiche".
+  const confianza = Number(
+    (
+      (infoFecha ? 0.15 : 0) +
+      (lugar ? 0.15 : 0) +
+      (imagenUrl ? 0.1 : 0) +
+      (titulo ? 0.1 : 0) +
+      (descripcion ? 0.05 : 0)
+    ).toFixed(2)
+  );
+
+  const post = await prisma.postSocial.create({
+    data: {
+      origen: "WHATSAPP_GRUPO",
+      urlOriginal: null,
+      textoOriginal: texto ? texto.slice(0, 5000) : null,
+      titulo,
+      descripcion,
+      imagenUrl,
+      fechaPublicacion,
+      lugar,
+      estado: "PENDIENTE",
+      grupoId: grupoId || null,
+      confianzaIA: confianza,
+    },
+  });
+
+  console.log(
+    `[Afiche] Post #${post.id} creado desde el afiche — confianza ${confianza}` +
+      (imagenUrl ? "" : " (SIN foto)")
+  );
+
+  return post;
+}
+
 // ─── Flujo completo: mensaje → posts en BD ────────────────────────────────
 
 /**
@@ -1410,6 +1537,7 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
 module.exports = {
   extractAndProcessUrls,
   extractFromTextOnly,
+  extractFromImage,
   extractUrls,
   extractEventInfo,
   extraerEvento,

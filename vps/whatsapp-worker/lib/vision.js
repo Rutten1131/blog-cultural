@@ -48,16 +48,20 @@ REGLAS ESTRICTAS — son lo más importante:
 - Si un dato NO aparece, devolvé null. NO lo inventes ni lo deduzcas.
 - NO completes el año si no está escrito. Copiá la fecha TAL COMO aparece.
 - Si el contenido claramente NO anuncia un evento cultural, pon esEventoCultural en false.
+- En "categoriaSugerida", elegí una de estas exactamente: ["Arte y exposiciones", "Teatro", "Música", "Ferias", "Artes Vivas"] o null.
+- En "zonaSugerida", elegí una de las parroquias de Loja si se menciona o reconoce el lugar (Urbanas: "El Sagrario", "Sucre", "El Valle", "San Sebastián", "Punzara", "Carigán"; Rurales: "Chantaco", "Chuquiribamba", "El Cisne", "Gualel", "Jimbilla", "Malacatos", "Quinara", "San Lucas", "San Pedro de Vilcabamba", "Santiago", "Taquil", "Vilcabamba", "Yangana") o null.
 
 Respondé ÚNICAMENTE con este JSON, sin texto adicional ni bloques de código:
 {
   "esEventoCultural": true,
-  "nombre": "nombre del evento, o null",
+  "nombre": "nombre conciso del evento (sin meter párrafos enteros), o null",
   "fechaTexto": "la fecha de inicio copiada tal cual aparece escrita, o null",
   "horaTexto": "la hora tal como aparece, o null",
   "fechaFinTexto": "si dice hasta cuándo dura, o null",
-  "lugar": "dónde se realiza, o null",
+  "lugar": "dónde se realiza (ej: Teatro Bolívar, Casona Cultural), o null",
   "precio": "precio o entrada, o null",
+  "categoriaSugerida": "Música | Teatro | Ferias | Artes Vivas | Arte y exposiciones | null",
+  "zonaSugerida": "nombre de la parroquia de Loja si corresponde | null",
   "textoDelAfiche": "todo el texto legible del afiche, o null"
 }`;
 
@@ -229,4 +233,4 @@ async function leerAfiche(imagenes) {
   return null;
 }
 
-module.exports = { leerAfiche, configurado, MODELOS, PROMPT };
+module.exports = { leerAfiche, imagenesValidas, configurado, MODELOS, PROMPT };

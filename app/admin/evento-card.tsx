@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { aprobarEvento, rechazarEvento, editarEvento } from "@/lib/actions/moderacionEvento";
 import { formatFechaLojaCliente } from "@/lib/fechasCliente";
@@ -23,6 +24,7 @@ interface Zona {
 interface EventoItem {
   id: number;
   nombre: string;
+  slug?: string;
   fecha: Date;
   fechaFin?: Date | null;
   lugar: string;
@@ -698,14 +700,29 @@ export function EventoCard({
 
               {/* Botones de acción (Editar, Rechazar, Aprobar) */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-bold text-purple-700 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/60 transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <span>✏️</span>
-                  <span>Editar Evento</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-bold text-purple-700 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/60 transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>✏️</span>
+                    <span>Editar Evento</span>
+                  </button>
+
+                  {evento.slug && (
+                    <Link
+                      href={`/eventos/${evento.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2.5 text-sm font-bold text-zinc-700 dark:text-zinc-200 hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400 transition-all flex items-center gap-1.5 shadow-sm"
+                      title="Previsualizar cómo se verá la ficha del evento"
+                    >
+                      <span>👁️</span>
+                      <span>Vista Previa</span>
+                    </Link>
+                  )}
+                </div>
 
                 <div className="flex items-center gap-3">
                   <form action={rechazarEvento}>

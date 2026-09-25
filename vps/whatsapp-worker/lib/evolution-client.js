@@ -133,6 +133,36 @@ function esMensajeRelevante(msg) {
   return true;
 }
 
+/**
+ * Baja el archivo adjunto de un mensaje (el afiche de una imagen) como base64.
+ *
+ * SOLO LEE: no envía nada al grupo ni marca el mensaje como leído. Verificado
+ * contra los logs de Evolution tras usarlo: 0 eventos de lectura, 0 envíos.
+ *
+ * Forma real de la respuesta (Evolution v2.3.7, comprobada con un mensaje de
+ * verdad): `{ mediaType, fileName, size, mimetype, base64, buffer }`.
+ *
+ * @param {object} msg - mensaje tal como lo devuelve `buscarMensajes`
+ * @returns {Promise<{base64: string, tipo: string}|null>}
+ */
+async function descargarMedia(msg) {
+  const r = await evolutionFetch(
+    `/chat/getBase64FromMediaMessage/${EVOLUTION_INSTANCE}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ message: { key: msg.key }, convertToMp4: false }),
+    }
+  );
+
+  const crudo = r?.base64 || r?.data?.base64 || null;
+  if (!crudo) return null;
+
+  // Algunas versiones devuelven "data:image/jpeg;base64,..."
+  const base64 = crudo.startsWith("data:") ? crudo.split(",")[1] : crudo;
+
+  return { base64, tipo: r?.mimetype || r?.data?.mimetype || "image/jpeg" };
+}
+
 module.exports = {
   EVOLUTION_INSTANCE,
   evolutionFetch,
@@ -142,4 +172,5 @@ module.exports = {
   extraerTextoDeMensaje,
   extraerImagenDeMensaje,
   esMensajeRelevante,
+  descargarMedia,
 };

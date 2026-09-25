@@ -119,7 +119,7 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
         [post.id]: {
           ok: res.success,
           texto: res.success
-            ? `✅ Evento #${res.eventoId} creado en esta misma cola.`
+            ? `✅ Evento #${res.eventoId} APROBADO y PUBLICADO en la agenda.`
             : res.error || "Error desconocido",
         },
       }));
