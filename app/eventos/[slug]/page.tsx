@@ -27,9 +27,80 @@ export const revalidate = 60;
  *    siguiendo el redirect y extrae las coordenadas de la URL expandida.
  * 3° (Fallback): Busca por el texto del lugar + "Loja, Ecuador".
  */
+// Catálogo de coordenadas exactas para los recintos culturales y plazas más frecuentes de Loja
+const COORDENADAS_LOJA_RECINTOS: Record<string, { lat: number; lng: number }> = {
+  // Teatros
+  "teatro bolivar": { lat: -3.9972300, lng: -79.2045500 },
+  "teatro benjamin carrion": { lat: -3.9995800, lng: -79.2042100 },
+  "teatro nacional benjamin carrion": { lat: -3.9995800, lng: -79.2042100 },
+  "teatro universitario": { lat: -3.9988000, lng: -79.2045000 },
+  // Plazas y parques
+  "plaza san sebastian": { lat: -4.0041200, lng: -79.2037100 },
+  "plaza de san sebastian": { lat: -4.0041200, lng: -79.2037100 },
+  "parque san sebastian": { lat: -4.0041200, lng: -79.2037100 },
+  "plaza de la independencia": { lat: -3.9984800, lng: -79.2041300 },
+  "parque central": { lat: -3.9984800, lng: -79.2041300 },
+  "plaza central": { lat: -3.9984800, lng: -79.2041300 },
+  "parque jipiro": { lat: -3.9745500, lng: -79.2078500 },
+  "parque de la madre": { lat: -4.0018500, lng: -79.2019500 },
+  "parque pucara": { lat: -3.9916000, lng: -79.2052000 },
+  // Cultura y museos
+  "casa de la cultura": { lat: -3.9992000, lng: -79.2038000 },
+  "casa de la cultura ecuatoriana": { lat: -3.9992000, lng: -79.2038000 },
+  "auditorio pablo palacio": { lat: -3.9992000, lng: -79.2038000 },
+  "casona cultural": { lat: -3.9995500, lng: -79.2032500 },
+  "museo de la musica": { lat: -4.0004500, lng: -79.2036500 },
+  "museo de arte colonial": { lat: -3.9989000, lng: -79.2036000 },
+  "museo de la ciudad": { lat: -3.9989500, lng: -79.2033500 },
+  "centro cultural": { lat: -3.9992000, lng: -79.2038000 },
+  "salon del centro cultural": { lat: -3.9992000, lng: -79.2038000 },
+  // Iglesias y sitios religiosos
+  "catedral": { lat: -3.9980800, lng: -79.2039200 },
+  "iglesia catedral": { lat: -3.9980800, lng: -79.2039200 },
+  "catedral de loja": { lat: -3.9980800, lng: -79.2039200 },
+  "iglesia el valle": { lat: -4.0041200, lng: -79.2037100 },
+  // Universidades y colegios
+  "universidad tecnica particular de loja": { lat: -4.0019500, lng: -79.1969500 },
+  "utpl": { lat: -4.0019500, lng: -79.1969500 },
+  "universidad nacional de loja": { lat: -3.9928500, lng: -79.2073500 },
+  "unl": { lat: -3.9928500, lng: -79.2073500 },
+  // Referencia de calles
+  "calle rocafuerte": { lat: -3.9988500, lng: -79.2023500 },
+  "paseo cultural calle rocafuerte": { lat: -3.9988500, lng: -79.2023500 },
+  "calle lourdes": { lat: -3.9981000, lng: -79.2037000 },
+  // Otros recintos
+  "puerta de la ciudad": { lat: -3.9875500, lng: -79.2039800 },
+  "complejo ferial": { lat: -3.9782500, lng: -79.2104500 },
+  "salon de la ciudad": { lat: -3.9992000, lng: -79.2038000 },
+};
+
+function buscarCoordenadasRecinto(lugarTexto: string): { lat: number; lng: number } | null {
+  if (!lugarTexto) return null;
+  const norm = lugarTexto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+  for (const [clave, coords] of Object.entries(COORDENADAS_LOJA_RECINTOS)) {
+    if (norm.includes(clave)) {
+      return coords;
+    }
+  }
+  return null;
+}
+
 async function buildMapEmbedUrl(mapaUrl: string | null, lugarTexto: string): Promise<string> {
-  // Fallback siempre disponible
-  const fallback = `https://maps.google.com/maps?q=${encodeURIComponent(`${lugarTexto}, Loja, Ecuador`)}&hl=es&z=15&output=embed`;
+  // 1. Si no hay URL directa de mapa, comprobar si es un recinto o plaza conocida de Loja
+  const recintoCoords = buscarCoordenadasRecinto(lugarTexto);
+  if (!mapaUrl && recintoCoords) {
+    return `https://maps.google.com/maps?q=${recintoCoords.lat},${recintoCoords.lng}&hl=es&z=17&output=embed`;
+  }
+
+  // Fallback con búsqueda específica en Loja, Ecuador
+  const fallback = recintoCoords
+    ? `https://maps.google.com/maps?q=${recintoCoords.lat},${recintoCoords.lng}&hl=es&z=17&output=embed`
+    : `https://maps.google.com/maps?q=${encodeURIComponent(`${lugarTexto}, Loja, Ecuador`)}&hl=es&z=16&output=embed`;
 
   if (!mapaUrl) return fallback;
 
@@ -284,9 +355,14 @@ export default async function EventoDetailPage({ params }: PageProps) {
   const mapaUrlRaw = (evento as any).mapaUrl as string | null ?? null;
   const hasMapa = !!mapaUrlRaw;
   const embedUrl = await buildMapEmbedUrl(mapaUrlRaw, evento.lugar);
-  const mapaHref = hasMapa
-    ? mapaUrlRaw!
-    : `https://www.google.com/maps/search/${encodeURIComponent(`${evento.lugar}, Loja, Ecuador`)}`;
+
+  // Botón "Ver en Google Maps": usar coordenadas exactas si están disponibles
+  const recintoParaBoton = buscarCoordenadasRecinto(evento.lugar);
+  const mapaHref = hasMapa && mapaUrlRaw
+    ? mapaUrlRaw
+    : recintoParaBoton
+      ? `https://www.google.com/maps?q=${recintoParaBoton.lat},${recintoParaBoton.lng}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${evento.lugar}, Loja, Ecuador`)}&query_place_id=`;
 
 
   // Schema múltiple (@graph) con Event, BreadcrumbList y FAQPage

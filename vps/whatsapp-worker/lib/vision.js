@@ -41,20 +41,28 @@ const TIMEOUT_MS = 90000;
 
 const PROMPT = `Sos un asistente que extrae datos de afiches de eventos culturales en Loja, Ecuador.
 
-Mirá las imágenes (pueden ser las varias páginas de un mismo afiche o carrusel) y extraé los datos del evento que anuncian.
+Mirá las imágenes (pueden ser las varias páginas de un mismo afiche o carrusel de Instagram/Facebook) y extraé los datos del evento que anuncian.
 
 REGLAS ESTRICTAS — son lo más importante:
 - Extraé SOLO lo que sea visible en las imágenes.
 - Si un dato NO aparece, devolvé null. NO lo inventes ni lo deduzcas.
 - NO completes el año si no está escrito. Copiá la fecha TAL COMO aparece.
 - Si el contenido claramente NO anuncia un evento cultural, pon esEventoCultural en false.
+- TÍTULO LIMPIO: Devolvé el título artístico y conciso del evento (ej: "Boleros, Pasillos y Algo Más", "Exposición Pictórica Entre lo Concreto y lo Invisible"). NUNCA incluyas prefijos como "Loja es Arte y Cultura on Instagram", "Gracias a la nota de...", "Última hora", etc.
+- ORGANIZADOR REAL: Identificá la institución o grupo que organiza o presenta el evento (ej: "Municipio de Loja", "Casa de la Cultura Ecuatoriana Núcleo de Loja", "Rondalla Municipal", "Grupo Arupo", o el nombre de los artistas). NUNCA pongas nombres de medios de comunicación o prensa (como "Primer Reporte", "Hora32", "Diario La Crónica", "Ecotel Press", etc.) como organizador.
+- MEDIOS DE COMUNICACIÓN / NOTICIAS: Si la imagen tiene marcos, banners o marcas de agua de medios de prensa o noticias (ej: "Primer Reporte", "Hora32"), marcalo en "esPlantillaPrensa": true y "nombreMedioPrensa": "nombre del medio".
+- MEJOR ÍNDICE DE AFICHE: Si hay varias imágenes (carrusel), indicá en "indiceMejorAfiche" (índice base 0) cuál imagen es el afiche limpio/artístico principal donde están la fecha, el lugar y el título del evento.
 - En "categoriaSugerida", elegí una de estas exactamente: ["Arte y exposiciones", "Teatro", "Música", "Ferias", "Artes Vivas"] o null.
 - En "zonaSugerida", elegí una de las parroquias de Loja si se menciona o reconoce el lugar (Urbanas: "El Sagrario", "Sucre", "El Valle", "San Sebastián", "Punzara", "Carigán"; Rurales: "Chantaco", "Chuquiribamba", "El Cisne", "Gualel", "Jimbilla", "Malacatos", "Quinara", "San Lucas", "San Pedro de Vilcabamba", "Santiago", "Taquil", "Vilcabamba", "Yangana") o null.
 
 Respondé ÚNICAMENTE con este JSON, sin texto adicional ni bloques de código:
 {
   "esEventoCultural": true,
-  "nombre": "nombre conciso del evento (sin meter párrafos enteros), o null",
+  "nombre": "nombre conciso y limpio del evento, o null",
+  "organizador": "institución, artista o gestor real del evento (no prensa), o null",
+  "esPlantillaPrensa": false,
+  "nombreMedioPrensa": "Primer Reporte | Hora32 | null",
+  "indiceMejorAfiche": 0,
   "fechaTexto": "la fecha de inicio copiada tal cual aparece escrita, o null",
   "horaTexto": "la hora tal como aparece, o null",
   "fechaFinTexto": "si dice hasta cuándo dura, o null",
@@ -62,7 +70,7 @@ Respondé ÚNICAMENTE con este JSON, sin texto adicional ni bloques de código:
   "precio": "precio o entrada, o null",
   "categoriaSugerida": "Música | Teatro | Ferias | Artes Vivas | Arte y exposiciones | null",
   "zonaSugerida": "nombre de la parroquia de Loja si corresponde | null",
-  "textoDelAfiche": "todo el texto legible del afiche, o null"
+  "textoDelAfiche": "todo el texto legible del afiche (sin logos de noticias), o null"
 }`;
 
 function configurado() {

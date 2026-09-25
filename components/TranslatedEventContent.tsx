@@ -38,68 +38,49 @@ function esDetalle(linea: string): boolean {
 }
 
 /**
- * Renderiza la descripción del evento de forma visual sin cambiar una sola palabra.
- * - Líneas en MAYÚSCULAS cortas → encabezado bold
- * - Líneas de hora/precio       → badge inline
- * - Resto                       → párrafo normal agrupado
+ * Renderiza la descripción del evento de forma sobria, uniforme y muy legible.
+ * Evita saltos bruscos de tamaño de letra y mantiene una tipografía consistente.
  */
 function FormattedDescription({ text, loading }: { text: string; loading: boolean }) {
   if (!text?.trim()) return null;
 
-  const lineas = text.split(/\r?\n/);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const bloques: any[] = [];
-  let parrafoActual: string[] = [];
-  let key = 0;
+  // Si el texto viene como un bloque corrido con puntos, separamos por párrafos lógicos
+  const lineasOFrases = text.includes("\n")
+    ? text.split(/\r?\n/)
+    : text.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ"“])/);
 
-  function volcarParrafo() {
-    if (parrafoActual.length === 0) return;
-    const contenido = parrafoActual.join(" ").trim();
-    if (contenido) {
-      bloques.push(
-        <p key={key++} className="text-base text-zinc-700 dark:text-zinc-300 leading-relaxed">
-          {contenido}
-        </p>
-      );
-    }
-    parrafoActual = [];
-  }
+  const parrafos: string[] = [];
+  let buffer = "";
 
-  for (const linea of lineas) {
-    const s = linea.trim();
-
+  for (const item of lineasOFrases) {
+    const s = item.trim();
     if (!s) {
-      volcarParrafo();
+      if (buffer) {
+        parrafos.push(buffer);
+        buffer = "";
+      }
       continue;
     }
 
-    if (esEncabezado(s)) {
-      volcarParrafo();
-      bloques.push(
-        <p key={key++} className="font-bold text-zinc-900 dark:text-zinc-100 text-sm uppercase tracking-wide mt-4 first:mt-0">
-          {s}
-        </p>
-      );
-      continue;
+    if (buffer.length + s.length > 280) {
+      if (buffer) parrafos.push(buffer);
+      buffer = s;
+    } else {
+      buffer = buffer ? `${buffer} ${s}` : s;
     }
-
-    if (esDetalle(s)) {
-      volcarParrafo();
-      bloques.push(
-        <span key={key++} className="inline-block text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-md px-2.5 py-0.5 mr-2 mb-1">
-          {s}
-        </span>
-      );
-      continue;
-    }
-
-    parrafoActual.push(s);
   }
-  volcarParrafo();
+  if (buffer) parrafos.push(buffer);
 
   return (
-    <div className="space-y-2 transition-opacity duration-200" style={{ opacity: loading ? 0.6 : 1 }}>
-      {bloques}
+    <div
+      className="space-y-4 text-base text-zinc-700 dark:text-zinc-300 leading-relaxed font-normal transition-opacity duration-200"
+      style={{ opacity: loading ? 0.6 : 1 }}
+    >
+      {parrafos.map((p, idx) => (
+        <p key={idx} className="break-words [overflow-wrap:anywhere]">
+          {p}
+        </p>
+      ))}
     </div>
   );
 }

@@ -81,6 +81,7 @@ function camposFaltantes(post: PostBotItem): string[] {
   if (!post.titulo) faltan.push("título");
   if (!post.fechaPublicacion) faltan.push("fecha");
   if (!post.lugar) faltan.push("lugar");
+  if (!post.imagenUrl) faltan.push("imagen");
   return faltan;
 }
 
@@ -97,10 +98,14 @@ function fechaAInputDate(d: Date | null): string {
 function BarraConfianza({ valor }: { valor: number | null }) {
   const v = valor ?? 0;
   const porcentaje = Math.round(v * 100);
-  const color = v >= 0.6 ? "bg-emerald-500" : v >= 0.35 ? "bg-amber-500" : "bg-rose-500";
+  // 50%+ = verde  → los 4 campos obligatorios están (título+fecha+lugar+imagen)
+  // 35–49% = amarillo → falta alguno de los 4 obligatorios
+  // <35%  = rojo   → apenas tiene 1 o 2 datos, necesita revisión
+  const color = v >= 0.50 ? "bg-emerald-500" : v >= 0.35 ? "bg-amber-500" : "bg-rose-500";
+  const label = v >= 0.50 ? "Listo ✓" : v >= 0.35 ? "Incompleto" : "Faltan datos";
 
   return (
-    <div className="flex items-center gap-2" title={`Confianza de la extracción IA: ${porcentaje}%`}>
+    <div className="flex items-center gap-2" title={`Confianza de la extracción IA: ${porcentaje}% — ${label}`}>
       <div className="h-1.5 w-14 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
         <div className={`h-full ${color}`} style={{ width: `${porcentaje}%` }} />
       </div>
@@ -267,8 +272,38 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
 
   if (pendientes.length === 0) return null;
 
+  const [filtroFechaBot, setFiltroFechaBot] = useState<string>("TODAS");
+
+  const ahora = new Date();
+  const hoyStr = ahora.toISOString().split("T")[0];
+
+  const ayer = new Date(ahora);
+  ayer.setDate(ayer.getDate() - 1);
+  const ayerStr = ayer.toISOString().split("T")[0];
+
+  const manana = new Date(ahora);
+  manana.setDate(manana.getDate() + 1);
+  const mananaStr = manana.toISOString().split("T")[0];
+
+  // Filtrado por fecha
+  const filtradosPorFecha = pendientes.filter((p) => {
+    if (filtroFechaBot === "TODAS") return true;
+
+    const fechaEvStr = p.fechaPublicacion ? new Date(p.fechaPublicacion).toISOString().split("T")[0] : null;
+    const fechaDetStr = p.fechaDeteccion ? new Date(p.fechaDeteccion).toISOString().split("T")[0] : null;
+
+    if (filtroFechaBot === "HOY") {
+      return fechaDetStr === hoyStr || fechaEvStr === hoyStr;
+    } else if (filtroFechaBot === "AYER") {
+      return fechaDetStr === ayerStr || fechaEvStr === ayerStr;
+    } else if (filtroFechaBot === "MANANA") {
+      return fechaEvStr === mananaStr;
+    }
+    return true;
+  });
+
   // Lo más confiable primero, para revisar rápido lo que ya viene completo.
-  const ordenados = [...pendientes].sort(
+  const ordenados = [...filtradosPorFecha].sort(
     (a, b) => (b.confianzaIA ?? 0) - (a.confianzaIA ?? 0)
   );
 
@@ -319,12 +354,30 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
 
   return (
     <div className="space-y-4">
-      {/* Separador: deja claro que lo de abajo viene del grupo */}
-      <div className="flex items-center gap-3 pt-2">
-        <span className="rounded-lg bg-indigo-100 px-2.5 py-1 text-xs font-black text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
-          🤖 CAPTURADOS DEL GRUPO DE WHATSAPP · {pendientes.length}
-        </span>
-        <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+      {/* Separador y Filtro por Fecha */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+        <div className="flex items-center gap-2">
+          <span className="rounded-lg bg-indigo-100 px-2.5 py-1 text-xs font-black text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+            🤖 CAPTURADOS DEL GRUPO DE WHATSAPP · {pendientes.length}
+          </span>
+          <div className="h-px flex-1 bg-zinc-200 dark:border-zinc-800" />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">
+            📅 Filtrar:
+          </label>
+          <select
+            value={filtroFechaBot}
+            onChange={(e) => setFiltroFechaBot(e.target.value)}
+            className="rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="TODAS">Todos ({pendientes.length})</option>
+            <option value="HOY">Detectados / Hoy</option>
+            <option value="AYER">Ayer</option>
+            <option value="MANANA">Evento Mañana</option>
+          </select>
+        </div>
       </div>
 
       {ordenados.map((postOriginal) => {

@@ -121,8 +121,20 @@ export function AdminDashboardClient({
   const [filterEstado, setFilterEstado] = useState<string>("TODOS");
   const [filterCategoria, setFilterCategoria] = useState<string>("TODOS");
   const [filterZona, setFilterZona] = useState<string>("TODOS");
+  const [filterFecha, setFilterFecha] = useState<string>("TODAS");
 
   const eventosFiltrados = useMemo(() => {
+    const ahora = new Date();
+    const hoyStr = ahora.toISOString().split("T")[0];
+
+    const ayer = new Date(ahora);
+    ayer.setDate(ayer.getDate() - 1);
+    const ayerStr = ayer.toISOString().split("T")[0];
+
+    const manana = new Date(ahora);
+    manana.setDate(manana.getDate() + 1);
+    const mananaStr = manana.toISOString().split("T")[0];
+
     return todosLosEventos.filter((ev) => {
       // Búsqueda por texto (nombre, lugar, gestor, institución)
       if (searchTerm.trim()) {
@@ -150,9 +162,27 @@ export function AdminDashboardClient({
         return false;
       }
 
+      // Filtro por Fecha (Fecha del evento o creación)
+      if (filterFecha !== "TODAS") {
+        const evFechaIso = new Date(ev.fecha).toISOString().split("T")[0];
+        const evCreatedIso = new Date(ev.createdAt).toISOString().split("T")[0];
+
+        if (filterFecha === "HOY") {
+          if (evFechaIso !== hoyStr && evCreatedIso !== hoyStr) return false;
+        } else if (filterFecha === "AYER") {
+          if (evFechaIso !== ayerStr && evCreatedIso !== ayerStr) return false;
+        } else if (filterFecha === "MANANA") {
+          if (evFechaIso !== mananaStr) return false;
+        } else if (filterFecha === "FUTUROS") {
+          if (evFechaIso < hoyStr) return false;
+        } else if (filterFecha === "PASADOS") {
+          if (evFechaIso >= hoyStr) return false;
+        }
+      }
+
       return true;
     });
-  }, [todosLosEventos, searchTerm, filterEstado, filterCategoria, filterZona]);
+  }, [todosLosEventos, searchTerm, filterEstado, filterCategoria, filterZona, filterFecha]);
 
   const totalAprobados = todosLosEventos.filter((e) => e.estado === "APROBADO").length;
   const totalRechazados = todosLosEventos.filter((e) => e.estado === "RECHAZADO").length;
@@ -409,7 +439,7 @@ export function AdminDashboardClient({
             </div>
 
             {/* Barra de Filtros y Búsqueda */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
                   Buscar
@@ -421,6 +451,24 @@ export function AdminDashboardClient({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                  Fecha
+                </label>
+                <select
+                  value={filterFecha}
+                  onChange={(e) => setFilterFecha(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="TODAS">Cualquier fecha</option>
+                  <option value="HOY">Publicados / Hoy</option>
+                  <option value="AYER">Ayer</option>
+                  <option value="MANANA">Mañana</option>
+                  <option value="FUTUROS">Próximos / Futuros</option>
+                  <option value="PASADOS">Finalizados</option>
+                </select>
               </div>
 
               <div>

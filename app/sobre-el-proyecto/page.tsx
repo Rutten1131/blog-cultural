@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/Navbar";
 import { SITE_CONFIG } from "@/lib/utils";
-import { SociosMarqueeSection } from "@/components/socios-fundadores/SociosMarqueeSection";
+import { ExpandingCardsSection } from "@/components/socios-fundadores/ExpandingCardsSection";
 import sociosData from "@/data/socios-fundadores.json";
 
 export const revalidate = 3600; // 1 hora
@@ -89,8 +89,8 @@ export default function SobreElProyectoPage() {
       <div className="flex min-h-screen flex-col font-sans text-zinc-900 dark:text-zinc-100" style={{ background: "var(--color-bg)" }}>
         <Navbar />
 
-        <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-20 flex-1">
-          {/* Migas de pan */}
+        {/* ─── Migas de pan dentro de contenedor restringido ─── */}
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-24 sm:pt-28">
           <div className="mb-6 flex items-center justify-between">
             <nav className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
               <Link href="/" className="hover:text-purple-600 transition-colors">Inicio</Link>
@@ -98,61 +98,18 @@ export default function SobreElProyectoPage() {
               <span className="text-zinc-800 dark:text-zinc-200">Sobre el proyecto</span>
             </nav>
           </div>
+        </div>
 
-          <article className="space-y-8">
-            {/* Header Hero */}
-            <div className="rounded-3xl border border-white/60 bg-white/90 p-6 sm:p-10 shadow-sm backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/90">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
-                {/* Fotografía del Creador */}
-                <div className="relative shrink-0">
-                  <div className="relative h-32 w-32 sm:h-36 sm:w-36 overflow-hidden rounded-3xl border-2 border-purple-200/80 dark:border-purple-800/80 bg-zinc-900 shadow-2xl ring-4 ring-purple-500/20">
-                    <Image
-                      src="https://www.cesarreyesjaramillo.com/images/portada_cesarbn.webp"
-                      alt="César Reyes Jaramillo — Creador de Agenda Cultural Loja"
-                      fill
-                      className="object-cover object-top filter contrast-[1.03]"
-                      unoptimized
-                      priority
-                    />
-                  </div>
-                  <div
-                    className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg text-sm font-bold ring-4 ring-white dark:ring-zinc-900"
-                    title="Perfil Verificado"
-                  >
-                    ✓
-                  </div>
-                </div>
+        {/* ─── Sección GuIAloja: FULLSCREEN edge-to-edge en desktop ─── */}
+        <div className="w-full px-2 sm:px-4 lg:px-6 xl:px-8 pb-6">
+          <ExpandingCardsSection
+            categorias={sociosData.categorias}
+            contacto={sociosData.contacto}
+          />
+        </div>
 
-                {/* Resumen del perfil */}
-                <div className="text-center sm:text-left flex-1">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-purple-100 dark:bg-purple-950/60 px-3.5 py-1 text-xs font-bold text-purple-700 dark:text-purple-300 mb-3">
-                    <span>Fundador & Desarrollador</span>
-                  </div>
-                  <h1 className="font-display text-3xl sm:text-4xl font-black uppercase tracking-tight text-[var(--color-dark)] dark:text-white">
-                    César Reyes Jaramillo
-                  </h1>
-                  <p className="mt-2 text-sm sm:text-base text-[var(--color-muted)] font-medium leading-relaxed">
-                    Especialista en posicionamiento SEO, automatización de procesos y desarrollo web estratégico en Loja, Ecuador.
-                  </p>
-
-                  <div className="mt-5 flex flex-wrap items-center justify-center sm:justify-start gap-3">
-                    <a
-                      href="https://www.cesarreyesjaramillo.com/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="sheen-hover inline-flex items-center gap-2 rounded-xl bg-[var(--color-purple-1)] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:bg-[var(--color-purple-2)] hover:shadow-lg active:scale-95"
-                    >
-                      <span>Sitio Oficial: cesarreyesjaramillo.com</span>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                        <polyline points="15 3 21 3 21 9" />
-                        <line x1="10" y1="14" x2="21" y2="3" />
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <main className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-20 flex-1">
+          <article className="space-y-10">
 
             {/* Bloque: ¿Por qué nació Agenda Cultural Loja? */}
             <div className="rounded-3xl border border-white/60 bg-white/90 p-6 sm:p-10 shadow-sm backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/90 space-y-4">
@@ -216,8 +173,59 @@ export default function SobreElProyectoPage() {
               </div>
             </div>
 
-            {/* Bloque: Socios Fundadores GuIAloja con Slide Infinito y Disponibilidad */}
-            <SociosMarqueeSection categorias={sociosData.categorias} />
+            {/* Perfil del Creador (Ubicado casi al final para dar protagonismo prioritario a las empresas) */}
+            <div className="rounded-3xl border border-white/60 bg-white/90 p-6 sm:p-10 shadow-sm backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/90">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+                {/* Fotografía del Creador */}
+                <div className="relative shrink-0">
+                  <div className="relative h-32 w-32 sm:h-36 sm:w-36 overflow-hidden rounded-3xl border-2 border-purple-200/80 dark:border-purple-800/80 bg-zinc-900 shadow-2xl ring-4 ring-purple-500/20">
+                    <Image
+                      src="https://www.cesarreyesjaramillo.com/images/portada_cesarbn.webp"
+                      alt="César Reyes Jaramillo — Creador de Agenda Cultural Loja"
+                      fill
+                      className="object-cover object-top filter contrast-[1.03]"
+                      unoptimized
+                      priority
+                    />
+                  </div>
+                  <div
+                    className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg text-sm font-bold ring-4 ring-white dark:ring-zinc-900"
+                    title="Perfil Verificado"
+                  >
+                    ✓
+                  </div>
+                </div>
+
+                {/* Resumen del perfil */}
+                <div className="text-center sm:text-left flex-1">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-purple-100 dark:bg-purple-950/60 px-3.5 py-1 text-xs font-bold text-purple-700 dark:text-purple-300 mb-3">
+                    <span>Fundador & Desarrollador</span>
+                  </div>
+                  <h2 className="font-display text-3xl sm:text-4xl font-black uppercase tracking-tight text-[var(--color-dark)] dark:text-white">
+                    César Reyes Jaramillo
+                  </h2>
+                  <p className="mt-2 text-sm sm:text-base text-[var(--color-muted)] font-medium leading-relaxed">
+                    Especialista en posicionamiento SEO, automatización de procesos y desarrollo web estratégico en Loja, Ecuador.
+                  </p>
+
+                  <div className="mt-5 flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                    <a
+                      href="https://www.cesarreyesjaramillo.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="sheen-hover inline-flex items-center gap-2 rounded-xl bg-[var(--color-purple-1)] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:bg-[var(--color-purple-2)] hover:shadow-lg active:scale-95"
+                    >
+                      <span>Sitio Oficial: cesarreyesjaramillo.com</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Footer interno del creador */}
             <div className="text-center pt-4">

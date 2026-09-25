@@ -106,6 +106,7 @@ export async function aprobarPostBot(
     if (!post.fechaPublicacion) faltantes.push("fecha");
     if (!post.lugar) faltantes.push("lugar");
     if (!post.titulo) faltantes.push("título");
+    if (!post.imagenUrl) faltantes.push("imagen");
 
     if (faltantes.length > 0) {
       return {

@@ -60,6 +60,8 @@ model Evento {
   updatedAt             DateTime      @updatedAt
 
   institucionRelacionada String?       @db.VarChar(150)
+  editToken              String?       @unique @db.VarChar(100)   // Token único para link de edición sin login
+  editTokenExpiresAt     DateTime?     @map("edit_token_expires_at") // Expira en la fecha del evento
   categoriaId  Int?
   categoria    Categoria?    @relation(fields: [categoriaId], references: [id])
 

@@ -70,6 +70,13 @@ function limpiarTitulo(t) {
   let s = t.replace(/\s+/g, " ").trim();
   if (!s) return null;
 
+  // Quitar prefijos comunes de Instagram/Facebook cuando copian texto de la cuenta:
+  // "Loja es Arte y Cultura ... on Instagram: ..."
+  s = s.replace(/^.*?on\s+(?:instagram|facebook)\s*:\s*["“]?/i, "");
+  // Quitar notas de prensa pegadas al inicio:
+  s = s.replace(/^(?:gracias\s+a\s+la\s+nota\s+de|nota\s+de|cobertura\s+de)\s+[^:|—\n]+[:|—]\s*/i, "");
+  s = s.replace(/^["“](.*)["”]$/, "$1"); // comillas envolventes
+
   const partes = s.split(/\s+[|\u2013\u2014]\s+|\s+-\s+/);
   if (partes.length > 1 && partes[0].trim().length >= 12) {
     s = partes[0].trim();
@@ -1377,6 +1384,9 @@ async function extractFromImage(msg, texto, grupoId, prisma) {
       (imagenUrl ? "" : " (SIN foto)")
   );
 
+  // Auto-publicación si está completo
+  await autoPublicarSiCompleto(post, { afiche }, prisma);
+
   return post;
 }
 
@@ -1437,7 +1447,7 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
         fechaMax.setDate(fechaMax.getDate() + 3);
 
         const eventoExistente = await prisma.$queryRaw`
-          SELECT id FROM Evento
+          SELECT id FROM eventos
           WHERE nombre = ${tituloNorm}
             AND fecha BETWEEN ${fechaMin} AND ${fechaMax}
           LIMIT 1
@@ -1524,6 +1534,20 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
         continue;
       }
 
+      // Selección inteligente de portada: si Gemini identificó qué lámina del carrusel
+      // es el afiche real sin marcos de prensa, se usa esa como portada principal.
+      let indicePortada = 0;
+      if (
+        datos.afiche &&
+        Number.isInteger(datos.afiche.indiceMejorAfiche) &&
+        datos.afiche.indiceMejorAfiche >= 0 &&
+        datos.afiche.indiceMejorAfiche < fotosPermanentes.length
+      ) {
+        indicePortada = datos.afiche.indiceMejorAfiche;
+      }
+
+      const portadaElegida = fotosPermanentes[indicePortada] ?? fotosPermanentes[0] ?? datos.imagenUrl;
+
       const post = await prisma.postSocial.create({
         data: {
           origen: "WHATSAPP_GRUPO",
@@ -1531,9 +1555,8 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
           textoOriginal: text ? text.slice(0, 5000) : null,
           titulo: datos.titulo,
           descripcion: datos.descripcion,
-          // La primera foto del carrusel es la portada.
-          imagenUrl: fotosPermanentes[0] ?? datos.imagenUrl,
-          // El carrusel completo, para que al aprobar vaya todo a la página.
+          imagenUrl: portadaElegida,
+          // El carrusel completo disponible para el visor/carrusel de la web
           multimedia: fotosPermanentes.length > 1 ? fotosPermanentes : undefined,
           fechaPublicacion: datos.fecha,
           lugar: datos.lugar,
@@ -1559,6 +1582,10 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
             ? ` — faltan: ${datos.camposFaltantes.join(", ")}`
             : " — completo")
       );
+
+      // ── AUTO-PUBLICACIÓN 100% AUTOMÁTICA ──
+      // Si el post tiene los 4 obligatorios (título, fecha, lugar, imagen) y confianza >= 50%
+      await autoPublicarSiCompleto(post, datos, prisma);
     } catch (err) {
       console.error(`[Extractor] Error procesando ${url}:`, err.message);
     }
@@ -1578,6 +1605,148 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
   return posts;
 }
 
+/**
+ * Publica automáticamente un post como Evento si cumple las 4 reglas obligatorias:
+ * 1. Título conciso y no genérico
+ * 2. Fecha válida
+ * 3. Lugar válido
+ * 4. Imagen cargada en CDN
+ * 5. Confianza >= 50%
+ */
+async function autoPublicarSiCompleto(post, datos, prisma) {
+  try {
+    if (!post.titulo || !post.fechaPublicacion || !post.lugar || !post.imagenUrl) {
+      return;
+    }
+    if ((post.confianzaIA || 0) < 0.5) {
+      return;
+    }
+
+    const nombre = post.titulo.trim();
+    const lugar = post.lugar.trim();
+    const fecha = post.fechaPublicacion;
+    const fechaIso = fecha.toISOString().split("T")[0];
+
+    // Generar slug limpio
+    const raw = `${nombre}-${fechaIso}-${lugar}`;
+    const slug = raw
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .slice(0, 290);
+
+    // Evitar duplicados contra eventos existentes
+    const yaExiste = await prisma.evento.findUnique({ where: { slug } });
+    if (yaExiste) {
+      console.log(`[AutoPublish] Evento #${yaExiste.id} con slug "${slug}" ya existía; no se duplica.`);
+      await prisma.postSocial.update({
+        where: { id: post.id },
+        data: {
+          estado: "APROBADO",
+          moderadoPor: "SISTEMA_AUTO_PUBLISH",
+          moderadoAt: new Date(),
+          moderationComentario: `Dedupe automático: ya existía evento #${yaExiste.id}`,
+        },
+      });
+      return;
+    }
+
+    // Inferir organizador real sin nombres de medios de comunicación
+    let organizador = "Municipio de Loja";
+    if (datos?.afiche?.organizador && typeof datos.afiche.organizador === "string") {
+      const org = datos.afiche.organizador.trim();
+      const esMedioPrensa = /primer\s+reporte|hora32|ecotel|la\s+cr[óo]nica|diario/i.test(org);
+      if (!esMedioPrensa && org.length > 2) {
+        organizador = org.slice(0, 200);
+      }
+    } else if (nombre.toLowerCase().includes("rondalla") || nombre.toLowerCase().includes("boleros")) {
+      organizador = "Municipio de Loja";
+    } else if (post.descripcion?.toLowerCase().includes("casa de la cultura")) {
+      organizador = "Casa de la Cultura Ecuatoriana";
+    }
+
+    // Inferir categoría
+    let categoriaId = null;
+    const catTexto = `${nombre} ${lugar} ${post.descripcion || ""}`.toLowerCase();
+    const categorias = await prisma.categoria.findMany();
+    if (catTexto.includes("concierto") || catTexto.includes("música") || catTexto.includes("musica") || catTexto.includes("bolero") || catTexto.includes("canta")) {
+      const c = categorias.find((x) => x.slug === "musica");
+      if (c) categoriaId = c.id;
+    } else if (catTexto.includes("teatro") || catTexto.includes("escénic") || catTexto.includes("obra")) {
+      const c = categorias.find((x) => x.slug === "teatro");
+      if (c) categoriaId = c.id;
+    } else if (catTexto.includes("feria") || catTexto.includes("mercado") || catTexto.includes("artesan")) {
+      const c = categorias.find((x) => x.slug === "ferias");
+      if (c) categoriaId = c.id;
+    } else if (catTexto.includes("danza") || catTexto.includes("artes vivas") || catTexto.includes("fiavl")) {
+      const c = categorias.find((x) => x.slug === "artes-vivas");
+      if (c) categoriaId = c.id;
+    } else if (catTexto.includes("exposición") || catTexto.includes("exposicion") || catTexto.includes("pintura") || catTexto.includes("galería") || catTexto.includes("arte")) {
+      const c = categorias.find((x) => x.slug === "arte-y-exposiciones");
+      if (c) categoriaId = c.id;
+    }
+
+    // Inferir zona
+    let zonaId = null;
+    const zonas = await prisma.zona.findMany();
+    for (const z of zonas) {
+      if (catTexto.includes(z.nombre.toLowerCase())) {
+        zonaId = z.id;
+        break;
+      }
+    }
+    if (!zonaId) {
+      const sanSeb = zonas.find((z) => z.nombre.toLowerCase().includes("sebastián"));
+      if (sanSeb) zonaId = sanSeb.id;
+    }
+
+    // Limpiar descripción de cabeceras de noticias
+    let descLimpia = (post.descripcion || post.textoOriginal || "").trim();
+    descLimpia = descLimpia.replace(/^[🎨\s]*agradecemos\s+la\s+cobertura\s+mediática\s+de\s+[^\n.]+[\n.]*/i, "");
+    descLimpia = descLimpia.replace(/^gracias\s+a\s+la\s+nota\s+de\s+[^\n.]+[\n.]*/i, "");
+    if (!descLimpia) {
+      descLimpia = `Evento cultural en Loja: ${nombre}. Lugar: ${lugar}.`;
+    }
+
+    const fotos = Array.isArray(post.multimedia) ? post.multimedia : [];
+
+    const nuevoEvento = await prisma.evento.create({
+      data: {
+        nombre,
+        slug,
+        fecha,
+        lugar,
+        descripcion: descLimpia,
+        imagenUrl: post.imagenUrl,
+        multimedia: fotos.length > 1 ? fotos : undefined,
+        nombreGestor: organizador,
+        confianzaClasificacion: post.confianzaIA,
+        categoriaId,
+        zonaId,
+        estado: "APROBADO",
+      },
+    });
+
+    await prisma.postSocial.update({
+      where: { id: post.id },
+      data: {
+        estado: "APROBADO",
+        moderadoPor: "SISTEMA_AUTO_PUBLISH",
+        moderadoAt: new Date(),
+        moderationComentario: `Auto-publicado directamente como evento #${nuevoEvento.id}`,
+      },
+    });
+
+    console.log(`[AutoPublish] 🚀 EVENTO #${nuevoEvento.id} PUBLICADO DIRECTAMENTE: "${nombre}"`);
+  } catch (error) {
+    console.error("[AutoPublish] Error publicando automáticamente:", error.message);
+  }
+}
+
 module.exports = {
   extractAndProcessUrls,
   extractFromTextOnly,
@@ -1585,6 +1754,7 @@ module.exports = {
   extractUrls,
   extractEventInfo,
   extraerEvento,
+  autoPublicarSiCompleto,
   // Exportados para pruebas unitarias
   limpiarTitulo,
   esTituloGenerico,

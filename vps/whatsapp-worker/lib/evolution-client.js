@@ -163,6 +163,25 @@ async function descargarMedia(msg) {
   return { base64, tipo: r?.mimetype || r?.data?.mimetype || "image/jpeg" };
 }
 
+/**
+ * Envía un mensaje de texto a un número de WhatsApp individual.
+ *
+ * EXCEPCIÓN AL MODO SOLO-LECTURA: Se usa ÚNICAMENTE para notificar a César
+ * (número personal, no al grupo). No toca el grupo ni su webhook.
+ *
+ * @param {string} numero - Número en formato internacional sin + (ej: 593963410409)
+ * @param {string} texto - Texto del mensaje (soporta *negrita* y _cursiva_ de WA)
+ */
+async function enviarTexto(numero, texto) {
+  return evolutionFetch(`/message/sendText/${EVOLUTION_INSTANCE}`, {
+    method: "POST",
+    body: JSON.stringify({
+      number: numero,
+      text: texto,
+    }),
+  });
+}
+
 module.exports = {
   EVOLUTION_INSTANCE,
   evolutionFetch,
@@ -173,4 +192,6 @@ module.exports = {
   extraerImagenDeMensaje,
   esMensajeRelevante,
   descargarMedia,
+  enviarTexto,
 };
+
