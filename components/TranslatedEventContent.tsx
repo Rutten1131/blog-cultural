@@ -17,6 +17,93 @@ interface TranslatedEventContentProps {
   hasFechaFin: boolean;
 }
 
+/**
+ * Detecta si una línea es un "encabezado" (todo en mayúsculas y corta).
+ * Ejemplos del mundo real: "FERIA DE EXPOSICIÓN", "CALLES VIVAS", "TESOROS DEL PASADO".
+ */
+function esEncabezado(linea: string): boolean {
+  const s = linea.trim();
+  if (!s || s.length > 80) return false;
+  return s === s.toUpperCase() && /[A-ZÁÉÍÓÚÑÜ]/.test(s);
+}
+
+/** Detecta líneas de hora/precio cortas ("10h00 a 18h00", "Entrada gratuita", "$5"). */
+function esDetalle(linea: string): boolean {
+  const s = linea.trim();
+  return (
+    s.length > 0 &&
+    s.length <= 50 &&
+    /^\d|h\d{2}|entrada|gratis|libre|\$|precio/i.test(s)
+  );
+}
+
+/**
+ * Renderiza la descripción del evento de forma visual sin cambiar una sola palabra.
+ * - Líneas en MAYÚSCULAS cortas → encabezado bold
+ * - Líneas de hora/precio       → badge inline
+ * - Resto                       → párrafo normal agrupado
+ */
+function FormattedDescription({ text, loading }: { text: string; loading: boolean }) {
+  if (!text?.trim()) return null;
+
+  const lineas = text.split(/\r?\n/);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bloques: any[] = [];
+  let parrafoActual: string[] = [];
+  let key = 0;
+
+  function volcarParrafo() {
+    if (parrafoActual.length === 0) return;
+    const contenido = parrafoActual.join(" ").trim();
+    if (contenido) {
+      bloques.push(
+        <p key={key++} className="text-base text-zinc-700 dark:text-zinc-300 leading-relaxed">
+          {contenido}
+        </p>
+      );
+    }
+    parrafoActual = [];
+  }
+
+  for (const linea of lineas) {
+    const s = linea.trim();
+
+    if (!s) {
+      volcarParrafo();
+      continue;
+    }
+
+    if (esEncabezado(s)) {
+      volcarParrafo();
+      bloques.push(
+        <p key={key++} className="font-bold text-zinc-900 dark:text-zinc-100 text-sm uppercase tracking-wide mt-4 first:mt-0">
+          {s}
+        </p>
+      );
+      continue;
+    }
+
+    if (esDetalle(s)) {
+      volcarParrafo();
+      bloques.push(
+        <span key={key++} className="inline-block text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-md px-2.5 py-0.5 mr-2 mb-1">
+          {s}
+        </span>
+      );
+      continue;
+    }
+
+    parrafoActual.push(s);
+  }
+  volcarParrafo();
+
+  return (
+    <div className="space-y-2 transition-opacity duration-200" style={{ opacity: loading ? 0.6 : 1 }}>
+      {bloques}
+    </div>
+  );
+}
+
 export function TranslatedEventContent({
   initialTitle,
   initialDescription,
@@ -130,14 +217,17 @@ export function TranslatedEventContent({
             {location}
           </span>
         </div>
-        <div>
-          <span className="block text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">
-            {t("evento.organizador", "Organizador / Gestor")}
-          </span>
-          <span className="font-semibold text-zinc-800 dark:text-zinc-200 break-words [overflow-wrap:anywhere]">
-            {nombreGestor}
-          </span>
-        </div>
+        {/* Ocultar el campo si lo llenó el bot (el organizador real no se conoce) */}
+        {nombreGestor && !nombreGestor.includes("Bot WhatsApp") && (
+          <div>
+            <span className="block text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">
+              {t("evento.organizador", "Organizador / Gestor")}
+            </span>
+            <span className="font-semibold text-zinc-800 dark:text-zinc-200 break-words [overflow-wrap:anywhere]">
+              {nombreGestor}
+            </span>
+          </div>
+        )}
         <div>
           <span className="block text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">
             {t("evento.zona_parroquial", "Ubicación Parroquial")}
@@ -149,13 +239,11 @@ export function TranslatedEventContent({
       </div>
 
       {/* Descripción completa */}
-      <div className="prose dark:prose-invert max-w-none text-zinc-700 dark:text-zinc-300 leading-relaxed space-y-4">
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">
+      <div className="prose dark:prose-invert max-w-none text-zinc-700 dark:text-zinc-300 leading-relaxed">
+        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-4">
           {t("evento.sobre_este_evento", "Sobre este evento")}
         </h2>
-        <div className="whitespace-pre-line text-base break-words [overflow-wrap:anywhere] transition-opacity duration-200" style={{ opacity: loading ? 0.6 : 1 }}>
-          {description}
-        </div>
+        <FormattedDescription text={description} loading={loading} />
       </div>
     </div>
   );
