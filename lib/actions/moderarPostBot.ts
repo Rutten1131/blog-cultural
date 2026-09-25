@@ -28,6 +28,51 @@ export interface ModerarPostState {
   publicadoDirecto?: boolean;
 }
 
+export interface EditarPostState {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Edita los campos de un post pendiente del bot.
+ * El moderador puede corregir título, fecha, lugar y descripción
+ * antes de aprobar, directamente desde el panel /admin.
+ */
+export async function editarPostBot(
+  postId: number,
+  campos: {
+    titulo?: string | null;
+    descripcion?: string | null;
+    lugar?: string | null;
+    fechaPublicacion?: Date | null;
+  }
+): Promise<EditarPostState> {
+  try {
+    const post = await prisma.postSocial.findUnique({ where: { id: postId } });
+
+    if (!post) return { success: false, error: "El post no existe." };
+    if (post.estado !== "PENDIENTE") {
+      return { success: false, error: "Solo se pueden editar posts pendientes." };
+    }
+
+    await prisma.postSocial.update({
+      where: { id: postId },
+      data: {
+        titulo: campos.titulo?.trim() || null,
+        descripcion: campos.descripcion?.trim() || null,
+        lugar: campos.lugar?.trim() || null,
+        fechaPublicacion: campos.fechaPublicacion ?? null,
+      },
+    });
+
+    revalidateAll();
+    return { success: true };
+  } catch (error) {
+    console.error("Error editando post del bot:", error);
+    return { success: false, error: "Ocurrió un error al guardar los cambios." };
+  }
+}
+
 /** Etiqueta con la que quedan los eventos creados desde el bot. */
 const GESTOR_BOT = "🤖 Bot WhatsApp — Agenda Cultural";
 

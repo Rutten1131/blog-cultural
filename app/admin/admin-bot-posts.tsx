@@ -14,7 +14,11 @@
  */
 
 import { useState, useTransition } from "react";
-import { aprobarPostBot, rechazarPostBot } from "@/lib/actions/moderarPostBot";
+import {
+  aprobarPostBot,
+  rechazarPostBot,
+  editarPostBot,
+} from "@/lib/actions/moderarPostBot";
 // OJO: NO importar de "@/lib/fechas" — ese módulo usa `import "server-only"`
 // y hace que `next build` falle sin mostrar ningún error.
 import { formatFechaLojaCliente } from "@/lib/fechasCliente";
@@ -80,27 +84,185 @@ function camposFaltantes(post: PostBotItem): string[] {
   return faltan;
 }
 
+/** Convierte una Date a "YYYY-MM-DD" para el input[type=date] */
+function fechaAInputDate(d: Date | null): string {
+  if (!d) return "";
+  const fecha = new Date(d);
+  const year = fecha.getFullYear();
+  const month = String(fecha.getMonth() + 1).padStart(2, "0");
+  const day = String(fecha.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function BarraConfianza({ valor }: { valor: number | null }) {
   const v = valor ?? 0;
   const porcentaje = Math.round(v * 100);
   const color = v >= 0.6 ? "bg-emerald-500" : v >= 0.35 ? "bg-amber-500" : "bg-rose-500";
 
   return (
-    <div className="flex items-center gap-2" title={`Confianza de la extracción: ${porcentaje}%`}>
+    <div className="flex items-center gap-2" title={`Confianza de la extracción IA: ${porcentaje}%`}>
       <div className="h-1.5 w-14 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
         <div className={`h-full ${color}`} style={{ width: `${porcentaje}%` }} />
       </div>
       <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-        {porcentaje}%
+        {porcentaje}% IA
       </span>
+    </div>
+  );
+}
+
+/** Formulario de edición inline para un post del bot. */
+function FormularioEdicion({
+  post,
+  onGuardado,
+  onCancelar,
+}: {
+  post: PostBotItem;
+  onGuardado: (campos: {
+    titulo: string;
+    descripcion: string;
+    lugar: string;
+    fechaPublicacion: Date | null;
+  }) => void;
+  onCancelar: () => void;
+}) {
+  const [titulo, setTitulo] = useState(post.titulo ?? "");
+  const [descripcion, setDescripcion] = useState(post.descripcion ?? post.textoOriginal ?? "");
+  const [lugar, setLugar] = useState(post.lugar ?? "");
+  const [fechaStr, setFechaStr] = useState(fechaAInputDate(post.fechaPublicacion));
+  const [guardando, setGuardando] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  function guardar() {
+    setGuardando(true);
+    setErrorGuardar(null);
+    const fechaDate = fechaStr ? new Date(fechaStr + "T12:00:00") : null;
+
+    startTransition(async () => {
+      const res = await editarPostBot(post.id, {
+        titulo: titulo || null,
+        descripcion: descripcion || null,
+        lugar: lugar || null,
+        fechaPublicacion: fechaDate,
+      });
+      setGuardando(false);
+      if (res.success) {
+        onGuardado({ titulo, descripcion, lugar, fechaPublicacion: fechaDate });
+      } else {
+        setErrorGuardar(res.error ?? "Error desconocido");
+      }
+    });
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-3 dark:border-indigo-800 dark:bg-indigo-950/30">
+      <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide">
+        ✏️ Editar datos antes de aprobar
+      </p>
+
+      {/* Título */}
+      <div>
+        <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1 uppercase tracking-wide">
+          Título
+        </label>
+        <input
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          placeholder="Nombre del evento"
+          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+        />
+      </div>
+
+      {/* Fecha */}
+      <div>
+        <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1 uppercase tracking-wide">
+          Fecha del evento
+        </label>
+        <input
+          type="date"
+          value={fechaStr}
+          onChange={(e) => setFechaStr(e.target.value)}
+          className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+        />
+      </div>
+
+      {/* Lugar */}
+      <div>
+        <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1 uppercase tracking-wide">
+          Lugar
+        </label>
+        <input
+          type="text"
+          value={lugar}
+          onChange={(e) => setLugar(e.target.value)}
+          placeholder="Teatro Bolívar, Casa de la Cultura, etc."
+          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+        />
+      </div>
+
+      {/* Descripción */}
+      <div>
+        <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1 uppercase tracking-wide">
+          Descripción
+        </label>
+        <textarea
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          rows={3}
+          placeholder="Descripción del evento..."
+          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 resize-none"
+        />
+      </div>
+
+      {errorGuardar && (
+        <p className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+          ⚠️ {errorGuardar}
+        </p>
+      )}
+
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={guardar}
+          disabled={guardando}
+          className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+        >
+          {guardando ? "Guardando..." : "💾 Guardar cambios"}
+        </button>
+        <button
+          onClick={onCancelar}
+          disabled={guardando}
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-1.5 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }
 
 export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
   const pendientes = posts.filter((p) => p.estado === "PENDIENTE");
+
+  // Estado local de cada tarjeta (mensajes de acción + edición abierta)
   const [mensajes, setMensajes] = useState<Record<number, { ok: boolean; texto: string }>>({});
   const [enProceso, setEnProceso] = useState<number | null>(null);
+  const [editando, setEditando] = useState<number | null>(null);
+
+  // Datos sobreescritos localmente tras una edición exitosa (antes del revalidate)
+  const [datosEditados, setDatosEditados] = useState<
+    Record<
+      number,
+      {
+        titulo: string;
+        descripcion: string;
+        lugar: string;
+        fechaPublicacion: Date | null;
+      }
+    >
+  >({});
+
   const [, startTransition] = useTransition();
 
   if (pendientes.length === 0) return null;
@@ -109,6 +271,19 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
   const ordenados = [...pendientes].sort(
     (a, b) => (b.confianzaIA ?? 0) - (a.confianzaIA ?? 0)
   );
+
+  /** Combina el post original con cualquier edición local realizada. */
+  function postEfectivo(post: PostBotItem): PostBotItem {
+    const edicion = datosEditados[post.id];
+    if (!edicion) return post;
+    return {
+      ...post,
+      titulo: edicion.titulo || null,
+      descripcion: edicion.descripcion || null,
+      lugar: edicion.lugar || null,
+      fechaPublicacion: edicion.fechaPublicacion,
+    };
+  }
 
   function aprobar(post: PostBotItem) {
     setEnProceso(post.id);
@@ -152,11 +327,13 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
         <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
       </div>
 
-      {ordenados.map((post) => {
+      {ordenados.map((postOriginal) => {
+        const post = postEfectivo(postOriginal);
         const faltan = camposFaltantes(post);
         const puedeAprobar = faltan.length === 0;
         const msg = mensajes[post.id];
         const fotos = fotosDelPost(post);
+        const estaEditando = editando === post.id;
 
         return (
           <div
@@ -176,7 +353,22 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
                   {NOMBRES_GRUPO[post.grupoId ?? ""] ?? "Grupo de WhatsApp"}
                 </span>
               </div>
-              <BarraConfianza valor={post.confianzaIA} />
+              <div className="flex items-center gap-3">
+                <BarraConfianza valor={post.confianzaIA} />
+                {/* Botón editar */}
+                {!msg && (
+                  <button
+                    onClick={() => setEditando(estaEditando ? null : post.id)}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                      estaEditando
+                        ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"
+                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    {estaEditando ? "✕ Cerrar" : "✏️ Editar"}
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col gap-4 p-4 sm:flex-row">
@@ -221,8 +413,7 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
                   {post.descripcion || post.textoOriginal || "(sin descripción)"}
                 </p>
 
-                {/* Carrusel: si el post traía varias fotos se ven todas, y al
-                    aprobar pasan al evento en lugar de perderse. */}
+                {/* Carrusel de fotos */}
                 {fotos.length > 1 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {fotos.map((foto, i) => (
@@ -258,15 +449,26 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
                   </a>
                 )}
 
-                {faltan.length > 0 && (
+                {faltan.length > 0 && !estaEditando && (
                   <p className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                    ⚠️ El bot no encontró <strong>{faltan.join(", ")}</strong> en el mensaje.
-                    Completalo desde{" "}
-                    <a href="/publicar" className="font-bold underline">
-                      Publicar evento
-                    </a>{" "}
-                    para no inventar datos.
+                    ⚠️ Falta <strong>{faltan.join(", ")}</strong> — editá los datos arriba (✏️ Editar) y luego aprobá.
                   </p>
+                )}
+
+                {/* Formulario de edición inline */}
+                {estaEditando && (
+                  <FormularioEdicion
+                    post={post}
+                    onGuardado={(campos) => {
+                      setDatosEditados((prev) => ({ ...prev, [post.id]: campos }));
+                      setEditando(null);
+                      setMensajes((m) => ({
+                        ...m,
+                        [post.id]: { ok: true, texto: "✅ Datos actualizados. Ahora podés aprobar el evento." },
+                      }));
+                    }}
+                    onCancelar={() => setEditando(null)}
+                  />
                 )}
 
                 {msg && (
@@ -286,11 +488,13 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
               <div className="flex flex-shrink-0 flex-row gap-2 sm:flex-col">
                 <button
                   onClick={() => aprobar(post)}
-                  disabled={!puedeAprobar || enProceso === post.id}
+                  disabled={!puedeAprobar || enProceso === post.id || estaEditando}
                   title={
-                    puedeAprobar
-                      ? "Crear el evento en esta cola"
-                      : "Faltan datos: completalo desde Publicar evento"
+                    estaEditando
+                      ? "Guardá los cambios primero"
+                      : puedeAprobar
+                      ? "Publicar en la agenda"
+                      : "Faltan datos — usá ✏️ Editar"
                   }
                   className="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-600"
                 >
@@ -298,7 +502,7 @@ export function BotPendientes({ posts }: { posts: PostBotItem[] }) {
                 </button>
                 <button
                   onClick={() => rechazar(post)}
-                  disabled={enProceso === post.id}
+                  disabled={enProceso === post.id || estaEditando}
                   className="rounded-xl bg-zinc-200 px-3 py-1.5 text-sm font-bold text-zinc-700 transition hover:bg-rose-600 hover:text-white disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-300"
                 >
                   🗑️ Rechazar

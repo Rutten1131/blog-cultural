@@ -1425,6 +1425,50 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
         }
       }
 
+      // ── Dedupe por título+fecha contra eventos ya APROBADOS ──
+      // Evita que el bot vuelva a crear un post para un evento que el moderador
+      // ya aprobó (p.ej. el mismo evento compartido 3 veces en días distintos).
+      if (datos.titulo && datos.fecha) {
+        const tituloNorm = datos.titulo.trim().slice(0, 255);
+        // Ventana de ±3 días: cubre eventos que se anuncian con fecha aproximada
+        const fechaMin = new Date(datos.fecha);
+        fechaMin.setDate(fechaMin.getDate() - 3);
+        const fechaMax = new Date(datos.fecha);
+        fechaMax.setDate(fechaMax.getDate() + 3);
+
+        const eventoExistente = await prisma.$queryRaw`
+          SELECT id FROM Evento
+          WHERE nombre = ${tituloNorm}
+            AND fecha BETWEEN ${fechaMin} AND ${fechaMax}
+          LIMIT 1
+        `;
+        if (Array.isArray(eventoExistente) && eventoExistente[0]) {
+          duplicados.push({ url, id: `evento#${eventoExistente[0].id}` });
+          console.log(
+            `[Extractor] Evento ya existe (evento #${eventoExistente[0].id}), se omite: "${tituloNorm}"`
+          );
+          continue;
+        }
+
+        // ── Dedupe por título+fecha en posts_social pendientes ──
+        // Mismo título en la misma semana → probablemente el mismo flyer compartido
+        // varias veces aunque con URLs distintas.
+        const postDupeTexto = await prisma.$queryRaw`
+          SELECT id FROM posts_social
+          WHERE titulo = ${tituloNorm}
+            AND fechaPublicacion BETWEEN ${fechaMin} AND ${fechaMax}
+            AND estado = 'PENDIENTE'
+          LIMIT 1
+        `;
+        if (Array.isArray(postDupeTexto) && postDupeTexto[0]) {
+          duplicados.push({ url, id: postDupeTexto[0].id });
+          console.log(
+            `[Extractor] Post similar ya pendiente (#${postDupeTexto[0].id}), se omite: "${tituloNorm}"`
+          );
+          continue;
+        }
+      }
+
       // Subir TODAS las fotos del carrusel a Bunny.
       //
       // Las fotos vienen del JSON del post y se descargaron del CDN en
