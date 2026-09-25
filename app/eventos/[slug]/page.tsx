@@ -17,8 +17,9 @@ import {
   EventDetailRelatedTitleClient,
 } from "@/components/EventDetailHeaderClient";
 
-// Habilitar ISR (Incremental Static Regeneration) cada 60 segundos
-export const revalidate = 60;
+// Forzar renderizado dinámico en servidor para permitir el uso de cookies()
+// (getAdminSession usa cookies() → no compatible con SSG/ISR estático)
+export const dynamic = "force-dynamic";
 
 /**
  * Construye la URL del iframe de Google Maps.
