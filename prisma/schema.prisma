@@ -287,3 +287,18 @@ enum EstadoPost {
   APROBADO
   RECHAZADO
 }
+
+// Registro de idempotencia para el scraper de WhatsApp
+model WaMensajeProcesado {
+  id               String   @id @db.VarChar(128)
+  grupoId          String   @db.VarChar(100)
+  messageTimestamp BigInt?
+  urlsEncontradas  Int      @default(0)
+  postsCreados     Int      @default(0)
+  procesadoAt      DateTime @default(now())
+
+  @@index([grupoId], map: "wa_msg_grupo_idx")
+  @@index([procesadoAt], map: "wa_msg_procesado_idx")
+  @@map("wa_mensajes_procesados")
+}
+
