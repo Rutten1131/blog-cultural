@@ -47,6 +47,7 @@ REGLAS ESTRICTAS — son lo más importante:
 - Extraé SOLO lo que sea visible en las imágenes.
 - Si un dato NO aparece, devolvé null. NO lo inventes ni lo deduzcas.
 - NO completes el año si no está escrito. Copiá la fecha TAL COMO aparece.
+- FECHAS VIGENTES: Pon especial atención a la fecha del evento. La agenda cultural se enfoca en eventos actuales o futuros (vigentes).
 - Si el contenido claramente NO anuncia un evento cultural, pon esEventoCultural en false.
 - TÍTULO LIMPIO: Devolvé el título artístico y conciso del evento (ej: "Boleros, Pasillos y Algo Más", "Exposición Pictórica Entre lo Concreto y lo Invisible"). NUNCA incluyas prefijos como "Loja es Arte y Cultura on Instagram", "Gracias a la nota de...", "Última hora", etc.
 - ORGANIZADOR REAL: Identificá la institución o grupo que organiza o presenta el evento (ej: "Municipio de Loja", "Casa de la Cultura Ecuatoriana Núcleo de Loja", "Rondalla Municipal", "Grupo Arupo", o el nombre de los artistas). NUNCA pongas nombres de medios de comunicación o prensa (como "Primer Reporte", "Hora32", "Diario La Crónica", "Ecotel Press", etc.) como organizador.

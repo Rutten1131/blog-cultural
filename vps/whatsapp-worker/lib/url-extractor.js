@@ -1623,6 +1623,17 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
       return;
     }
 
+    // ── REGLA ESTRICTA: SOLO EVENTOS DE HOY EN ADELANTE (FUTUROS) ──
+    // Se descartan eventos pasados para no ensuciar la agenda con eventos ya concluidos.
+    const ahoraEcuador = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Guayaquil" }));
+    ahoraEcuador.setHours(0, 0, 0, 0); // Inicio del día de hoy
+
+    const fechaEv = new Date(post.fechaPublicacion);
+    if (fechaEv < ahoraEcuador) {
+      console.log(`[AutoPublish] ⏭️ Se omite auto-publicación: evento "${post.titulo}" ya ocurrió en el pasado (${fechaEv.toISOString().split("T")[0]}).`);
+      return;
+    }
+
     const nombre = post.titulo.trim();
     const lugar = post.lugar.trim();
     const fecha = post.fechaPublicacion;
@@ -1640,17 +1651,50 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
       .replace(/-+/g, "-")
       .slice(0, 290);
 
-    // Evitar duplicados contra eventos existentes
-    const yaExiste = await prisma.evento.findUnique({ where: { slug } });
-    if (yaExiste) {
-      console.log(`[AutoPublish] Evento #${yaExiste.id} con slug "${slug}" ya existía; no se duplica.`);
+    // Evitar duplicados contra eventos existentes:
+    // 1. Por slug idéntico
+    const yaExisteSlug = await prisma.evento.findUnique({ where: { slug } });
+    if (yaExisteSlug) {
+      console.log(`[AutoPublish] Evento #${yaExisteSlug.id} con slug "${slug}" ya existía; no se duplica.`);
       await prisma.postSocial.update({
         where: { id: post.id },
         data: {
           estado: "APROBADO",
           moderadoPor: "SISTEMA_AUTO_PUBLISH",
           moderadoAt: new Date(),
-          moderationComentario: `Dedupe automático: ya existía evento #${yaExiste.id}`,
+          moderationComentario: `Dedupe automático: ya existía evento #${yaExisteSlug.id}`,
+        },
+      });
+      return;
+    }
+
+    // 2. Por coincidencia de título en fecha cercana (mismo día o ±1 día)
+    // Evita duplicados cuando el lugar se escribe con ligeras diferencias (ej: "Auditorio Pablo Palacio" vs "Auditorio Pablo Palacio, Colón y Bernardo...")
+    const fechaMin = new Date(fecha);
+    fechaMin.setHours(0, 0, 0, 0);
+    const fechaMax = new Date(fecha);
+    fechaMax.setHours(23, 59, 59, 999);
+
+    const yaExisteTitulo = await prisma.evento.findFirst({
+      where: {
+        nombre: { equals: nombre },
+        fecha: {
+          gte: new Date(fechaMin.getTime() - 24 * 60 * 60 * 1000),
+          lte: new Date(fechaMax.getTime() + 24 * 60 * 60 * 1000),
+        },
+      },
+      select: { id: true, nombre: true, slug: true },
+    });
+
+    if (yaExisteTitulo) {
+      console.log(`[AutoPublish] Evento #${yaExisteTitulo.id} "${yaExisteTitulo.nombre}" ya existe en esta fecha; no se duplica.`);
+      await prisma.postSocial.update({
+        where: { id: post.id },
+        data: {
+          estado: "APROBADO",
+          moderadoPor: "SISTEMA_AUTO_PUBLISH",
+          moderadoAt: new Date(),
+          moderationComentario: `Dedupe automático por título/fecha: ya existía evento #${yaExisteTitulo.id}`,
         },
       });
       return;

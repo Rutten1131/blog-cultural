@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CategoriaBadge } from "./EventoListCard";
@@ -28,6 +28,16 @@ function formatFecha(fecha: Date | string) {
 export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
   const { t } = useLanguage();
   const [busqueda, setBusqueda] = useState("");
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollCarousel = (direction: "left" | "right") => {
+    if (!carouselRef.current) return;
+    const distance = 300;
+    carouselRef.current.scrollBy({
+      left: direction === "left" ? -distance : distance,
+      behavior: "smooth",
+    });
+  };
 
   // Filtrado dinámico por buscador (nombre, lugar, descripción, categoría, zona)
   const eventosFiltrados = eventos.filter((ev) => {
@@ -93,19 +103,46 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
           </div>
         </div>
 
-        {/* Indicador de deslizar */}
+        {/* Navegación y deslizador */}
         {eventosFiltrados.length > 0 && !busqueda.trim() && (
-          <div className="mb-3 flex items-center gap-1.5 text-[var(--color-muted)]">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-pulse">
-              <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
-            </svg>
-            <span className="text-[11px] font-semibold">Desliza hacia la derecha para ver más</span>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[var(--color-muted)]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-pulse">
+                <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
+              </svg>
+              <span className="text-[11px] font-semibold">Desliza o usa las flechas para ver más</span>
+            </div>
+
+            {/* Flechas de navegación para Desktop / Ordenador */}
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => scrollCarousel("left")}
+                aria-label="Desplazar eventos hacia la izquierda"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-dark)] shadow-sm hover:border-[var(--color-purple-1)] hover:bg-[var(--color-purple-1)] hover:text-white transition-all active:scale-95"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m15 18-6-6 6-6"/>
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollCarousel("right")}
+                aria-label="Desplazar eventos hacia la derecha"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-dark)] shadow-sm hover:border-[var(--color-purple-1)] hover:bg-[var(--color-purple-1)] hover:text-white transition-all active:scale-95"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6"/>
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
         {/* Slide Horizontal de Eventos */}
         {eventosFiltrados.length > 0 ? (
           <div
+            ref={carouselRef}
             className="flex gap-4 overflow-x-auto scroll-smooth pb-4"
             style={{
               scrollSnapType: "x mandatory",
