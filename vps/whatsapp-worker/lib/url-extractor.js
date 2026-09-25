@@ -24,7 +24,8 @@ const {
   imagenesValidas,
   configurado: visionConfigurada,
 } = require("./vision");
-const { descargarMedia } = require("./evolution-client");
+const crypto = require("crypto");
+const { descargarMedia, enviarTexto } = require("./evolution-client");
 
 // ─── Extracción de URLs desde texto ───────────────────────────────────────
 
@@ -1714,6 +1715,12 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
 
     const fotos = Array.isArray(post.multimedia) ? post.multimedia : [];
 
+    // Generar token único para link de edición abierta
+    const editToken = crypto.randomBytes(24).toString("hex");
+    // El token expira al final del día del evento (o fechaFin si existe)
+    const fechaExpiracion = new Date(post.fechaPublicacion);
+    fechaExpiracion.setHours(23, 59, 59, 999);
+
     const nuevoEvento = await prisma.evento.create({
       data: {
         nombre,
@@ -1728,6 +1735,8 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
         categoriaId,
         zonaId,
         estado: "APROBADO",
+        editToken,
+        editTokenExpiresAt: fechaExpiracion,
       },
     });
 
@@ -1742,6 +1751,58 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
     });
 
     console.log(`[AutoPublish] 🚀 EVENTO #${nuevoEvento.id} PUBLICADO DIRECTAMENTE: "${nombre}"`);
+
+    // ── NOTIFICACIÓN EXCLUSIVA A CÉSAR (593963410409) ──
+    // Se envía ÚNICAMENTE a César. A nadie más.
+    try {
+      // Número de contacto detectado en el afiche o en el post original
+      let telefonoOrganizador = null;
+      if (datos?.afiche?.telefonoContacto) {
+        telefonoOrganizador = String(datos.afiche.telefonoContacto).trim();
+      } else {
+        // Buscar teléfono ecuatoriano común (ej: 0991234567, 098..., +593...) en la descripción o texto
+        const textoBuscar = `${post.textoOriginal || ""} ${post.descripcion || ""}`;
+        const matchTel = textoBuscar.match(/(?:\+?593\s?|0)9[0-9]{8}\b/);
+        if (matchTel) {
+          telefonoOrganizador = matchTel[0].trim();
+        }
+      }
+
+      const numeroCesar = "593963410409"; // FIJO: César exclusivamente. Nadie más.
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://www.agendaculturalloja.com").replace(/\/$/, "");
+      const linkEdicion = `${appUrl}/editar/${editToken}`;
+      const linkPublicado = `${appUrl}/eventos/${slug}`;
+      const fechaCorta = fechaIso;
+      const origenUrl = post.urlOriginal || "Publicación WhatsApp / Afiche";
+
+      const infoContacto = telefonoOrganizador
+        ? `📞 *Contacto extraído del organizador:* ${telefonoOrganizador}`
+        : `📞 *Contacto:* No especificado en el afiche`;
+
+      const mensajeCesar = 
+`🔔 *NUEVO EVENTO AUTO-PUBLICADO*
+
+📌 *${nombre}*
+📅 *Fecha:* ${fechaCorta}
+📍 *Lugar:* ${lugar}
+🏛️ *Organizador detectado:* ${organizador}
+${infoContacto}
+
+🔗 *Origen del post:*
+${origenUrl}
+
+✏️ *Link para que editen detalles (Solo este evento):*
+${linkEdicion}
+_(Expira el ${fechaCorta})_
+
+🌐 *Ver en la web:*
+${linkPublicado}`;
+
+      await enviarTexto(numeroCesar, mensajeCesar);
+      console.log(`[AutoPublish] 📲 Notificación enviada EXCLUSIVAMENTE a César (${numeroCesar}).`);
+    } catch (notifErr) {
+      console.error("[AutoPublish] Error enviando WhatsApp a César:", notifErr.message);
+    }
   } catch (error) {
     console.error("[AutoPublish] Error publicando automáticamente:", error.message);
   }

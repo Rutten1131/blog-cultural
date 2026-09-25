@@ -68,6 +68,7 @@ Respondé ÚNICAMENTE con este JSON, sin texto adicional ni bloques de código:
   "fechaFinTexto": "si dice hasta cuándo dura, o null",
   "lugar": "dónde se realiza (ej: Teatro Bolívar, Casona Cultural), o null",
   "precio": "precio o entrada, o null",
+  "telefonoContacto": "número de WhatsApp o teléfono de contacto o reservas si aparece en el afiche (ej: 0991234567), o null",
   "categoriaSugerida": "Música | Teatro | Ferias | Artes Vivas | Arte y exposiciones | null",
   "zonaSugerida": "nombre de la parroquia de Loja si corresponde | null",
   "textoDelAfiche": "todo el texto legible del afiche (sin logos de noticias), o null"
