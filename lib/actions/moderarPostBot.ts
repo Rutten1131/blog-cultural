@@ -261,13 +261,20 @@ export async function aprobarPostBot(
       },
     });
 
-    // Si se publica directo, notificar a Hermes en el VPS (IA editorial)
+    // Si se publica directo, notificar a Hermes en el VPS (IA editorial) y programar en redes sociales
     if (publicarDirecto) {
       try {
         const { despacharEventoAHermes } = await import("@/lib/hermes");
         await despacharEventoAHermes(evento.id, "evento.aprobado");
       } catch (err) {
         console.error("[MODERACION] Error al notificar a Hermes:", err);
+      }
+
+      try {
+        const { programarPublicacionEnRedes } = await import("@/lib/redesSociales");
+        await programarPublicacionEnRedes({ eventoId: evento.id, forzar: true });
+      } catch (err) {
+        console.error("[MODERACION] Error al programar en Redes Sociales:", err);
       }
     }
 

@@ -24,12 +24,20 @@ export async function aprobarEvento(formData: FormData) {
     },
   });
 
-  // Notificar a Hermes en el VPS (IA editorial para redes sociales)
+  // Notificar a Hermes en el VPS (IA editorial)
   try {
     const { despacharEventoAHermes } = await import("@/lib/hermes");
     await despacharEventoAHermes(eventoId, "evento.aprobado");
   } catch (err) {
     console.error("[MODERACION] Error al notificar a Hermes:", err);
+  }
+
+  // Programar publicación en Redes Sociales (Facebook e Instagram de Agenda Cultural)
+  try {
+    const { programarPublicacionEnRedes } = await import("@/lib/redesSociales");
+    await programarPublicacionEnRedes({ eventoId, forzar: true });
+  } catch (err) {
+    console.error("[MODERACION] Error al programar en Redes Sociales:", err);
   }
 
   // Revalidar TODAS las rutas (home, listados, ficha, sitemap, etc.)

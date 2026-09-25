@@ -11,7 +11,7 @@
 
 const EVOLUTION_URL =
   process.env.EVOLUTION_API_URL || "http://178.238.238.158:8080";
-const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || "cesar-comercial";
+const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || "agenda-cultural";
 
 /**
  * Llama a Evolution API y FALLA RUIDOSAMENTE si algo sale mal.
