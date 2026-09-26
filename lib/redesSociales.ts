@@ -65,28 +65,66 @@ ${evento.webUrl}
 #AgendaCultural #Loja #CulturaLoja #EventosLoja ${catTag}`;
 }
 
+// Franjas horarias de mayor alcance cultural en Loja (UTC-5):
+// 09:00 (mañana), 11:30 (mediodía), 14:00 (sobremesa), 16:30 (tarde), 19:00 (noche)
+const HORARIOS_SLOTS_LOJA = [
+  { hora: 9, minuto: 0 },
+  { hora: 11, minuto: 30 },
+  { hora: 14, minuto: 0 },
+  { hora: 16, minuto: 30 },
+  { hora: 19, minuto: 0 },
+];
+
+function getFechaHoraLoja(fecha = new Date()): Date {
+  const utc = fecha.getTime() + fecha.getTimezoneOffset() * 60000;
+  return new Date(utc - 5 * 3600000);
+}
+
+function crearFechaDesdeLoja(anio: number, mes: number, dia: number, hora: number, minuto: number): Date {
+  return new Date(Date.UTC(anio, mes, dia, hora + 5, minuto, 0, 0));
+}
+
 /**
- * Calcula una fecha programada óptima (UTC):
- * - Si el evento es en el futuro y faltan más de 2 días: programa para 24-48h antes a las 10:00 AM Loja (15:00 UTC).
- * - Si el evento es pronto (hoy o mañana): programa dentro de 15 a 30 minutos desde ahora.
+ * Calcula una fecha programada distribuida a lo largo del día (entre 09:00 y 19:00 hora Loja)
+ * para un comportamiento 100% orgánico y humano.
  */
 function calcularFechaProgramada(fechaEvento: Date): string {
   const ahora = new Date();
+  const ahoraLoja = getFechaHoraLoja(ahora);
   const diffHoras = (fechaEvento.getTime() - ahora.getTime()) / (1000 * 60 * 60);
 
+  let targetAnio = ahoraLoja.getFullYear();
+  let targetMes = ahoraLoja.getMonth();
+  let targetDia = ahoraLoja.getDate();
+
   if (diffHoras > 48) {
-    // Programar para 2 días antes del evento a las 10:00 AM Loja (UTC-5 -> 15:00 UTC)
-    const fechaPromo = new Date(fechaEvento.getTime() - 48 * 60 * 60 * 1000);
-    fechaPromo.setUTCHours(15, 0, 0, 0);
-    // Si esa fecha promo ya pasó respecto a hoy, publicar en 30 minutos
-    if (fechaPromo.getTime() <= ahora.getTime()) {
-      return new Date(ahora.getTime() + 30 * 60 * 1000).toISOString();
+    const fechaPromo = new Date(fechaEvento.getTime() - 48 * 3600000);
+    const promoLoja = getFechaHoraLoja(fechaPromo);
+    if (fechaPromo.getTime() > ahora.getTime()) {
+      targetAnio = promoLoja.getFullYear();
+      targetMes = promoLoja.getMonth();
+      targetDia = promoLoja.getDate();
     }
-    return fechaPromo.toISOString();
   }
 
-  // Si falta poco para el evento o ya es hoy, programar en 15 minutos
-  return new Date(ahora.getTime() + 15 * 60 * 1000).toISOString();
+  // Buscar primer slot libre hoy (al menos 15 minutos en el futuro)
+  for (const slot of HORARIOS_SLOTS_LOJA) {
+    const candidateUtc = crearFechaDesdeLoja(targetAnio, targetMes, targetDia, slot.hora, slot.minuto);
+    if (candidateUtc.getTime() >= ahora.getTime() + 15 * 60 * 1000) {
+      return candidateUtc.toISOString();
+    }
+  }
+
+  // Si ya pasaron las 19:00 hoy, asignar el primer slot de mañana (09:00 AM)
+  const mananaLoja = new Date(ahoraLoja.getTime() + 24 * 3600000);
+  const primerSlotManana = crearFechaDesdeLoja(
+    mananaLoja.getFullYear(),
+    mananaLoja.getMonth(),
+    mananaLoja.getDate(),
+    HORARIOS_SLOTS_LOJA[0].hora,
+    HORARIOS_SLOTS_LOJA[0].minuto
+  );
+  return primerSlotManana.toISOString();
 }
 
 /**

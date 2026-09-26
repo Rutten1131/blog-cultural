@@ -26,6 +26,7 @@ const {
 } = require("./vision");
 const crypto = require("crypto");
 const { descargarMedia, enviarTexto } = require("./evolution-client");
+const { programarPublicacionEnRedes } = require("./redes-sociales-worker");
 
 // ─── Extracción de URLs desde texto ───────────────────────────────────────
 
@@ -1795,6 +1796,19 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
     });
 
     console.log(`[AutoPublish] 🚀 EVENTO #${nuevoEvento.id} PUBLICADO DIRECTAMENTE: "${nombre}"`);
+
+    // ── PROGRAMAR PUBLICACIÓN EN REDES SOCIALES ──
+    // Se ejecuta de forma asíncrona para no bloquear el flujo principal
+    try {
+      const resultadoRedes = await programarPublicacionEnRedes(nuevoEvento.id, prisma);
+      if (resultadoRedes.success) {
+        console.log(`[AutoPublish] 📱 Publicación en redes sociales programada para evento #${nuevoEvento.id}`);
+      } else {
+        console.log(`[AutoPublish] ⚠️ No se programó en redes sociales: ${resultadoRedes.motivo || resultadoRedes.error}`);
+      }
+    } catch (redesErr) {
+      console.error("[AutoPublish] Error programando en redes sociales:", redesErr.message);
+    }
 
     // ── NOTIFICACIÓN EXCLUSIVA A CÉSAR (593963410409) ──
     // Se envía ÚNICAMENTE a César. A nadie más.

@@ -285,3 +285,33 @@ enum EstadoPost {
   APROBADO
   RECHAZADO
 }
+
+// ─── Registro de Publicaciones en Redes Sociales ──────────────
+// Rastrea qué eventos se han publicado en redes sociales para evitar duplicados
+// y aplicar límites diarios (máx. 5 publicaciones/día).
+model PublicacionRedSocial {
+  id           Int      @id @default(autoincrement())
+  eventoId     Int      @unique @map("evento_id")
+  evento       Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  plataformas  String   @db.VarChar(200)  // JSON array: ["FACEBOOK", "INSTAGRAM"]
+  tipo         String   @db.VarChar(50)   // FEED_POST, CAROUSEL, REEL
+  programadoAt DateTime @map("programado_at")
+  publicadoAt  DateTime? @map("publicado_at")
+  estado       EstadoPublicacionRed @default(PENDIENTE)
+  respuestaApi Json?    // Respuesta del webhook/scheduler
+  error        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([programadoAt])
+  @@index([estado])
+  @@map("publicaciones_redes_sociales")
+}
+
+enum EstadoPublicacionRed {
+  PENDIENTE
+  PROGRAMADO
+  PUBLICADO
+  FALLIDO
+  CANCELADO
+}
