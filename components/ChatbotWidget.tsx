@@ -1238,7 +1238,7 @@ export function ChatbotWidget() {
               </div>
             )}
 
-            {/* Sugerencias: botones destacados y notorios */}
+            {/* Sugerencias: botones destacados y notorios (mismo diseño que los del flujo de venta) */}
             {!loading && mostrarSugerencias && (
               <div className="w-full pt-2 pb-1 space-y-2">
                 <div className="flex items-center gap-1.5 px-0.5">
@@ -1251,11 +1251,13 @@ export function ChatbotWidget() {
                   {PREGUNTAS_SUGERIDAS.map((pregunta, idx) => (
                     <button
                       key={idx}
+                      type="button"
                       onClick={() => handleSend(pregunta)}
-                      className="p-2.5 bg-gradient-to-br from-purple-50 via-white to-pink-50/60 hover:from-purple-100 hover:to-pink-100 text-purple-950 font-bold rounded-xl text-[11px] text-left leading-snug transition-all border border-purple-200/90 shadow-sm hover:shadow-md hover:border-purple-400 active:scale-95 cursor-pointer flex items-center justify-between gap-1 group"
+                      disabled={loading}
+                      className="px-3 py-2.5 bg-gradient-to-r from-purple-700 via-purple-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white text-[11px] font-extrabold rounded-xl shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 border border-white/20 text-center leading-snug"
                     >
+                      <span>✨</span>
                       <span className="line-clamp-2">{pregunta}</span>
-                      <span className="text-purple-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition-all text-xs shrink-0">➜</span>
                     </button>
                   ))}
                 </div>
