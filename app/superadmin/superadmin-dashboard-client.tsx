@@ -28,6 +28,8 @@ export interface ChatSessionData {
   userAgent: string | null;
   ipAddress: string | null;
   totalMensajes: number;
+  contextoResumen?: string | null;
+  intencionDetectada?: string | null;
   createdAt: Date;
   updatedAt: Date;
   mensajes: ChatMessageData[];
@@ -48,6 +50,8 @@ interface Props {
     total: number;
     conUbicacion: number;
     zonasFrecuentes: { zona: string; count: number }[];
+    intencionesFrecuentes?: { intencion: string; count: number }[];
+    totalMensajes?: number;
   };
 }
 

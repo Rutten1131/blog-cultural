@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "./authAdmin";
 import { revalidatePath } from "next/cache";
 import { HabitacionInput, stringifyImagenesHabitacion } from "@/lib/habitaciones";
+import { chatCache } from "@/lib/chat/chatCache";
 
 export async function getAliadosAdmin() {
   const session = await getAdminSession();
@@ -23,6 +24,9 @@ export async function toggleAliadoActivo(id: number, activo: boolean) {
     where: { id },
     data: { activo },
   });
+
+  // Invalidar caché del chatbot para que refleje de inmediato el estado del aliado
+  chatCache.clear();
 
   revalidatePath("/admin");
   return { success: true };
@@ -111,6 +115,8 @@ export async function guardarAliado(data: {
       },
     });
   }
+  // Invalidar caché del chatbot para que nuevas consultas recomienden al nuevo aliado
+  chatCache.clear();
   revalidatePath("/admin");
   return { success: true };
 }
@@ -122,6 +128,9 @@ export async function eliminarAliado(id: number) {
   await prisma.aliado.delete({
     where: { id },
   });
+
+  // Invalidar caché del chatbot para que no recomiende el aliado eliminado
+  chatCache.clear();
 
   revalidatePath("/admin");
   return { success: true };

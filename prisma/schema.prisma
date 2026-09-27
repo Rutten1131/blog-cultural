@@ -230,6 +230,8 @@ model ChatSession {
   userAgent        String?  @db.VarChar(500)
   ipAddress        String?  @db.VarChar(60)
   totalMensajes    Int      @default(0)
+  contextoResumen  String?  @db.Text
+  intencionDetectada String? @db.VarChar(50)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   mensajes         ChatMessage[]

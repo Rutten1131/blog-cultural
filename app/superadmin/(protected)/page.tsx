@@ -20,11 +20,13 @@ export default async function SuperAdminPage() {
     },
   });
 
-  // Stats del CRM
+  // Stats del CRM y Chatbot Analytics
   const totalSessions = await prisma.chatSession.count();
   const conUbicacion = await prisma.chatSession.count({
     where: { ubicacionLat: { not: null } },
   });
+  const totalMensajes = await prisma.chatMessage.count();
+
   const zonasRaw = await prisma.chatSession.groupBy({
     by: ["zonaDetectada"],
     _count: { zonaDetectada: true },
@@ -34,6 +36,20 @@ export default async function SuperAdminPage() {
   const zonasFrecuentes = zonasRaw
     .filter((z: any) => z.zonaDetectada)
     .map((z: any) => ({ zona: z.zonaDetectada as string, count: z._count.zonaDetectada as number }));
+
+  // Agrupación de intenciones detectadas por el Chatbot
+  const intencionesRaw = await prisma.chatSession.groupBy({
+    by: ["intencionDetectada"],
+    _count: { intencionDetectada: true },
+    orderBy: { _count: { intencionDetectada: "desc" } },
+    take: 8,
+  });
+  const intencionesFrecuentes = intencionesRaw
+    .filter((it: any) => it.intencionDetectada)
+    .map((it: any) => ({
+      intencion: it.intencionDetectada as string,
+      count: it._count.intencionDetectada as number,
+    }));
 
   // Cargar buzón de sugerencias
   const recomendaciones = await prisma.recomendacion.findMany({
@@ -67,6 +83,8 @@ export default async function SuperAdminPage() {
         pais: s.pais ?? null,
         userAgent: s.userAgent ?? null,
         ipAddress: s.ipAddress ?? null,
+        contextoResumen: s.contextoResumen ?? null,
+        intencionDetectada: s.intencionDetectada ?? null,
         mensajes: s.mensajes.map((m: any) => ({
           ...m,
           aliadosIds: m.aliadosIds as number[] | null,
@@ -74,7 +92,7 @@ export default async function SuperAdminPage() {
           atractivosIds: m.atractivosIds as number[] | null,
         })),
       }))}
-      stats={{ total: totalSessions, conUbicacion, zonasFrecuentes }}
+      stats={{ total: totalSessions, conUbicacion, zonasFrecuentes, intencionesFrecuentes, totalMensajes }}
       initialRecomendaciones={recomendaciones}
     />
   );

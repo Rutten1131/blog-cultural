@@ -67,6 +67,8 @@ interface Message {
   ventaPaso?: number | null;
   /** Botones para que el usuario avance el flujo de venta con un toque */
   respuestasRapidas?: string[];
+  /** WhatsApp Handoff: botón directo al WhatsApp del aliado con mensaje pre-redactado */
+  whatsappHandoff?: { link: string; nombre: string; tipo: string } | null;
   time: string;
 }
 
@@ -618,26 +620,64 @@ export function ChatbotWidget() {
       });
 
       const data = await res.json();
+      const textoCompleto = data.texto || "Aquí tienes la información:";
+      const timeStr = new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
 
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
+      const botId = `bot-${Date.now()}`;
+      const botMsgBase: Message = {
+        id: botId,
         sender: "bot",
-        text: data.texto || "Aquí tienes la información:",
+        text: "",
         eventos: data.eventos || [],
         aliados: data.aliados || [],
         atractivos: data.atractivos || [],
         aliadoDetalle: data.aliadoDetalle || null,
         ventaPaso: data.ventaPaso ?? null,
         respuestasRapidas: data.respuestasRapidas || [],
-        time: new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }),
+        whatsappHandoff: data.whatsappHandoff || null,
+        time: timeStr,
       };
 
-      setMessages((prev) => {
-        const updated = [...prev, botMsg];
-        // Guardar hasta los últimos 20 mensajes para preservar el contexto si recarga
-        localStorage.setItem("agenda_chat_history", JSON.stringify(updated.slice(-20)));
-        return updated;
-      });
+      // Si el texto es muy corto o viene de error, se muestra de inmediato
+      if (textoCompleto.length <= 15) {
+        setMessages((prev) => {
+          const updated = [...prev, { ...botMsgBase, text: textoCompleto }];
+          localStorage.setItem("agenda_chat_history", JSON.stringify(updated.slice(-20)));
+          return updated;
+        });
+      } else {
+        // Inicializar la burbuja del bot en la lista de mensajes
+        setMessages((prev) => [...prev, botMsgBase]);
+
+        // Efecto streaming tipeo suave (typewriter dinámico)
+        let indiceActual = 0;
+        const longitud = textoCompleto.length;
+        // Salto dinámico según el largo del texto para mantener fluidez (15-25ms por bloque)
+        const pasoCaracteres = longitud > 200 ? 3 : 2;
+
+        await new Promise<void>((resolve) => {
+          const intervalo = setInterval(() => {
+            indiceActual = Math.min(longitud, indiceActual + pasoCaracteres);
+            const parcial = textoCompleto.slice(0, indiceActual);
+
+            setMessages((prev) =>
+              prev.map((m) => (m.id === botId ? { ...m, text: parcial } : m))
+            );
+
+            if (indiceActual >= longitud) {
+              clearInterval(intervalo);
+              setMessages((prev) => {
+                const finalUpdated = prev.map((m) =>
+                  m.id === botId ? { ...m, text: textoCompleto } : m
+                );
+                localStorage.setItem("agenda_chat_history", JSON.stringify(finalUpdated.slice(-20)));
+                return finalUpdated;
+              });
+              resolve();
+            }
+          }, 18);
+        });
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -796,18 +836,34 @@ export function ChatbotWidget() {
                 </div>
                 <span className="text-[10px] text-neutral-400 mt-1 px-1 font-medium">{m.time}</span>
 
+                {/* BOTÓN DE WHATSAPP HANDOFF (conexión directa con aliado al cerrar venta) */}
+                {m.sender === "bot" && m.whatsappHandoff && (
+                  <div className="w-full mt-2.5">
+                    <a
+                      href={m.whatsappHandoff.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-emerald-600/30 transition-all text-center border border-emerald-400/40"
+                    >
+                      <span className="text-base">💬</span>
+                      <span>Chatear por WhatsApp con {m.whatsappHandoff.nombre}</span>
+                    </a>
+                  </div>
+                )}
+
                 {/* BOTONES DEL FLUJO DE VENTA (respuestas rápidas del paso actual) */}
                 {m.sender === "bot" && m.respuestasRapidas && m.respuestasRapidas.length > 0 && (
-                  <div className="w-full mt-2 flex flex-wrap gap-1.5">
+                  <div className="w-full mt-2.5 flex flex-wrap gap-2">
                     {m.respuestasRapidas.map((respuesta, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={() => handleSend(respuesta)}
                         disabled={loading}
-                        className="px-2.5 py-1.5 bg-white hover:bg-purple-50 text-purple-700 text-[10px] font-bold rounded-full border border-purple-200 shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3.5 py-2 bg-gradient-to-r from-purple-700 via-purple-600 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white text-[11px] font-extrabold rounded-xl shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 border border-white/20"
                       >
-                        {respuesta}
+                        <span>✨</span>
+                        <span>{respuesta}</span>
                       </button>
                     ))}
                   </div>
@@ -951,10 +1007,11 @@ export function ChatbotWidget() {
                             <button
                               type="button"
                               onClick={() => handleSend("¿Qué otros hoteles tienen disponibles?")}
-                              title="Ver otros hoteles"
-                              className="shrink-0 px-2 h-6 rounded-full bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                              title="Ver otros hoteles y opciones"
+                              className="shrink-0 px-3 py-1 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-800 hover:to-pink-700 text-white text-[10px] font-extrabold flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-all active:scale-95 cursor-pointer border border-white/20"
                             >
-                              🔎 Otros
+                              <span>🔎</span>
+                              <span>Ver otros</span>
                             </button>
                           </div>
 
@@ -1181,20 +1238,24 @@ export function ChatbotWidget() {
               </div>
             )}
 
-            {/* Sugerencias: aparecen solo tras unos segundos sin actividad */}
+            {/* Sugerencias: botones destacados y notorios */}
             {!loading && mostrarSugerencias && (
-              <div className="w-full pt-1 pb-1">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-neutral-400 px-0.5 mb-1.5">
-                  Sugerencias
-                </p>
-                <div className="grid grid-cols-2 gap-1">
+              <div className="w-full pt-2 pb-1 space-y-2">
+                <div className="flex items-center gap-1.5 px-0.5">
+                  <span className="text-xs">💡</span>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-purple-700">
+                    Preguntas sugeridas:
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   {PREGUNTAS_SUGERIDAS.map((pregunta, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSend(pregunta)}
-                      className="px-2 py-1 bg-white/80 hover:bg-purple-50 text-neutral-500 hover:text-purple-700 rounded-md text-[9px] font-medium text-left leading-snug transition-all border border-purple-200/60 cursor-pointer"
+                      className="p-2.5 bg-gradient-to-br from-purple-50 via-white to-pink-50/60 hover:from-purple-100 hover:to-pink-100 text-purple-950 font-bold rounded-xl text-[11px] text-left leading-snug transition-all border border-purple-200/90 shadow-sm hover:shadow-md hover:border-purple-400 active:scale-95 cursor-pointer flex items-center justify-between gap-1 group"
                     >
-                      {pregunta}
+                      <span className="line-clamp-2">{pregunta}</span>
+                      <span className="text-purple-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition-all text-xs shrink-0">➜</span>
                     </button>
                   ))}
                 </div>

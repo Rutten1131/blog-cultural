@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { obtenerMemoriaSesion, sincronizarResumenSiCorresponde } from "@/lib/chat/chatMemory";
+import { clasificarIntencionUsuario } from "@/lib/chat/chatRouter";
+import { chatCache, chatRateLimiter } from "@/lib/chat/chatCache";
 
 export const dynamic = "force-dynamic";
 
@@ -230,15 +233,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Mensajes no válidos" }, { status: 400 });
     }
 
+    // Rate Limiting por IP (Protección de cuotas y costos DeepSeek)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "127.0.0.1";
+    const limitCheck = chatRateLimiter.check(ip);
+    if (!limitCheck.permitido) {
+      return NextResponse.json(
+        {
+          texto: `Has enviado varios mensajes muy rápido. ⏳ Por favor espera ${limitCheck.resetEnSegundos} segundos para continuar descubriendo Loja.`,
+          eventos: [],
+          aliados: [],
+          atractivos: [],
+          respuestasRapidas: [],
+        },
+        { status: 429, headers: { "Retry-After": String(limitCheck.resetEnSegundos) } }
+      );
+    }
+
     const lastUserMessage: string = messages[messages.length - 1]?.content || "";
     const lowerUser = lastUserMessage.toLowerCase();
 
-    // Guardar/actualizar sesión CRM en background (sin bloquear respuesta)
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || null;
+    // 1. Obtener Memoria de la Sesión (Últimos 10 mensajes y Resumen consolidado)
+    let memoriaSesion = { resumen: null as string | null, mensajesRecientes: [] as any[], totalMensajes: 0 };
+    if (sessionId) {
+      memoriaSesion = await obtenerMemoriaSesion(sessionId);
+    }
+
+    // Texto de contexto inmediato (los últimos mensajes)
+    const ultimosMensajesTexto = messages
+      .slice(-4)
+      .map((m: any) => m.content || m.text || "")
+      .join(" ");
+
+    // 2. Ejecutar ROUTER de Intenciones
+    const decisionRouter = clasificarIntencionUsuario(
+      lastUserMessage,
+      memoriaSesion.resumen,
+      ultimosMensajesTexto
+    );
+
+    // Guardar/actualizar sesión CRM en background
     const ua = req.headers.get("user-agent") || null;
 
     if (sessionId) {
-      // Upsert de la sesión
       prisma.chatSession.upsert({
         where: { sessionId },
         create: {
@@ -253,6 +289,7 @@ export async function POST(req: NextRequest) {
           userAgent: ua ? ua.slice(0, 500) : null,
           ipAddress: ip ? ip.slice(0, 60) : null,
           totalMensajes: 1,
+          intencionDetectada: decisionRouter.intencion,
         },
         update: {
           ...(ubicacion?.lat && {
@@ -265,18 +302,151 @@ export async function POST(req: NextRequest) {
             pais: ubicacion.pais ?? null,
           }),
           totalMensajes: { increment: 1 },
+          intencionDetectada: decisionRouter.intencion,
           updatedAt: new Date(),
         },
       }).catch(() => {/* fail silently */});
 
-      // Guardar el mensaje del usuario
       prisma.chatMessage.create({
         data: {
           sessionId,
           sender: "user",
           contenido: lastUserMessage.slice(0, 5000),
         },
+      }).then(() => {
+        // Disparar sincronización asíncrona de resumen si supera los 10 mensajes
+        sincronizarResumenSiCorresponde(sessionId).catch(() => {/* fail silently */});
       }).catch(() => {/* fail silently */});
+    }
+
+    // 3a. RETORNO TEMPRANO: DEVOLUCIÓN DE LA PELOTA (ambiguo / contradictorio)
+    if (decisionRouter.requiereRepregunta && decisionRouter.preguntaAclaratoria) {
+      if (sessionId) {
+        prisma.chatMessage.create({
+          data: {
+            sessionId,
+            sender: "bot",
+            contenido: decisionRouter.preguntaAclaratoria,
+          },
+        }).catch(() => {/* fail silently */});
+      }
+      return NextResponse.json({
+        texto: decisionRouter.preguntaAclaratoria,
+        eventos: [],
+        aliados: [],
+        atractivos: [],
+        aliadoDetalle: null,
+        ventaPaso: null,
+        respuestasRapidas: [
+          "🎭 Ver eventos culturales",
+          "🏨 Hoteles recomendados",
+          "🍽️ Restaurantes y Cafeterías",
+          "🌿 Lugares para visitar en Loja"
+        ],
+      });
+    }
+
+    // 3a.2 CACHE HIT: Para preguntas generales o recurrentes sin hilo de venta activo
+    const esConsultaCachable =
+      messages.length <= 2 &&
+      !memoriaSesion.resumen &&
+      decisionRouter.intencion !== "VENTA_ALIADO_CONTINUAR" &&
+      decisionRouter.intencion !== "WHATSAPP_HANDOFF" &&
+      decisionRouter.intencion !== "AMBIGUO_CONTRADICTORIO";
+
+    if (esConsultaCachable) {
+      const cached = chatCache.get(lastUserMessage, ubicacion?.zona);
+      if (cached) {
+        // Cargar las entidades frescas correspondientes a los IDs cacheados
+        const [cachedEventos, cachedAliados, cachedAtractivos] = await Promise.all([
+          cached.eventosRecomendadosIds.length > 0
+            ? prisma.evento.findMany({
+                where: { id: { in: cached.eventosRecomendadosIds }, estado: "APROBADO" },
+                select: { id: true, nombre: true, fecha: true, lugar: true, slug: true, imagenUrl: true, descripcion: true },
+              })
+            : [],
+          cached.aliadosRecomendadosIds.length > 0
+            ? prisma.aliado.findMany({
+                where: { id: { in: cached.aliadosRecomendadosIds }, activo: true },
+                include: { habitaciones: { orderBy: [{ orden: "asc" }, { id: "asc" }] } },
+              })
+            : [],
+          cached.atractivosRecomendadosIds.length > 0
+            ? prisma.atractivoCantonal.findMany({
+                where: { id: { in: cached.atractivosRecomendadosIds }, activo: true },
+              })
+            : [],
+        ]);
+
+        if (sessionId) {
+          prisma.chatMessage.create({
+            data: {
+              sessionId,
+              sender: "bot",
+              contenido: cached.texto.slice(0, 5000),
+              eventosIds: cachedEventos.map((e) => e.id),
+              aliadosIds: cachedAliados.map((a) => a.id),
+              atractivosIds: cachedAtractivos.map((at) => at.id),
+            },
+          }).catch(() => {/* fail silently */});
+        }
+
+        return NextResponse.json({
+          texto: cached.texto,
+          eventos: cachedEventos,
+          aliados: cachedAliados,
+          atractivos: cachedAtractivos,
+          aliadoDetalle: null,
+          ventaPaso: null,
+          respuestasRapidas: [
+            "🎭 Ver eventos culturales",
+            "🏨 Hoteles recomendados",
+            "🍽️ Dónde comer en Loja",
+            "🌿 Lugares para visitar"
+          ],
+        });
+      }
+    }
+
+    // 3b. RETORNO TEMPRANO: WHATSAPP HANDOFF (alta intención de reserva)
+    // Se resuelve aquí solo si no hay aliado activo en conversación;
+    // si hay aliado en conversación el paso 5 del flujo de venta lo maneja mejor.
+    if (decisionRouter.intencion === "WHATSAPP_HANDOFF") {
+      // Buscamos el aliado más reciente mencionado en la conversación
+      const aliadosMenciaonados = await prisma.aliado.findMany({
+        where: { activo: true },
+        select: { id: true, nombre: true, telefono: true, tipo: true },
+        take: 20,
+      });
+      const textoConversacion = sinAcentos(ultimosMensajesTexto);
+      const aliadoHandoff = aliadosMenciaonados.find((a) =>
+        textoConversacion.includes(sinAcentos(a.nombre))
+      );
+
+      if (aliadoHandoff?.telefono) {
+        const telLimpio = aliadoHandoff.telefono.replace(/[^\d]/g, "");
+        const tipoLabel = aliadoHandoff.tipo === "GASTRONOMIA" ? "restaurante" : aliadoHandoff.tipo === "CAFETERIA" ? "cafetería" : "hotel";
+        const mensajeWA = encodeURIComponent(
+          `Hola, vengo de la Agenda Cultural Loja y me interesa reservar en ${aliadoHandoff.nombre}. ¿Podrían ayudarme?`
+        );
+        const linkWA = `https://wa.me/${telLimpio}?text=${mensajeWA}`;
+        const textoHandoff = `¡Perfecto! 🎉 Te conecto directamente con ${aliadoHandoff.nombre}. Solo haz clic en el botón de WhatsApp y ya tienen todos tus datos. ¡Que lo disfrutes mucho!`;
+        if (sessionId) {
+          prisma.chatMessage.create({
+            data: { sessionId, sender: "bot", contenido: textoHandoff },
+          }).catch(() => {/* fail silently */});
+        }
+        return NextResponse.json({
+          texto: textoHandoff,
+          eventos: [],
+          aliados: [],
+          atractivos: [],
+          aliadoDetalle: null,
+          ventaPaso: null,
+          whatsappHandoff: { link: linkWA, nombre: aliadoHandoff.nombre, tipo: tipoLabel },
+          respuestasRapidas: [],
+        });
+      }
     }
 
     const ahora = nowEcuador();
@@ -285,13 +455,7 @@ export async function POST(req: NextRequest) {
       weekday: "long", year: "numeric", month: "long", day: "numeric",
     });
 
-    // Analizar tanto el último mensaje como los mensajes anteriores para mantener contexto
-    const ultimosMensajesTexto = messages
-      .slice(-3)
-      .map((m: any) => m.content || m.text || "")
-      .join(" ");
-
-    // El rango de fecha SOLO se calcula a partir del mensaje actual del usuario (nunca se hereda accidentalmente)
+    // El rango de fecha SOLO se calcula a partir del mensaje actual del usuario
     const rangoFecha = extraerRangoFecha(lastUserMessage);
     const intencion = extraerIntencionBusqueda(lastUserMessage);
 
@@ -334,6 +498,137 @@ export async function POST(req: NextRequest) {
     if (!esPreguntaReferencial && intencion.palabrasClave.length <= 1 && messages.length > 1) {
       const intencionHilo = extraerIntencionBusqueda(ultimosMensajesTexto);
       intencion.palabrasClave = Array.from(new Set([...intencion.palabrasClave, ...intencionHilo.palabrasClave]));
+    }
+
+    // ─── MODO PLANIFICA TU VISITA (multi-intent) ─────────────────────────────────
+    // Carga eventos próximos + hoteles + restaurantes/cafeterías en paralelo
+    // para armar una respuesta coordinada y completa de un solo vistazo.
+    if (decisionRouter.intencion === "PLANIFICA_VISITA") {
+      const rangoVisita = extraerRangoFecha(lastUserMessage);
+      const ahora2 = nowEcuador();
+      const hoyInicio2 = startOfDayEcuador(ahora2);
+
+      const [eventosVisita, hotelesVisita, gastroVisita, atractivosVisita] = await Promise.all([
+        prisma.evento.findMany({
+          where: {
+            estado: "APROBADO",
+            ...(rangoVisita
+              ? { fecha: { gte: rangoVisita.desde, lte: rangoVisita.hasta } }
+              : { fecha: { gte: hoyInicio2 } }),
+          },
+          orderBy: { fecha: "asc" },
+          take: 4,
+          select: { id: true, nombre: true, fecha: true, lugar: true, slug: true, imagenUrl: true, descripcion: true },
+        }),
+        prisma.aliado.findMany({
+          where: { activo: true, tipo: "HOSPEDAJE" },
+          orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
+          take: 3,
+          include: { habitaciones: { orderBy: [{ orden: "asc" }], take: 3 } },
+        }),
+        prisma.aliado.findMany({
+          where: { activo: true, tipo: { in: ["GASTRONOMIA", "CAFETERIA"] } },
+          orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
+          take: 3,
+          include: { habitaciones: { orderBy: [{ orden: "asc" }], take: 3 } },
+        }),
+        prisma.atractivoCantonal.findMany({ where: { activo: true }, take: 3 }),
+      ]);
+
+      const fechaLabel = rangoVisita ? rangoVisita.etiqueta : "próximos días";
+      const promptPlanificacion = `Eres el asistente turístico de la Agenda Cultural Loja (Ecuador). El usuario quiere PLANIFICAR UNA VISITA completa a Loja${decisionRouter.fechaVisita ? ` (mencionó: "${decisionRouter.fechaVisita}")` : ""}.
+
+Tu misión: responder en UNA SOLA respuesta integrada y cálida con 3 secciones:
+1. 🎭 QUÉ HACER: menciona 1 o 2 eventos de la cartelera para ${fechaLabel}
+2. 🏨 DÓNDE DORMIR: recomienda 1 hotel destacado con precio orientativo
+3. 🍽️ DÓNDE COMER: recomienda 1 restaurante o cafetería típica de Loja
+
+Fecha actual: ${ahora2.toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" })}
+
+EVENTOS DISPONIBLES para ${fechaLabel}:
+${eventosVisita.map((e) => `- ${e.nombre} | ${new Date(e.fecha).toLocaleDateString("es-EC", { weekday: "short", day: "numeric", month: "short" })} | ${e.lugar}`).join("\n") || "- Sin eventos para esa fecha aún, menciona que la cartelera se actualiza constantemente"}
+
+HOTELES RECOMENDADOS:
+${hotelesVisita.map((h) => `- [ID:${h.id}] ${h.nombre} | ${h.rangoPrecio || "Consultar precio"} | ${h.ubicacion}`).join("\n") || "Sin hoteles"}
+
+RESTAURANTES/CAFETERÍAS:
+${gastroVisita.map((g) => `- [ID:${g.id}] ${g.nombre} (${g.tipo === "CAFETERIA" ? "Cafetería" : "Restaurante"}) | ${g.ubicacion}`).join("\n") || "Sin restaurantes"}
+
+Reglas de formato:
+- Máximo 5-6 frases en total. Responde con calidez y entusiasmo lojano.
+- Termina invitando a profundizar en cualquiera de los 3 temas.
+- Devuelve JSON: {"texto": "...", "eventosRecomendadosIds": [...], "aliadosRecomendadosIds": [...], "atractivosRecomendadosIds": []}`;
+
+      let planContent = "";
+      const deepseekKeyPlan = process.env.DEEPSEEK_API_KEY;
+      if (deepseekKeyPlan) {
+        try {
+          const planRes = await fetch("https://api.deepseek.com/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${deepseekKeyPlan}` },
+            body: JSON.stringify({
+              model: "deepseek-chat",
+              messages: [{ role: "system", content: promptPlanificacion }, { role: "user", content: lastUserMessage }],
+              response_format: { type: "json_object" },
+              temperature: 0.5,
+              max_tokens: 700,
+            }),
+          });
+          if (planRes.ok) {
+            const planData = await planRes.json();
+            planContent = planData.choices?.[0]?.message?.content || "";
+          }
+        } catch { /* fallback below */ }
+      }
+
+      let planParsed = {
+        texto: `¡Qué plan tan chevere! 🎉 Para ${fechaLabel} en Loja te recomiendo: ${eventosVisita[0] ? `🎭 *${eventosVisita[0].nombre}* el ${new Date(eventosVisita[0].fecha).toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" })}` : "explorar la cartelera cultural"}. ${hotelesVisita[0] ? `🏨 Para dormir, ${hotelesVisita[0].nombre} (${hotelesVisita[0].rangoPrecio || "gran opción"}).` : ""} ${gastroVisita[0] ? `🍽️ Y para comer, ${gastroVisita[0].nombre} es una delicia lojana. ` : ""}¿Quieres que profundice en alguno de estos?`,
+        eventosRecomendadosIds: eventosVisita.slice(0, 2).map((e) => e.id),
+        aliadosRecomendadosIds: [...hotelesVisita.slice(0, 2).map((h) => h.id), ...gastroVisita.slice(0, 1).map((g) => g.id)],
+        atractivosRecomendadosIds: [] as number[],
+      };
+
+      if (planContent) {
+        try {
+          const raw = JSON.parse(planContent.replace(/```json/g, "").replace(/```/g, "").trim());
+          planParsed = {
+            texto: raw.texto || planParsed.texto,
+            eventosRecomendadosIds: Array.isArray(raw.eventosRecomendadosIds) ? raw.eventosRecomendadosIds : planParsed.eventosRecomendadosIds,
+            aliadosRecomendadosIds: Array.isArray(raw.aliadosRecomendadosIds) ? raw.aliadosRecomendadosIds : planParsed.aliadosRecomendadosIds,
+            atractivosRecomendadosIds: Array.isArray(raw.atractivosRecomendadosIds) ? raw.atractivosRecomendadosIds : [],
+          };
+        } catch { /* usa fallback */ }
+      }
+
+      const todosAliados = [...hotelesVisita, ...gastroVisita];
+      const fullEventosVisita = eventosVisita.filter((e) => planParsed.eventosRecomendadosIds.includes(e.id));
+      const fullAliadosVisita = todosAliados.filter((a) => planParsed.aliadosRecomendadosIds.includes(a.id));
+      const fullAtractivosVisita = atractivosVisita.filter((at) => planParsed.atractivosRecomendadosIds.includes(at.id));
+
+      if (sessionId) {
+        prisma.chatMessage.create({
+          data: {
+            sessionId, sender: "bot", contenido: planParsed.texto.slice(0, 5000),
+            eventosIds: fullEventosVisita.map((e) => e.id),
+            aliadosIds: fullAliadosVisita.map((a) => a.id),
+          },
+        }).catch(() => {/* fail silently */});
+      }
+
+      return NextResponse.json({
+        texto: planParsed.texto,
+        eventos: fullEventosVisita,
+        aliados: fullAliadosVisita,
+        atractivos: fullAtractivosVisita,
+        aliadoDetalle: null,
+        ventaPaso: null,
+        respuestasRapidas: [
+          eventosVisita[0] ? `🎭 Más info de ${eventosVisita[0].nombre}` : "🎭 Ver cartelera completa",
+          hotelesVisita[0] ? `🏨 Háblame de ${hotelesVisita[0].nombre}` : "🏨 Ver hoteles",
+          gastroVisita[0] ? `🍽️ Háblame de ${gastroVisita[0].nombre}` : "🍽️ Ver restaurantes",
+          "🌿 Qué más ver en Loja",
+        ],
+      });
     }
 
     // ─── 1. BÚSQUEDA INTELIGENTE DE EVENTOS EN PRISMA (RAG TEMÁTICO Y TEMPORAL) ───
@@ -707,8 +1002,19 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
         : pasoVenta === 4
         ? `PASO 4 DE 5 (QUÉ INCLUYE): contá la ubicación y 3 o 4 servicios destacados que justifiquen la reserva. Preguntá si le gustaría reservar. NO repitas precios de golpe (podés mencionar "desde X").`
         : pasoVenta === 5
-        ? `PASO 5 DE 5 (CIERRE): invitá a reservar por WhatsApp, transmití urgencia suave (disponibilidad limitada) y preguntá si reservamos ahora o si prefiere ver ${otroAliado}. Máximo 3 frases.`
+        ? `PASO 5 DE 5 (CIERRE): invitá a reservar por WhatsApp (el número es: ${aliadoVenta?.telefono || "consultar"}), transmití urgencia suave (disponibilidad limitada) y preguntá si reservamos ahora o si prefiere ver ${otroAliado}. Máximo 3 frases. IMPORTANTE: menciona que pueden escribir directo al WhatsApp del ${palabraAliado} para confirmar.`
         : "";
+
+    // WhatsApp Handoff automático en paso 4 y 5
+    const whatsappHandoffVenta = esModoVenta && aliadoVenta?.telefono && (pasoVenta === 4 || pasoVenta === 5)
+      ? (() => {
+          const telLimpio = aliadoVenta.telefono!.replace(/[^\d]/g, "");
+          const msg = encodeURIComponent(
+            `Hola, vengo de la Agenda Cultural Loja y me interesa ${pasoVenta === 5 ? "reservar" : "saber más"} sobre ${aliadoVenta.nombre}. ¿Me pueden ayudar?`
+          );
+          return { link: `https://wa.me/${telLimpio}?text=${msg}`, nombre: aliadoVenta.nombre, tipo: palabraAliado };
+        })()
+      : null;
 
     const guiaVenta = esModoVenta
       ? `
@@ -759,9 +1065,14 @@ ${datosVenta}`
         ? [`🔎 Ver ${pluralAliado}`]
         : [];
 
+    const detalleMemoria = memoriaSesion.resumen
+      ? `\nRESUMEN DE LA CONVERSACIÓN PREVIA CON ESTE USUARIO:\n${memoriaSesion.resumen}\n(Usa este resumen para mantener consistencia, recordar qué hotel o evento le gustó y no contradecirte).`
+      : "";
+
     const systemPrompt = `Eres el asistente turístico y cultural oficial de la Agenda Cultural Loja (Ecuador).
 ${detalleUbicacion}
 ${detalleRango}
+${detalleMemoria}
 ${guiaBusqueda}
 ${guiaVenta}
 
@@ -769,14 +1080,14 @@ FECHA ACTUAL: ${fechaHoyStr}.
 
 TONO Y ESTILO DE CONVERSACIÓN (NATURAL, AMABLE Y ENGAGEMENT):
 1. EQUILIBRIO PERFECTO: Responde con calidez humana en 2 o 3 frases fluidas. No seas un robot que repite lo mismo.
-2. CONTINUIDAD CONVERSACIONAL: Si el usuario pregunta "¿y eso de qué es?" o similar, responde directamente sobre el evento en discusión explicando de qué va.
+2. CONTINUIDAD CONVERSACIONAL: Si el usuario pregunta "¿y eso de qué es?" o similar, responde directamente sobre el evento o aliado en discusión.
 3. CIERRE CONVERSACIONAL ACTIVO: Termina SIEMPRE con una pregunta sugerente o invitación natural para continuar la charla.
 4. RELEVANCIA TEMÁTICA:
    - Mantente enfocado en lo que el usuario preguntó. Si pregunta por un evento, habla de ese evento.
-   - Solo sugiere hospedaje o gastronomía si el usuario lo menciona o pregunta qué hacer de noche/dónde salir.
+   - Solo sugiere hospedaje o gastronomía si el usuario lo menciona, o si es oportuno vincularlo a un evento nocturno/fin de semana.
 4.1 NATURALEZA PRIMERO: si el usuario pide naturaleza, rutas, parques, cascadas, cerros, senderismo, miradores, ríos o actividades al aire libre y NO pidió eventos de cartelera, NO recomiendes eventos: responde con los ATRACTIVOS CANTONALES y usa sus IDs en "atractivosRecomendadosIds".
-5. CERO ALUCINACIÓN: Solo asocia IDs de la lista EVENTOS DISPONIBLES.
-5.1 ALIADOS COMERCIALES SON PRIORIDAD: si el usuario pregunta por hospedaje, hoteles, dónde dormir o dónde comer, incluye SIEMPRE en "aliadosRecomendadosIds" TODOS los IDs de los aliados comerciales prioritarios de la lista ALIADOS COMERCIALES (máximo 3), no solo uno o dos.
+5. CERO ALUCINACIÓN: Solo asocia IDs de la lista EVENTOS DISPONIBLES o ALIADOS COMERCIALES.
+5.1 ALIADOS COMERCIALES SON PRIORIDAD: si el usuario pregunta por hospedaje, hoteles, dónde dormir o dónde comer, incluye SIEMPRE en "aliadosRecomendadosIds" los IDs de los aliados comerciales prioritarios (máximo 3).
 6. NO REPITAS datos obvios ni vuelvas a mandar la misma tarjeta si ya se la mostraste al usuario.
 
 ALIADOS COMERCIALES:
@@ -800,6 +1111,24 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     let aiContent = "";
 
+    // Ventana deslizante: últimos 10 mensajes en el contexto conversacional
+    const mensajesParaModelo = (
+      memoriaSesion.mensajesRecientes.length > 0
+        ? memoriaSesion.mensajesRecientes
+        : messages.slice(-10)
+    ).map((m: any) => ({
+      role: (m.sender === "user" ? "user" : "assistant") as "user" | "assistant",
+      content: m.contenido || m.content || m.text || "",
+    }));
+
+    // Asegurar que el último mensaje del usuario esté presente
+    if (
+      mensajesParaModelo.length === 0 ||
+      mensajesParaModelo[mensajesParaModelo.length - 1].content !== lastUserMessage
+    ) {
+      mensajesParaModelo.push({ role: "user", content: lastUserMessage });
+    }
+
     // Motor de IA Primario: DeepSeek (activo, funcional y con créditos)
     if (deepseekKey) {
       try {
@@ -813,10 +1142,7 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
             model: "deepseek-chat",
             messages: [
               { role: "system", content: systemPrompt },
-              ...messages.map((m: any) => ({
-                role: m.sender === "user" ? "user" : "assistant",
-                content: m.content || m.text || "",
-              })),
+              ...mensajesParaModelo,
             ],
             response_format: { type: "json_object" },
             temperature: 0.4,
@@ -849,10 +1175,7 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
             model: "llama-3.3-70b-versatile",
             messages: [
               { role: "system", content: systemPrompt },
-              ...messages.map((m: any) => ({
-                role: m.sender === "user" ? "user" : "assistant",
-                content: m.content || m.text || "",
-              })),
+              ...mensajesParaModelo,
             ],
             response_format: { type: "json_object" },
             temperature: 0.5,
@@ -1104,6 +1427,20 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
       }).catch(() => {/* fail silently */});
     }
 
+    // Guardar en Caché si es consulta general/frecuente sin modo venta
+    if (!esModoVenta && messages.length <= 2 && parsedResult.texto && parsedResult.texto.length > 30) {
+      chatCache.set(
+        lastUserMessage,
+        {
+          texto: parsedResult.texto,
+          aliadosRecomendadosIds: fullAliados.map((a) => a.id),
+          eventosRecomendadosIds: fullEventos.map((e) => e.id),
+          atractivosRecomendadosIds: fullAtractivos.map((at) => at.id),
+        },
+        ubicacion?.zona
+      );
+    }
+
     return NextResponse.json({
       texto: parsedResult.texto,
       eventos: fullEventos,
@@ -1112,6 +1449,8 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
       aliadoDetalle: aliadoDetalle || null,
       ventaPaso: pasoVenta || null,
       respuestasRapidas,
+      // WhatsApp Handoff: disponible en paso 4 y 5 del flujo de venta
+      whatsappHandoff: whatsappHandoffVenta || null,
     });
   } catch (error: any) {
     console.error("Error en /api/chat:", error);
