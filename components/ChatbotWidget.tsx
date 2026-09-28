@@ -412,6 +412,7 @@ export function ChatbotWidget() {
     seccionAbierta(msgId, tipo) ? lista : lista.slice(0, TARJETAS_VISIBLES);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Las sugerencias salen de inmediato si el chat está vacío; si ya hay conversación,
   // recién aparecen tras unos segundos de inactividad para no confundir.
@@ -596,6 +597,9 @@ export function ChatbotWidget() {
 
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
     setLoading(true);
 
     try {
@@ -1267,20 +1271,38 @@ export function ChatbotWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Barra de Entrada / Input */}
-          <div className="p-3 bg-white border-t border-purple-100 flex items-center gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Escribe tu pregunta sobre qué hacer u hospedaje..."
-              className="flex-1 bg-neutral-50 border border-neutral-200 focus:bg-white rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-neutral-900 focus:outline-none focus:border-purple-600 placeholder:text-neutral-400 transition-all"
-            />
+          {/* Barra de Entrada / Textarea auto-expansible con scrollbar */}
+          <div className="p-3 bg-white border-t border-purple-100 flex items-end gap-2">
+            <div className="flex-1 relative">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                rows={1}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  // Auto-expandir suavemente hacia arriba según el contenido
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder="Escribe tu pregunta sobre qué hacer u hospedaje..."
+                className="w-full resize-none max-h-[120px] min-h-[42px] overflow-y-auto bg-neutral-50 border border-neutral-200 focus:bg-white rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-neutral-900 focus:outline-none focus:border-purple-600 placeholder:text-neutral-400 transition-all leading-relaxed block"
+                style={{
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "#c084fc #f3f4f6",
+                }}
+              />
+            </div>
             <button
               onClick={() => handleSend()}
               disabled={loading || !input.trim()}
-              className="px-4 py-2.5 bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-600 hover:to-pink-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-purple-600/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="h-[42px] px-4 bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-600 hover:to-pink-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-purple-600/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shrink-0"
+              title="Enviar mensaje (Enter)"
             >
               ➤
             </button>

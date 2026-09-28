@@ -11,6 +11,7 @@ interface Props {
     zonasFrecuentes: { zona: string; count: number }[];
     intencionesFrecuentes?: { intencion: string; count: number }[];
     totalMensajes?: number;
+    totalLeads?: number;
   };
 }
 
@@ -42,6 +43,7 @@ function BadgeIntencion({ intencion }: { intencion?: string | null }) {
 
 function formatDate(d: Date | string) {
   return new Date(d).toLocaleString("es-EC", {
+    timeZone: "America/Guayaquil",
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
@@ -125,8 +127,8 @@ export function SuperAdminCRM({ sessions, stats }: Props) {
         {stats.intencionesFrecuentes && stats.intencionesFrecuentes.length > 0 && (
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
             <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-4 flex items-center justify-between">
-              <span>🎯 Qué Busca el Turista (Intenciones IA)</span>
-              <span className="text-xs font-normal text-zinc-500">Router DeepSeek</span>
+              <span>🎯 Qué Busca el Turista (Categorías Consultadas)</span>
+              <span className="text-xs font-normal text-zinc-500">Detección Automática</span>
             </h2>
             <div className="space-y-3">
               {stats.intencionesFrecuentes.map((it, i) => {
@@ -247,6 +249,11 @@ export function SuperAdminCRM({ sessions, stats }: Props) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <BadgeIntencion intencion={session.intencionDetectada} />
+                      {(session as any).nombreUsuario && (
+                        <span className="text-[11px] font-bold text-emerald-300 bg-emerald-900/40 border border-emerald-700/40 rounded-full px-2 py-0.5">
+                          👤 {(session as any).nombreUsuario}
+                        </span>
+                      )}
                       {session.zonaDetectada && (
                         <span className="text-xs font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 rounded-full px-2 py-0.5">
                           {session.zonaDetectada}
@@ -278,12 +285,12 @@ export function SuperAdminCRM({ sessions, stats }: Props) {
               {/* Expanded: mensajes */}
               {isExpanded && (
                 <div className="border-t border-zinc-800 px-5 py-4 space-y-4">
-                  {/* Memoria y Resumen IA de la Sesión */}
+                  {/* Memoria y Resumen de la Sesión */}
                   {session.contextoResumen && (
                     <div className="bg-purple-950/30 border border-purple-800/40 rounded-xl p-3.5 text-xs text-purple-200">
                       <div className="flex items-center gap-2 font-bold text-purple-300 mb-1">
-                        <span>🧠</span>
-                        <span>Memoria Activa & Resumen IA de la Conversación:</span>
+                        <span>📋</span>
+                        <span>Resumen Consolidado de la Conversación:</span>
                       </div>
                       <p className="leading-relaxed text-zinc-300 whitespace-pre-line pl-6">
                         {session.contextoResumen}
@@ -356,7 +363,7 @@ export function SuperAdminCRM({ sessions, stats }: Props) {
                             </div>
                           )}
                           <p className="text-[10px] opacity-40 mt-1 text-right">
-                            {new Date(msg.createdAt).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })}
+                            {new Date(msg.createdAt).toLocaleTimeString("es-EC", { timeZone: "America/Guayaquil", hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
                       </div>

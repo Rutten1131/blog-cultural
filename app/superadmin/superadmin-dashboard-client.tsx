@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AdminAliados, AliadoItem } from "@/app/admin/admin-aliados";
 import { SuperAdminCRM } from "./superadmin-crm";
+import { SuperAdminAliadosAnalytics, AliadoAnalyticsData } from "./superadmin-aliados-analytics";
 
 export interface ChatMessageData {
   id: number;
@@ -30,6 +31,7 @@ export interface ChatSessionData {
   totalMensajes: number;
   contextoResumen?: string | null;
   intencionDetectada?: string | null;
+  nombreUsuario?: string | null;
   createdAt: Date;
   updatedAt: Date;
   mensajes: ChatMessageData[];
@@ -46,6 +48,7 @@ interface Props {
   initialAliados: AliadoItem[];
   initialSessions: ChatSessionData[];
   initialRecomendaciones?: RecomendacionItem[];
+  aliadosAnalytics?: AliadoAnalyticsData[];
   stats: {
     total: number;
     conUbicacion: number;
@@ -55,12 +58,13 @@ interface Props {
   };
 }
 
-type Tab = "aliados" | "crm" | "buzon";
+type Tab = "aliados" | "crm" | "buzon" | "analytics";
 
 export function SuperAdminDashboardClient({
   initialAliados,
   initialSessions,
   initialRecomendaciones = [],
+  aliadosAnalytics = [],
   stats,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("crm");
@@ -72,7 +76,8 @@ export function SuperAdminDashboardClient({
 
   const tabs: { id: Tab; label: string; emoji: string; count?: number }[] = [
     { id: "crm", label: "CRM Chatbot", emoji: "📊" },
-    { id: "aliados", label: "Aliados Comerciales", emoji: "🤝", count: initialAliados.length },
+    { id: "analytics", label: "Analytics Aliados", emoji: "🤝", count: aliadosAnalytics.length },
+    { id: "aliados", label: "Aliados Comerciales", emoji: "⚙️", count: initialAliados.length },
     { id: "buzon", label: "Buzón de Sugerencias", emoji: "📬", count: initialRecomendaciones.length },
   ];
 
@@ -134,6 +139,19 @@ export function SuperAdminDashboardClient({
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {activeTab === "crm" && (
           <SuperAdminCRM sessions={initialSessions} stats={stats} />
+        )}
+        {activeTab === "analytics" && (
+          <div className="space-y-6 animate-fadeIn">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                <span>🤝</span> Analytics por Aliado
+              </h2>
+              <p className="text-sm text-zinc-400 mt-1">
+                Qué usuarios preguntaron por cada aliado, sus leads capturados y el hilo completo de la conversación.
+              </p>
+            </div>
+            <SuperAdminAliadosAnalytics aliados={aliadosAnalytics} />
+          </div>
         )}
         {activeTab === "aliados" && (
           <AdminAliados initialAliados={initialAliados} />

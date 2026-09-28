@@ -232,6 +232,7 @@ model ChatSession {
   totalMensajes    Int      @default(0)
   contextoResumen  String?  @db.Text
   intencionDetectada String? @db.VarChar(50)
+  nombreUsuario    String?  @db.VarChar(150)  // Lead qualification: nombre capturado durante flujo de venta
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   mensajes         ChatMessage[]

@@ -157,6 +157,29 @@ function sinAcentos(texto: string): string {
     .toLowerCase();
 }
 
+/** Intenta extraer el nombre del usuario cuando responde a una pregunta sobre su nombre */
+function extraerNombreUsuario(mensaje: string): string | null {
+  const m = mensaje.trim();
+  if (m.length > 50 || m.length < 2) return null;
+  // Patrones comunes: "Me llamo Juan", "Soy Carlos", "Mi nombre es Ana", o simplemente "Carlos" / "Juan Pérez"
+  const patrones = [
+    /(?:me\s+llamo|mi\s+nombre\s+es|soy)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20})?)/i,
+    /^a\s+nombre\s+de\s+([A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20})?)/i,
+    /^([A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20})?)$/,
+  ];
+  for (const regex of patrones) {
+    const match = m.match(regex);
+    if (match && match[1]) {
+      const candidato = match[1].trim();
+      const descartar = new Set(["hola", "gracias", "hotel", "restaurante", "habitacion", "familiar", "matrimonial", "suite", "precio", "cuanto", "nada", "ninguno", "nadie", "ver", "donde", "cuando", "bueno", "buenas", "si", "no", "porfavor", "por favor"]);
+      if (!descartar.has(candidato.toLowerCase())) {
+        return candidato.charAt(0).toUpperCase() + candidato.slice(1);
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Mensaje de respaldo del flujo de venta, un paso por vez (por si la IA no responde).
  * Se construye SOLO con los datos cargados del aliado en el superadmin.
@@ -174,7 +197,8 @@ function plantillaVentaPaso(
     telefono: string | null;
   },
   habitaciones: { nombre: string; precio: string | null; caracteristicas: string | null }[],
-  paso: number
+  paso: number,
+  habitacionElegida?: { nombre: string; precio: string | null; caracteristicas: string | null } | null
 ): string {
   const estrellas = aliado.estrellas ? ` ${"⭐".repeat(Math.min(5, Math.max(1, aliado.estrellas)))}` : "";
   const categorias = habitaciones.map((h) => `${h.nombre}${h.precio ? ` (${h.precio})` : ""}`);
@@ -198,6 +222,9 @@ function plantillaVentaPaso(
         aliado.rangoPrecio ? `En general ${aliado.rangoPrecio}. ` : ""
       }¿Querés que te cuente qué incluye cada una?`;
     case 4:
+      if (habitacionElegida) {
+        return `¡Excelente elección! La ${habitacionElegida.nombre} tiene un valor de ${habitacionElegida.precio || "precio regular"}${habitacionElegida.caracteristicas ? ` (${habitacionElegida.caracteristicas})` : ""}. ${aliado.telefono ? "Podemos conectarte directamente por WhatsApp con ellos para consultar fechas o reservar. " : ""}¿Te gustaría que te facilitemos la reserva?`;
+      }
       return `Está en ${aliado.ubicacion}. ${
         esHospedaje && aliado.numeroCuartos ? `${aliado.numeroCuartos} habitaciones en total. ` : ""
       }${aliado.servicios ? `Incluye ${aliado.servicios}. ` : ""}¿Te gustaría reservar?`;
@@ -258,6 +285,16 @@ export async function POST(req: NextRequest) {
       memoriaSesion = await obtenerMemoriaSesion(sessionId);
     }
 
+    // 1b. Obtener nombre del usuario de la sesión (Lead Qualification)
+    let nombreUsuarioSesion: string | null = null;
+    if (sessionId) {
+      const sesionDb = await prisma.chatSession.findUnique({
+        where: { sessionId },
+        select: { nombreUsuario: true },
+      }).catch(() => null);
+      nombreUsuarioSesion = sesionDb?.nombreUsuario ?? null;
+    }
+
     // Texto de contexto inmediato (los últimos mensajes)
     const ultimosMensajesTexto = messages
       .slice(-4)
@@ -273,6 +310,11 @@ export async function POST(req: NextRequest) {
 
     // Guardar/actualizar sesión CRM en background
     const ua = req.headers.get("user-agent") || null;
+
+    const nombreDetectadoEnMensaje = !nombreUsuarioSesion ? extraerNombreUsuario(lastUserMessage) : null;
+    if (nombreDetectadoEnMensaje) {
+      nombreUsuarioSesion = nombreDetectadoEnMensaje;
+    }
 
     if (sessionId) {
       prisma.chatSession.upsert({
@@ -290,6 +332,7 @@ export async function POST(req: NextRequest) {
           ipAddress: ip ? ip.slice(0, 60) : null,
           totalMensajes: 1,
           intencionDetectada: decisionRouter.intencion,
+          nombreUsuario: nombreDetectadoEnMensaje ?? null,
         },
         update: {
           ...(ubicacion?.lat && {
@@ -301,6 +344,7 @@ export async function POST(req: NextRequest) {
             provincia: ubicacion.provincia ?? null,
             pais: ubicacion.pais ?? null,
           }),
+          ...(nombreDetectadoEnMensaje ? { nombreUsuario: nombreDetectadoEnMensaje } : {}),
           totalMensajes: { increment: 1 },
           intencionDetectada: decisionRouter.intencion,
           updatedAt: new Date(),
@@ -426,8 +470,9 @@ export async function POST(req: NextRequest) {
       if (aliadoHandoff?.telefono) {
         const telLimpio = aliadoHandoff.telefono.replace(/[^\d]/g, "");
         const tipoLabel = aliadoHandoff.tipo === "GASTRONOMIA" ? "restaurante" : aliadoHandoff.tipo === "CAFETERIA" ? "cafetería" : "hotel";
+        const nombreIntro = nombreUsuarioSesion ? `Mi nombre es ${nombreUsuarioSesion}. ` : "";
         const mensajeWA = encodeURIComponent(
-          `Hola, vengo de la Agenda Cultural Loja y me interesa reservar en ${aliadoHandoff.nombre}. ¿Podrían ayudarme?`
+          `Hola, vengo de la Agenda Cultural Loja. ${nombreIntro}Me interesa consultar y reservar en ${aliadoHandoff.nombre}. ¿Podrían ayudarme?`
         );
         const linkWA = `https://wa.me/${telLimpio}?text=${mensajeWA}`;
         const textoHandoff = `¡Perfecto! 🎉 Te conecto directamente con ${aliadoHandoff.nombre}. Solo haz clic en el botón de WhatsApp y ya tienen todos tus datos. ¡Que lo disfrutes mucho!`;
@@ -911,26 +956,77 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
     // Si no repite el nombre pero venía hablando de un hotel, seguimos el flujo con ese hotel
     const textoReciente = sinAcentos(
       messages
-        .slice(-2)
+        .slice(-3)
         .map((m: any) => m.content || m.text || "")
         .join(" ")
     );
     const hotelEnConversacion = aliados.find((a) => textoReciente.includes(sinAcentos(a.nombre)));
 
-    const continuarFlujo = quiereReservar || quiereServicios || quierePrecios || quiereHabitaciones;
+    // Detectar si el usuario menciona una habitación específica (ej: "habitación familiar", "matrimonial", "suite")
+    const todasLasHabitaciones = hotelEnConversacion?.habitaciones || aliadoEspecifico?.habitaciones || [];
+    const habitacionMencionada = todasLasHabitaciones.find((h) => {
+      const hNorm = sinAcentos(h.nombre);
+      const palabrasHab = hNorm.split(/\s+/).filter((w) => w.length > 3 && !["habitacion", "suite", "para"].includes(w));
+      return (
+        consultaNorm.includes(hNorm) ||
+        palabrasHab.some((p) => consultaNorm.includes(p))
+      );
+    });
+
+    const quiereHabitacionPuntual = !!habitacionMencionada || /me interesa|quiero la|me gustar[ií]a la|cu[aá]nto sale la|informaci[oó]n de la/i.test(lowerUser);
+
+    const continuarFlujo = quiereReservar || quiereServicios || quierePrecios || quiereHabitaciones || quiereHabitacionPuntual;
     const aliadoVenta =
       aliadoEspecifico || (continuarFlujo ? hotelEnConversacion : undefined);
 
     const esModoVenta = !!aliadoVenta && !pideOtraOpcion;
 
+    // ─── LEAD QUALIFICATION: Detectar y guardar nombre del usuario ───
+    // Si el bot preguntó el nombre en el mensaje anterior y el usuario respondió
+    // con un mensaje corto (≤30 chars, sin palabras clave de navegación), asumimos que es el nombre.
+    const botPidioNombre = messages.length >= 2 && (() => {
+      const botMsgs = messages.filter((m: any) => m.sender === "bot" || m.role === "assistant");
+      const ultimoBot = botMsgs[botMsgs.length - 1];
+      const textoBot = (ultimoBot?.content || ultimoBot?.text || "").toLowerCase();
+      return textoBot.includes("cómo te llamas") || textoBot.includes("como te llamas") ||
+             textoBot.includes("cuál es tu nombre") || textoBot.includes("cual es tu nombre") ||
+             textoBot.includes("a nombre de") || textoBot.includes("tu nombre");
+    })();
+
+    const esRespuestaNombre =
+      botPidioNombre &&
+      !nombreUsuarioSesion &&
+      lastUserMessage.length >= 2 &&
+      lastUserMessage.length <= 40 &&
+      !/hotel|restaurante|habitaci|precio|comer|eventos|reservar|whatsapp|si|sí|no|gracias|hola/i.test(lastUserMessage) &&
+      /^[A-Za-záéíóúñÁÉÍÓÚÑ\s'-]+$/.test(lastUserMessage.trim());
+
+    if (esRespuestaNombre && sessionId) {
+      const nombreDetectado = lastUserMessage.trim();
+      prisma.chatSession.update({
+        where: { sessionId },
+        data: { nombreUsuario: nombreDetectado },
+      }).catch(() => {/* fail silently */});
+      nombreUsuarioSesion = nombreDetectado;
+    }
+
     // Paso actual del flujo de venta (1..5)
     let pasoVenta = 0;
     if (esModoVenta) {
-      if (quiereReservar) pasoVenta = 5;
-      else if (quiereServicios) pasoVenta = 4;
-      else if (quierePrecios) pasoVenta = 3;
-      else if (quiereHabitaciones) pasoVenta = 2;
-      else pasoVenta = 1;
+      if (quiereReservar) {
+        pasoVenta = 5;
+      } else if (habitacionMencionada || (quiereHabitacionPuntual && quiereHabitaciones)) {
+        // Si ya eligió o preguntó por una habitación puntual, avanzamos al paso 4 (detalles, precio y enlace a reserva)
+        pasoVenta = 4;
+      } else if (quiereServicios) {
+        pasoVenta = 4;
+      } else if (quierePrecios) {
+        pasoVenta = 3;
+      } else if (quiereHabitaciones) {
+        pasoVenta = 2;
+      } else {
+        pasoVenta = 1;
+      }
     }
 
     const habitacionesVenta = aliadoVenta?.habitaciones || [];
@@ -992,6 +1088,10 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
       : "";
 
     // Instrucción por paso: cada paso es CORTO y termina preguntando algo (no volcar todo)
+    const instruccionHabitacionPuntual = habitacionMencionada
+      ? `\nEL USUARIO ELIGIÓ LA OPCIÓN ESPECÍFICA: "${habitacionMencionada.nombre}"${habitacionMencionada.precio ? ` (${habitacionMencionada.precio})` : ""}${habitacionMencionada.caracteristicas ? ` con características: ${habitacionMencionada.caracteristicas}` : ""}. Confirma con entusiasmo su elección, dale su precio exacto y qué incluye, y ofrécele ponerlo en contacto directo por WhatsApp para consultar fechas o apartar.`
+      : "";
+
     const instruccionPaso =
       pasoVenta === 1
         ? `PASO 1 DE 5 (ENGANCHE): saludá y presentá el ${palabraAliado} en 2 frases cortas y atractivas (nombre, estrellas, zona) y decí que tiene ${habitacionesVenta.length || "varias"} ${palabraCategorias}. NO menciones precios ni servicios todavía. Cerrá preguntando si quiere ver ${tipoAliadoVenta === "HOSPEDAJE" ? "las habitaciones" : "las opciones"} o los precios.`
@@ -1000,7 +1100,7 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
         : pasoVenta === 3
         ? `PASO 3 DE 5 (PRECIOS): explicá el precio de cada categoría de forma clara y destacá la mejor relación calidad/precio. Preguntá si quiere saber qué incluye cada una. NO repitas la descripción general del hotel.`
         : pasoVenta === 4
-        ? `PASO 4 DE 5 (QUÉ INCLUYE): contá la ubicación y 3 o 4 servicios destacados que justifiquen la reserva. Preguntá si le gustaría reservar. NO repitas precios de golpe (podés mencionar "desde X").`
+        ? `PASO 4 DE 5 (DETALLES Y RESERVA): ${instruccionHabitacionPuntual || `contá la ubicación y servicios destacados que justifiquen la reserva.`} Pregúntale si te gustaría que te conectemos directo por WhatsApp con ${aliadoVenta!.nombre} para verificar disponibilidad o reservar.`
         : pasoVenta === 5
         ? `PASO 5 DE 5 (CIERRE): invitá a reservar por WhatsApp (el número es: ${aliadoVenta?.telefono || "consultar"}), transmití urgencia suave (disponibilidad limitada) y preguntá si reservamos ahora o si prefiere ver ${otroAliado}. Máximo 3 frases. IMPORTANTE: menciona que pueden escribir directo al WhatsApp del ${palabraAliado} para confirmar.`
         : "";
@@ -1009,22 +1109,32 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
     const whatsappHandoffVenta = esModoVenta && aliadoVenta?.telefono && (pasoVenta === 4 || pasoVenta === 5)
       ? (() => {
           const telLimpio = aliadoVenta.telefono!.replace(/[^\d]/g, "");
+          const habTexto = habitacionMencionada ? ` para la ${habitacionMencionada.nombre}` : "";
+          const nombreIntro = nombreUsuarioSesion ? `Mi nombre es ${nombreUsuarioSesion}. ` : "";
           const msg = encodeURIComponent(
-            `Hola, vengo de la Agenda Cultural Loja y me interesa ${pasoVenta === 5 ? "reservar" : "saber más"} sobre ${aliadoVenta.nombre}. ¿Me pueden ayudar?`
+            `Hola, vengo de la Agenda Cultural Loja. ${nombreIntro}Me interesa consultar disponibilidad y reservar en ${aliadoVenta.nombre}${habTexto}. ¿Me podrían ayudar?`
           );
           return { link: `https://wa.me/${telLimpio}?text=${msg}`, nombre: aliadoVenta.nombre, tipo: palabraAliado };
         })()
       : null;
+
+    // Instrucción de lead qualification para el prompt de venta
+    const instruccionLeadQual = esModoVenta && pasoVenta >= 2 && !nombreUsuarioSesion
+      ? `\nLEAD QUALIFICATION (muy importante): En algún punto natural de la respuesta (al final o al cerrar tu frase), preguntale al usuario su nombre de forma amigable para personalizar su experiencia. Por ejemplo: "¡Por cierto, ¿cómo te llamas?" o "¿A nombre de quién guardamos la preferencia?". Solo hazlo UNA VEZ de forma muy natural, no insistas.`
+      : nombreUsuarioSesion
+      ? `\nNOMBRE DEL USUARIO: El usuario se llama ${nombreUsuarioSesion}. Úsalo ocasionalmente para personalizar (ej: "${nombreUsuarioSesion}, ¿qué te parece?"). No lo repitas en cada frase.`
+      : "";
 
     const guiaVenta = esModoVenta
       ? `
 ════════ MODO VENTA INTERACTIVA — PASO ${pasoVenta} DE 5 ════════
 Estás vendiendo "${aliadoVenta!.nombre}" en una CONVERSACIÓN de 5 pasos. El usuario está en el PASO ${pasoVenta}.
 ${instruccionPaso}
+${instruccionLeadQual}
 
 REGLAS DEL PASO (MUY IMPORTANTE):
 - Escribí MÁXIMO 3 frases (una es la pregunta final). Nada de listas largas ni párrafos con toda la información.
-- NO adelantes información de los pasos siguientes: se la vas a ir contando de a poco.
+- Si el usuario eligió una habitación ("familiar", "matrimonial", "suite"), dale el precio y características de ESA habitación y ofrécele reservar o verificar disponibilidad por WhatsApp.
 - NO vuelvas a presentar el hotel como si fuera la primera vez si ya está en la conversación.
 - Usá solo datos reales de la ficha de abajo. Tono vendedor, cálido y con emojis (1 o 2, no más).
 - Terminá SIEMPRE con una pregunta corta que invite a seguir.
@@ -1032,7 +1142,7 @@ REGLAS DEL PASO (MUY IMPORTANTE):
 - El campo "texto" NUNCA puede quedar vacío ni con espacios en blanco.
 
 EJEMPLO DEL FORMATO ESPERADO (adaptá el contenido a este paso):
-{"texto": "¡Buena elección! Este hotel boutique 4⭐ está en el Centro Histórico y tiene 3 tipos de habitación. ¿Querés que te muestre las habitaciones o preferís ver los precios? 😊", "eventosRecomendadosIds": [], "aliadosRecomendadosIds": [${aliadoVenta!.id}], "atractivosRecomendadosIds": []}
+{"texto": "¡Excelente elección! La Habitación Familiar en Hotel-1 tiene un costo de $70 / noche e incluye desayuno lojano y wifi. ¿Te gustaría que te conectemos directo por WhatsApp con ellos para confirmar disponibilidad? 😊", "eventosRecomendadosIds": [], "aliadosRecomendadosIds": [${aliadoVenta!.id}], "atractivosRecomendadosIds": []}
 
 FICHA REAL DEL ALIADO (usá solo esto):
 ${datosVenta}`
@@ -1060,7 +1170,13 @@ ${datosVenta}`
             `💬 Quiero reservar en ${nombreVenta}`,
           ]
         : pasoVenta === 4
-        ? [`💰 Ver precios de ${nombreVenta}`, `💬 Quiero reservar en ${nombreVenta}`, `🔎 Ver ${pluralAliado}`]
+        ? habitacionMencionada
+          ? [
+              `💬 Reservar ${habitacionMencionada.nombre}`,
+              `✨ Qué incluye ${nombreVenta}`,
+              `🔎 Ver ${pluralAliado}`,
+            ]
+          : [`💰 Ver precios de ${nombreVenta}`, `💬 Quiero reservar en ${nombreVenta}`, `🔎 Ver ${pluralAliado}`]
         : pasoVenta === 5
         ? [`🔎 Ver ${pluralAliado}`]
         : [];
@@ -1086,7 +1202,10 @@ TONO Y ESTILO DE CONVERSACIÓN (NATURAL, AMABLE Y ENGAGEMENT):
    - Mantente enfocado en lo que el usuario preguntó. Si pregunta por un evento, habla de ese evento.
    - Solo sugiere hospedaje o gastronomía si el usuario lo menciona, o si es oportuno vincularlo a un evento nocturno/fin de semana.
 4.1 NATURALEZA PRIMERO: si el usuario pide naturaleza, rutas, parques, cascadas, cerros, senderismo, miradores, ríos o actividades al aire libre y NO pidió eventos de cartelera, NO recomiendes eventos: responde con los ATRACTIVOS CANTONALES y usa sus IDs en "atractivosRecomendadosIds".
-5. CERO ALUCINACIÓN: Solo asocia IDs de la lista EVENTOS DISPONIBLES o ALIADOS COMERCIALES.
+5. CERO ALUCINACIÓN (ESTRICTO):
+   - Solo asocia IDs de la lista EVENTOS DISPONIBLES o ALIADOS COMERCIALES.
+   - NUNCA inventes platos, comidas, bebidas, servicios, tipos de habitación, precios o características que NO estén en la ficha del aliado de la base de datos.
+   - Si el usuario te pregunta por algo puntual (un plato específico, un servicio o detalle) que NO figura en los datos provistos del aliado, responde con sinceridad y amabilidad diciendo que no dispones de ese dato exacto en sistema, e invítalo a consultarlo o confirmarlo directo por WhatsApp con el establecimiento.
 5.1 ALIADOS COMERCIALES SON PRIORIDAD: si el usuario pregunta por hospedaje, hoteles, dónde dormir o dónde comer, incluye SIEMPRE en "aliadosRecomendadosIds" los IDs de los aliados comerciales prioritarios (máximo 3).
 6. NO REPITAS datos obvios ni vuelvas a mandar la misma tarjeta si ya se la mostraste al usuario.
 
@@ -1325,7 +1444,7 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
     if (!parsedResult.texto || parsedResult.texto.trim().length === 0) {
       if (esModoVenta && aliadoVenta) {
         // El flujo de venta NUNCA debe caer en textos de cartelera
-        parsedResult.texto = plantillaVentaPaso(aliadoVenta, habitacionesVenta, pasoVenta);
+        parsedResult.texto = plantillaVentaPaso(aliadoVenta, habitacionesVenta, pasoVenta, habitacionMencionada);
       } else if (esSaludo) {
         parsedResult.texto = "¡Hola! 👋 Bienvenido a la Agenda Cultural de Loja. ¿Qué planes o eventos buscas para hoy?";
       } else if ((esHospedaje || esGastronomia) && !esModoVenta) {
@@ -1379,7 +1498,7 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
         parsedResult.texto.trim() === "Aquí tienes la información:" ||
         parsedResult.texto.trim() === "Aquí tienes excelentes opciones recomendadas en Loja:";
       if (textoGenerico) {
-        parsedResult.texto = plantillaVentaPaso(aliadoVenta, habitacionesVenta, pasoVenta);
+        parsedResult.texto = plantillaVentaPaso(aliadoVenta, habitacionesVenta, pasoVenta, habitacionMencionada);
       }
     } else if (!esHospedaje && !esGastronomia && !pideOtraOpcion) {
       parsedResult.aliadosRecomendadosIds = [];

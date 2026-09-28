@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { SuperAdminDashboardClient } from "../superadmin-dashboard-client";
+import type { AliadoAnalyticsData } from "../superadmin-aliados-analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,120 @@ export default async function SuperAdminPage() {
     take: 50,
   });
 
+  // ─── ANALYTICS POR ALIADO ───
+  // Obtenemos los últimos 1000 mensajes del bot para auditar menciones de aliados de forma ultra rápida
+  const mensajesBotRecientes = await prisma.chatMessage.findMany({
+    where: { sender: "bot" },
+    select: {
+      id: true,
+      sessionId: true,
+      contenido: true,
+      aliadosIds: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 1000,
+  });
+
+  const aliadosAnalytics: AliadoAnalyticsData[] = await Promise.all(
+    aliados.map(async (aliado) => {
+      // Filtrar mensajes bot que recomendaron a este aliado
+      const relevantes = mensajesBotRecientes.filter((m) => {
+        if (!m.aliadosIds) return false;
+        const ids = Array.isArray(m.aliadosIds) ? m.aliadosIds : [];
+        return ids.includes(aliado.id);
+      });
+
+      if (relevantes.length === 0) {
+        return {
+          id: aliado.id,
+          nombre: aliado.nombre,
+          tipo: aliado.tipo,
+          imagenUrl: aliado.imagenUrl ?? null,
+          totalSesiones: 0,
+          totalMensajes: 0,
+          leads: [],
+          sesionesRecientes: [],
+        };
+      }
+
+      // Sesiones únicas que mencionaron este aliado
+      const sessionIdsUnicos = Array.from(new Set(relevantes.map((m) => m.sessionId)));
+
+      // Obtener las sesiones completas con sus mensajes
+      const sesionesCompletas = await prisma.chatSession.findMany({
+        where: { sessionId: { in: sessionIdsUnicos } },
+        include: {
+          mensajes: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 15,
+      });
+
+      // Leads: sesiones con nombreUsuario guardado
+      const leads = sesionesCompletas
+        .filter((s) => s.nombreUsuario)
+        .map((s) => ({
+          sessionId: s.sessionId,
+          nombre: s.nombreUsuario!,
+          fecha: s.updatedAt,
+          zona: s.zonaDetectada,
+        }));
+
+      // Construir detalle de sesiones recientes
+      const sesionesRecientes = sesionesCompletas.map((s) => {
+        const idsRelevantesEnSesion = new Set(
+          relevantes.filter((r) => r.sessionId === s.sessionId).map((r) => r.id)
+        );
+        const mensajesRelevantes = s.mensajes
+          .filter((m) => {
+            if (m.sender === "bot" && idsRelevantesEnSesion.has(m.id)) return true;
+            if (m.sender === "user") return true;
+            return false;
+          })
+          .slice(-10)
+          .map((m) => ({
+            sender: m.sender,
+            contenido: m.contenido,
+            createdAt: m.createdAt,
+          }));
+
+        return {
+          sessionId: s.sessionId,
+          nombreUsuario: s.nombreUsuario ?? null,
+          zonaDetectada: s.zonaDetectada ?? null,
+          ciudad: s.ciudad ?? null,
+          intencionDetectada: s.intencionDetectada ?? null,
+          contextoResumen: s.contextoResumen ?? null,
+          createdAt: s.createdAt,
+          mensajesCount: s.mensajes.length,
+          mensajesRelevantes,
+        };
+      });
+
+      return {
+        id: aliado.id,
+        nombre: aliado.nombre,
+        tipo: aliado.tipo,
+        imagenUrl: aliado.imagenUrl ?? null,
+        totalSesiones: sessionIdsUnicos.length,
+        totalMensajes: relevantes.length,
+        leads,
+        sesionesRecientes,
+      };
+    })
+  );
+
+  // Ordenar: primero los que tienen actividad y luego por nombre
+  const aliadosOrdenados = [...aliadosAnalytics].sort((a, b) => {
+    if (b.totalSesiones !== a.totalSesiones) {
+      return b.totalSesiones - a.totalSesiones;
+    }
+    return a.nombre.localeCompare(b.nombre);
+  });
+
   return (
     <SuperAdminDashboardClient
       initialAliados={aliados.map((a: any) => ({
@@ -85,6 +200,7 @@ export default async function SuperAdminPage() {
         ipAddress: s.ipAddress ?? null,
         contextoResumen: s.contextoResumen ?? null,
         intencionDetectada: s.intencionDetectada ?? null,
+        nombreUsuario: s.nombreUsuario ?? null,
         mensajes: s.mensajes.map((m: any) => ({
           ...m,
           aliadosIds: m.aliadosIds as number[] | null,
@@ -92,8 +208,10 @@ export default async function SuperAdminPage() {
           atractivosIds: m.atractivosIds as number[] | null,
         })),
       }))}
+      aliadosAnalytics={aliadosOrdenados}
       stats={{ total: totalSessions, conUbicacion, zonasFrecuentes, intencionesFrecuentes, totalMensajes }}
       initialRecomendaciones={recomendaciones}
     />
   );
 }
+
