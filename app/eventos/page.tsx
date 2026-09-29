@@ -15,25 +15,27 @@ import {
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Todos los Eventos Culturales en Loja — Cartelera y Calendario",
+  title: "Cartelera Cultural Loja — Calendario Completo de Eventos",
   description:
-    "Explorá el catálogo completo y calendario interactivo de eventos culturales en Loja, Ecuador: música, teatro, arte, ferias y artes vivas.",
+    "Cartelera oficial y calendario interactivo de eventos culturales en Loja, Ecuador. Listado completo de conciertos, teatro, arte, ferias y artes vivas. Actualizado diariamente.",
   keywords: [
-    "eventos culturales Loja",
-    "qué hacer en Loja",
+    "cartelera cultural Loja",
+    "calendario de eventos Loja",
     "agenda cultural Loja Ecuador",
-    "cartelera Loja",
-    "actividades culturales Loja",
-    "eventos este fin de semana Loja",
-    "música teatro arte Loja",
+    "listado eventos culturales Loja",
+    "cartelera Loja Ecuador",
+    "actividades culturales Loja Ecuador",
+    "próximos eventos Loja",
+    "eventos fin de semana Loja Ecuador",
+    "música teatro arte ferias Loja",
   ],
   alternates: {
     canonical: `${SITE_CONFIG.url}/eventos`,
   },
   openGraph: {
-    title: "Todos los Eventos Culturales en Loja — Cartelera y Calendario",
+    title: "Cartelera Cultural Loja — Calendario Completo de Eventos",
     description:
-      "Catálogo completo de eventos culturales en Loja: música, teatro, arte, ferias y artes vivas. Actualizado diariamente.",
+      "Listado completo y calendario interactivo de eventos culturales en Loja, Ecuador: conciertos, teatro, arte, ferias y artes vivas. Actualizado diariamente.",
     url: `${SITE_CONFIG.url}/eventos`,
     siteName: SITE_CONFIG.nombre,
     locale: "es_EC",
@@ -41,9 +43,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Eventos Culturales en Loja — Agenda Cultural",
+    title: "Cartelera Cultural Loja — Calendario de Eventos",
     description:
-      "Cartelera completa de eventos en Loja, Ecuador. Música, teatro, arte y más.",
+      "Listado completo de eventos culturales en Loja, Ecuador. Conciertos, teatro, arte, ferias y más.",
   },
 };
 
