@@ -13,6 +13,8 @@ export const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
   es: {
     // Navbar
     "nav.inicio": "Inicio",
+    "nav.esta_semana": "Esta Semana",
+    "nav.fin_semana": "Fin de Semana",
     "nav.arte": "Arte",
     "nav.teatro": "Teatro",
     "nav.musica": "Música",
@@ -196,6 +198,8 @@ export const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
   en: {
     // Navbar
     "nav.inicio": "Home",
+    "nav.esta_semana": "This Week",
+    "nav.fin_semana": "Weekend",
     "nav.arte": "Art",
     "nav.teatro": "Theater",
     "nav.musica": "Music",

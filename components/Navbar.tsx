@@ -33,6 +33,8 @@ function LogoGeometrico({ className = "" }: { className?: string }) {
 
 const NAV_KEYS = [
   { href: "/",                                      key: "nav.inicio",       fallback: "Inicio" },
+  { href: "/eventos/esta-semana",                   key: "nav.esta_semana",  fallback: "Esta Semana" },
+  { href: "/eventos/este-fin-de-semana",            key: "nav.fin_semana",   fallback: "Fin de Semana" },
   { href: "/eventos/categoria/arte-y-exposiciones", key: "nav.arte",         fallback: "Arte" },
   { href: "/eventos/categoria/teatro",              key: "nav.teatro",       fallback: "Teatro" },
   { href: "/eventos/categoria/musica",              key: "nav.musica",       fallback: "Música" },
@@ -67,12 +69,12 @@ export function Navbar() {
         </Link>
 
         {/* ── Nav links desktop ── */}
-        <div className="hidden lg:inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/80 px-2 py-1.5 shadow-[var(--shadow-nav)] backdrop-blur-md transition-all duration-300 hover:border-white">
+        <div className="hidden lg:inline-flex items-center gap-0.5 xl:gap-1 rounded-full border border-white/80 bg-white/80 px-2 py-1.5 shadow-[var(--shadow-nav)] backdrop-blur-md transition-all duration-300 hover:border-white">
           {NAV_KEYS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="group relative inline-flex h-8 items-center overflow-hidden rounded-full px-3 text-sm font-semibold text-[var(--color-muted)] transition-all duration-300 hover:-translate-y-px hover:text-[var(--color-purple-1)]"
+              className="group relative inline-flex h-8 items-center overflow-hidden rounded-full px-2.5 xl:px-3 text-xs xl:text-sm font-semibold text-[var(--color-muted)] transition-all duration-300 hover:-translate-y-px hover:text-[var(--color-purple-1)]"
             >
               <span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-purple-50 transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <span className="relative z-10">{t(item.key, item.fallback)}</span>
