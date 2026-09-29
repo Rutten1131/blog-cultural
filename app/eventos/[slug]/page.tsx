@@ -14,7 +14,6 @@ import {
   EventDetailHeaderClient,
   EventDetailUbicacionTitleClient,
   EventDetailMapsButtonClient,
-  EventDetailRelatedTitleClient,
 } from "@/components/EventDetailHeaderClient";
 
 // Forzar renderizado dinámico en servidor para permitir el uso de cookies()
@@ -612,14 +611,63 @@ export default async function EventoDetailPage({ params }: PageProps) {
             </div>
           </article>
 
-          {/* Sección de Eventos Relacionados / Recomendados */}
+          {/* Sección de Eventos Relacionados / Recomendados con Interlinking SEO Rico */}
           {masRelacionados.length > 0 && (
-            <section className="mt-16 border-t border-zinc-200 dark:border-zinc-800 pt-12">
-              <EventDetailRelatedTitleClient />
+            <section
+              className="mt-16 border-t border-zinc-200 dark:border-zinc-800 pt-12"
+              aria-label="Eventos relacionados"
+            >
+              {/*
+                Título dinámico con anchor text semántico.
+                Ejemplo: "Más eventos de Teatro en el Centro Histórico de Loja"
+                Google lee este h2 como señal de relevancia temática.
+              */}
+              <h2 className="text-2xl font-black uppercase tracking-tight text-zinc-900 dark:text-zinc-100 mb-2">
+                {evento.categoria
+                  ? `Más eventos de ${evento.categoria.nombre} en Loja`
+                  : "Otros eventos culturales en Loja"}
+              </h2>
+              {/* Subtítulo con zona y contexto local — refuerza SEO local */}
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8">
+                {evento.zona
+                  ? `Actividades culturales${evento.categoria ? ` de ${evento.categoria.nombre}` : ""} en ${evento.zona.nombre}, Loja, Ecuador`
+                  : `Actividades culturales y planes para este fin de semana en Loja, Ecuador`}
+              </p>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {masRelacionados.map((item) => (
-                  <EventoListCard key={item.id} evento={item} />
+                  /*
+                    El atributo title en el Link aporta contexto semántico extra al crawler.
+                    Ejemplo: "Ver evento Concierto de Jazz — Teatro Bolívar, Loja"
+                  */
+                  <div key={item.id} title={`Ver evento: ${item.nombre}${
+                    item.categoria ? ` — ${item.categoria.nombre}` : ""
+                  } en ${item.lugar}, Loja`}>
+                    <EventoListCard evento={item} />
+                  </div>
                 ))}
+              </div>
+
+              {/* Interlinking de texto: anchor text ricos que distribuyen PageRank interno */}
+              <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 text-sm">
+                {evento.categoria && (
+                  <Link
+                    href={`/eventos/categoria/${evento.categoria.slug}`}
+                    className="inline-flex items-center gap-1.5 font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-4 decoration-zinc-300 hover:decoration-zinc-600 transition-colors"
+                    title={`Ver todos los eventos de ${evento.categoria.nombre} en Loja`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 5 7 7-7 7"/></svg>
+                    Ver toda la cartelera de {evento.categoria.nombre} en Loja
+                  </Link>
+                )}
+                <Link
+                  href="/eventos"
+                  className="inline-flex items-center gap-1.5 font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-4 decoration-zinc-300 hover:decoration-zinc-600 transition-colors"
+                  title="Ver todos los eventos y la agenda cultural completa de Loja, Ecuador"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 5 7 7-7 7"/></svg>
+                  Explorar la cartelera cultural completa de Loja
+                </Link>
               </div>
             </section>
           )}
