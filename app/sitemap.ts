@@ -57,10 +57,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
-  // 5. Página estática institucional del Proyecto
+  // 5. Página estática institucional del Proyecto y Landing pages de alta prioridad SEO
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: `${baseUrl}/eventos`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.95,
+    },
+    {
+      url: `${baseUrl}/eventos/esta-semana`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.95,
+    },
+    {
+      url: `${baseUrl}/eventos/este-fin-de-semana`,
       lastModified: new Date(),
       changeFrequency: "daily" as const,
       priority: 0.95,

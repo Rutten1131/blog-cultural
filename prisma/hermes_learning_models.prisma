@@ -1,0 +1,66 @@
+// ─── Prisma Schema Extensions for Hermes Autonomous Intelligence ───
+
+/// Métrica de rendimiento en redes sociales medida en intervalos clave (24h y 7 días)
+model MetricaPublicacion {
+  id              Int       @id @default(autoincrement())
+  publicacionId   Int       @map("publicacion_id")
+  plataforma      String    @db.VarChar(50)  // "FACEBOOK" | "INSTAGRAM"
+  postIdExterno   String?   @map("post_id_externo") @db.VarChar(100) // ID oficial en Meta Graph
+  alcance         Int       @default(0)      // Reach / Impresiones
+  likes           Int       @default(0)
+  comentarios     Int       @default(0)
+  guardados       Int       @default(0)      // Save count en Instagram
+  compartidos     Int       @default(0)      // Shares en Facebook
+  clicsEnlace     Int       @default(0)      // Clics hacia la web agendaculturalloja.com
+  medidoAt        DateTime  @default(now())  @map("medido_at")
+  periodo         String    @db.VarChar(20)  // "24_HORAS" | "7_DIAS" | "FINAL"
+
+  publicacion     PublicacionRedSocial @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+
+  @@index([publicacionId])
+  @@index([periodo])
+  @@map("metricas_publicacion")
+}
+
+/// Registro de auditoría y moderación para calibrar el porcentaje de acierto del extractor
+model ModeracionLog {
+  id             Int       @id @default(autoincrement())
+  postId         Int?      @map("post_id")
+  eventoId       Int?      @map("evento_id")
+  origen         String    @db.VarChar(50)   // "WHATSAPP_WORKER" | "FORMULARIO_PUBLICO"
+  accion         String    @db.VarChar(50)   // "AUTO_APROBADO" | "APROBADO_MANUAL" | "EDITADO" | "RECHAZADO"
+  usuario        String    @db.VarChar(100)  // "SISTEMA_AUTO_PUBLISH" o nombre del moderador
+  camposEditados Json?     @map("campos_editados") // Diferencias si fue editado
+  motivoRechazo  String?   @map("motivo_rechazo") @db.Text
+  confianzaIA    Float?    @map("confianza_ia")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([accion])
+  @@index([createdAt])
+  @@map("moderacion_log")
+}
+
+/// Parámetros de control global del sistema y Botón de Emergencia
+model SistemaConfig {
+  id             Int       @id @default(autoincrement())
+  clave          String    @unique @db.VarChar(50)  // Ej: "PAUSA_EMERGENCIA", "MAX_POSTS_DIARIOS", "TOPE_URGENCIAS"
+  valor          String    @db.VarChar(255)         // Ej: "false", "5", "7"
+  descripcion    String?   @db.VarChar(255)
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("sistema_config")
+}
+
+/// Memoria estratégica y hallazgos semanales de Hermes para retroalimentar la IA
+model HallazgoSemanal {
+  id             Int       @id @default(autoincrement())
+  semanaInicio   DateTime  @map("semana_inicio")
+  semanaFin      DateTime  @map("semana_fin")
+  resumen        String    @db.Text                 // Qué formatos y temáticas tuvieron mayor engagement
+  mejorPostId    Int?      @map("mejor_post_id")
+  palabrasClaveGSC Json?   @map("palabras_clave_gsc") // Queries con mayor crecimiento en Google
+  promptAjustes  String?   @map("prompt_ajustes") @db.Text // Instrucciones aprendidas para el próximo ciclo
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("hallazgos_semanales")
+}

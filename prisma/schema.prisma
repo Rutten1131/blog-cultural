@@ -68,7 +68,7 @@ model Evento {
   zonaId       Int?
   zona         Zona?         @relation(fields: [zonaId], references: [id])
 
-  publicacionRed PublicacionRedSocial?
+  publicacionesRedes PublicacionRedSocial[]
 
   @@index([estado])
   @@index([fecha])
@@ -165,6 +165,7 @@ model Aliado {
   activo      Boolean     @default(true)
   createdAt   DateTime    @default(now())
   habitaciones AliadoHabitacion[]
+  solicitudesReserva SolicitudReserva[]
 
   @@index([tipo, activo])
   @@map("aliados")
@@ -236,6 +237,7 @@ model ChatSession {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   mensajes         ChatMessage[]
+  solicitudesReserva SolicitudReserva[]
   @@index([createdAt])
   @@index([zonaDetectada])
   @@map("chat_sessions")
@@ -253,6 +255,27 @@ model ChatMessage {
   createdAt        DateTime    @default(now())
   @@index([sessionId])
   @@map("chat_messages")
+}
+
+// ─── Solicitudes de Reserva Directa (Formulario Chatbot) ───
+model SolicitudReserva {
+  id               Int         @id @default(autoincrement())
+  sessionId        String?     @db.VarChar(64)
+  sesion           ChatSession? @relation(fields: [sessionId], references: [sessionId], onDelete: SetNull)
+  aliadoId         Int
+  aliado           Aliado      @relation(fields: [aliadoId], references: [id], onDelete: Cascade)
+  nombreCliente    String      @db.VarChar(150)
+  telefonoCliente  String      @db.VarChar(50)
+  fechaInicio      String?     @db.VarChar(50)  // Ej: 2026-10-15
+  fechaFin         String?     @db.VarChar(50)  // Ej: 2026-10-18
+  numPersonas      Int         @default(1)
+  detalle          String?     @db.Text         // Habitación deseada, notas especiales o menú
+  estado           String      @default("PENDIENTE") @db.VarChar(30) // PENDIENTE, ENVIADO, CONFIRMADO
+  createdAt        DateTime    @default(now())
+
+  @@index([aliadoId])
+  @@index([createdAt])
+  @@map("solicitudes_reserva")
 }
 
 // ─── Posts de Moderación Social (WhatsApp Worker) ───────────
@@ -309,13 +332,13 @@ model WaMensajeProcesado {
 
 // ─── Registro de Publicaciones en Redes Sociales ──────────────
 // Rastrea qué eventos se han publicado en redes sociales para evitar duplicados
-// y aplicar límites diarios (máx. 5 publicaciones/día).
+// y aplicar límites diarios (máx. 5 publicaciones/día, hasta 7 por urgencias).
 model PublicacionRedSocial {
   id           Int      @id @default(autoincrement())
-  eventoId     Int      @unique @map("evento_id")
+  eventoId     Int      @map("evento_id")
   evento       Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
-  plataformas  String   @db.VarChar(200)  // JSON array: ["FACEBOOK", "INSTAGRAM"]
-  tipo         String   @db.VarChar(50)   // FEED_POST, CAROUSEL, REEL
+  plataforma   String   @default("INSTAGRAM") @db.VarChar(50) // FACEBOOK | INSTAGRAM
+  tipo         String   @db.VarChar(50)   // FEED_POST, CAROUSEL, REEL, STORY
   programadoAt DateTime @map("programado_at")
   publicadoAt  DateTime? @map("publicado_at")
   estado       EstadoPublicacionRed @default(PENDIENTE)
@@ -324,8 +347,11 @@ model PublicacionRedSocial {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  metricas     MetricaPublicacion[]
+
   @@index([programadoAt])
   @@index([estado])
+  @@index([eventoId])
   @@map("publicaciones_redes_sociales")
 }
 
@@ -336,4 +362,68 @@ enum EstadoPublicacionRed {
   FALLIDO
   CANCELADO
 }
+
+// ─── Métricas de Rendimiento en Redes (24h y 7 días) ───────────
+model MetricaPublicacion {
+  id              Int       @id @default(autoincrement())
+  publicacionId   Int       @map("publicacion_id")
+  publicacion     PublicacionRedSocial @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  postIdExterno   String?   @map("post_id_externo") @db.VarChar(100)
+  alcance         Int       @default(0)
+  likes           Int       @default(0)
+  comentarios     Int       @default(0)
+  guardados       Int       @default(0)
+  compartidos     Int       @default(0)
+  clicsEnlace     Int       @default(0)
+  medidoAt        DateTime  @default(now()) @map("medido_at")
+  periodo         String    @db.VarChar(20) // "24_HORAS" | "7_DIAS"
+
+  @@index([publicacionId])
+  @@index([periodo])
+  @@map("metricas_publicacion")
+}
+
+// ─── Log de Moderación y Calidad del Extractor ─────────────────
+model ModeracionLog {
+  id             Int       @id @default(autoincrement())
+  postId         Int?      @map("post_id")
+  eventoId       Int?      @map("evento_id")
+  origen         String    @db.VarChar(50)   // "WHATSAPP_WORKER" | "FORMULARIO_PUBLICO"
+  accion         String    @db.VarChar(50)   // "AUTO_APROBADO" | "APROBADO_MANUAL" | "EDITADO" | "RECHAZADO"
+  usuario        String    @db.VarChar(100)  // "SISTEMA_AUTO_PUBLISH" o nombre
+  camposEditados Json?     @map("campos_editados")
+  motivoRechazo  String?   @map("motivo_rechazo") @db.Text
+  confianzaIA    Float?    @map("confianza_ia")
+  createdAt      DateTime  @default(now())   @map("created_at")
+
+  @@index([accion])
+  @@index([createdAt])
+  @@map("moderacion_log")
+}
+
+// ─── Parámetros de Control y Botón de Emergencia ───────────────
+model SistemaConfig {
+  id          Int      @id @default(autoincrement())
+  clave       String   @unique @db.VarChar(50) // PAUSA_EMERGENCIA, MAX_POSTS_DIARIOS, etc.
+  valor       String   @db.VarChar(255)
+  descripcion String?  @db.VarChar(255)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("sistema_config")
+}
+
+// ─── Memoria Estratégica Semanal de Hermes ─────────────────────
+model HallazgoSemanal {
+  id               Int      @id @default(autoincrement())
+  semanaInicio     DateTime @map("semana_inicio")
+  semanaFin        DateTime @map("semana_fin")
+  resumen          String   @db.Text
+  mejorPostId      Int?     @map("mejor_post_id")
+  palabrasClaveGSC Json?    @map("palabras_clave_gsc")
+  promptAjustes    String?  @map("prompt_ajustes") @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("hallazgos_semanales")
+}
+
 

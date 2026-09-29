@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+google-service-account*.json
+*.key.json
 
 # debug
 npm-debug.log*
@@ -49,6 +51,11 @@ id_rsa
 id_ed25519
 *.key
 *-key
+vps/*.json
+vps/*.ps1
+vps/hermes_core/
+vps/*.py
+vps/PLAN_MAESTRO_HERMES.md
 
 # Volcados y backups locales
 *.rar

@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "8083:8083"
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - EVOLUTION_API_URL=${EVOLUTION_API_URL}
@@ -38,6 +40,7 @@ services:
       - ./worker.js:/app/worker.js:ro
       - ./lib:/app/lib:ro
       - ./scripts:/app/scripts:ro
+      - ./google-service-account.json:/app/google-service-account.json:ro
 
 networks:
   app-network:

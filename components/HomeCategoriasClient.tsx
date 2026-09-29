@@ -257,6 +257,14 @@ export function HomeFooterClient({ categorias }: { categorias: CategoriaConEvent
         {/* Bottom bar */}
         <div className="mt-6 sm:mt-10 flex flex-col items-center justify-center gap-2 border-t border-white/10 pt-4 sm:pt-6 text-center">
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-[11px] sm:text-xs text-white/70">
+            <Link href="/eventos/esta-semana" className="hover:text-amber-400 transition-colors underline-offset-4 hover:underline">
+              📅 Esta Semana
+            </Link>
+            <span>•</span>
+            <Link href="/eventos/este-fin-de-semana" className="hover:text-amber-400 transition-colors underline-offset-4 hover:underline">
+              🎉 Fin de Semana
+            </Link>
+            <span>•</span>
             <Link href="/sobre-el-proyecto" className="hover:text-white transition-colors underline-offset-4 hover:underline">
               {t("footer.sobre")}
             </Link>

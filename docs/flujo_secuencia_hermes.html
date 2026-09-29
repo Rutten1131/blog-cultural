@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ DIAGRAMA DE SECUENCIA Y FLUJO MAESTRO — HERMES AUTÓNOMO v2.0</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: #0c1017;
+      --border: #1e2638;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --text: #f1f5f9;
+      --text-muted: #8492a6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    .header-banner {
+      background: linear-gradient(90deg, #1e1b4b 0%, #0f172a 100%);
+      border: 1px solid #312e81;
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #e0e7ff;
+    }
+
+    .header-tag {
+      background: #4338ca;
+      color: #fff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .diagram-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem 1rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      margin-bottom: 2.5rem;
+      overflow-x: auto;
+    }
+
+    /* Explanation cards under diagram */
+    .sections-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .sec-card {
+      background: #0f141f;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .sec-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #38bdf8;
+    }
+
+    .sec-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      font-size: 0.875rem;
+      color: #cbd5e1;
+    }
+
+    .sec-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      line-height: 1.5;
+    }
+
+    .sec-list li::before {
+      content: "▪";
+      color: var(--accent-purple);
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      color: #7dd3fc;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-banner">
+    <div class="header-title">
+      ⚡ PARTE MAESTRA: Flujo End-to-End del Agente Autónomo Hermes (Paso a Paso)
+    </div>
+    <div class="header-tag">HERMES v2.0 / LOJA</div>
+  </div>
+
+  <div class="diagram-container">
+    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Admin as 👤 César / Gestor (WhatsApp / Web)
+    participant Worker as 🤖 WhatsApp Worker (:8083)
+    participant Gemini as 👁️ Gemini Vision (OCR)
+    participant MariaDB as 🗄️ MariaDB (StackCP :44635)
+    participant Hermes as 🧠 Hermes Core (:8092)
+    participant Puente as 🌐 Puente Vercel (Meta Graph)
+    participant Web as 🌍 Next.js 16 (agendaculturalloja)
+    participant GSC as 📊 Search Console & Meta APIs
+
+    Note over Admin, Worker: FASE 1: CAPTACIÓN Y DETECCIÓN SILENCIOSA
+    Admin->>Worker: Envía Flyer o Enlace a Grupo WhatsApp (o /publicar)
+    Worker->>Worker: Polling cada 15 min: Detecta mensaje y extrae imagen Base64 / JSON Carrusel
+    Worker->>Gemini: Envía imagen para OCR estructurado (fecha, lugar, título, precio)
+    Gemini-->>Worker: Retorna JSON (Confianza IA, Entidades extraídas)
+
+    Note over Worker, MariaDB: FASE 2: DEDUPLICACIÓN Y AUTO-APROBACIÓN
+    Worker->>Worker: Calcula Hash SHA256(nombre + fecha + lugar) y filtra anti-basura
+    alt Confianza IA >= 50% y Fecha Futura
+        Worker->>MariaDB: INSERT Evento (estado: APROBADO, fecha 17:00Z si sin hora)
+        Worker->>MariaDB: INSERT PostSocial (estado: APROBADO, moderadoPor: SISTEMA_AUTO_PUBLISH)
+    else Datos Incompletos o Dudosos
+        Worker->>MariaDB: INSERT PostSocial (estado: PENDIENTE para revisión en /admin)
+    end
+
+    Note over Worker, Hermes: FASE 3: ESTRATEGIA COGNITIVA Y PLAYBOOK
+    Worker->>Hermes: Dispara Webhook de Evento Aprobado (POST /webhook/evento)
+    Hermes->>MariaDB: Lee SistemaConfig (¿PAUSA_EMERGENCIA == false?)
+    Hermes->>MariaDB: Lee HallazgoSemanal (Memoria Viva: qué copys ganaron la semana previa)
+    Hermes->>Hermes: Inyecta Playbook 2026: Ganchos &lt;120 car, Foco en Saves/Shares, Title SEO &lt;60 car
+    Hermes->>Hermes: Genera JSON Estratégico (Copy IG/FB + Guion Reel 15s + Title SEO)
+
+    Note over Hermes, Puente: FASE 4: CONTROL DE LÍMITES Y DESPACHO
+    Hermes->>MariaDB: Cuenta publicaciones del día en hora Loja (UTC-5)
+    alt Cupo &lt; 5 posts O (Es para MAÑANA y Cupo &lt;= 7)
+        Hermes->>Puente: POST /schedule (Payload con Copy optimizado + Imagen JPEG 4:5)
+        Puente->>Puente: Publica en Facebook e Instagram vía Meta Graph API
+        Puente-->>MariaDB: Registra PublicacionRedSocial (estado: PUBLICADO, postIdExterno)
+    else Límite alcanzado (&gt; 7) o Evento a &lt; 3 horas
+        Hermes-->>MariaDB: Marca como OMITIDO / REPROGRAMADO (Evita penalización por spam)
+    end
+
+    Note over Web, GSC: FASE 5: INDEXACIÓN Y BUCLE DE AUTO-APRENDIZAJE (LOOP)
+    Web->>GSC: sitemaps.submit API (Google indexa ficha con Schema.org Event)
+    loop Bucle Semanal de Aprendizaje (Cada Domingo 00:00)
+        Hermes->>Puente: GET /analytics (Descarga likes, alcance, compartidos y SAVES de Instagram)
+        Hermes->>GSC: Consulta impresiones y clics orgánicos de búsqueda local
+        Hermes->>Hermes: Calcula Engagement Score = (Saves*4) + (Shares*5) + Likes
+        Hermes->>MariaDB: Guarda HallazgoSemanal (Registra post ganador y directivas de mejora)
+        Hermes-->>Admin: Envía Reporte Ejecutivo resumido a César por WhatsApp
+    end
+    </div>
+  </div>
+
+  <!-- EXPLICACIÓN DETALLADA POR FASES -->
+  <div class="sections-grid">
+    <div class="sec-card">
+      <div class="sec-card-header">📥 1. Entrada y Filtrado Inflexible</div>
+      <ul class="sec-list">
+        <li><b>Extracción Cero-Ruido:</b> El worker jamás habla en el grupo de WhatsApp. Solo lee.</li>
+        <li><b>Visión OCR Gemini:</b> Si el flyer no tiene fecha, lugar o título legible, no se inventa nada.</li>
+        <li><b>Deduplicación por Hash:</b> Impide que el mismo evento se publique 2 veces aunque venga de distintos grupos.</li>
+      </ul>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-header">🧠 2. El Cerebro no empieza de Cero</div>
+      <ul class="sec-list">
+        <li><b>Playbook 2026 Precargado:</b> Sabe que los <i>Saves</i> y <i>Shares</i> multiplican el alcance por 5x.</li>
+        <li><b>Inyección de Memoria:</b> Consulta <code>hallazgos_semanales</code> antes de redactar cada post.</li>
+        <li><b>Triple Salida:</b> Copy Instagram + Copy Facebook + Guion de Video de 15s para César.</li>
+      </ul>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-header">🛡️ 3. Control de Redes y Límites</div>
+      <ul class="sec-list">
+        <li><b>Formato Estricto Meta:</b> Solo despacha <b>JPEG en proporción 4:5</b> (evita errores de Graph API).</li>
+        <li><b>Tope Duro de 7 Posts:</b> 5 habituales + 2 de urgencia si el evento es mañana. Jamás pasa de 7.</li>
+        <li><b>Botón de Pausa:</b> Si César manda <code>PAUSA</code>, se congela todo el despacho de inmediato.</li>
+      </ul>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-header">🔄 4. Bucle Semanal de Aprendizaje</div>
+      <ul class="sec-list">
+        <li><b>Medición a 24h y 7 días:</b> El puente de Vercel devuelve cuánta gente guardó el post.</li>
+        <li><b>Fórmula de Score:</b> <code>(Saves * 4) + (Shares * 5) + Likes</code> para premiar viralidad real.</li>
+        <li><b>Evolución Continua:</b> El post ganador retroalimenta los prompts del siguiente ciclo automáticamente.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      sequence: {
+        actorMargin: 50,
+        boxMargin: 10,
+        boxTextMargin: 5,
+        noteMargin: 10,
+        messageMargin: 35,
+        mirrorActors: false,
+        bottomMarginAdj: 10,
+        useMaxWidth: false
+      },
+      themeVariables: {
+        darkColor: '#0c1017',
+        primaryColor: '#1e1b4b',
+        primaryBorderColor: '#6366f1',
+        primaryTextColor: '#f8fafc',
+        lineColor: '#60a5fa',
+        textColor: '#e2e8f0',
+        signalColor: '#38bdf8',
+        signalTextColor: '#f8fafc'
+      }
+    });
+  </script>
+</body>
+</html>

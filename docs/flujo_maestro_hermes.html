@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arquitectura y Flujo Maestro — Hermes Autónomo (Agenda Cultural Loja)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: rgba(18, 22, 34, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-purple: #8b5cf6;
+      --accent-indigo: #6366f1;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --glow-purple: rgba(139, 92, 246, 0.25);
+      --glow-cyan: rgba(6, 182, 212, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.12) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(99, 102, 241, 0.05) 0px, transparent 60%);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      padding: 2.5rem 1.5rem 5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+      position: relative;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      color: #c4b5fd;
+      padding: 0.35rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.825rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent-emerald);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-emerald);
+    }
+
+    h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.75rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    /* PILLARS / METAS */
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3rem;
+    }
+
+    .pillar-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      backdrop-filter: blur(16px);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .pillar-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .pillar-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.35rem;
+      margin-bottom: 1rem;
+    }
+
+    .pillar-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    .pillar-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* SECTION TITLE */
+    .section-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 3.5rem 0 1.5rem;
+    }
+
+    .section-number {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-indigo));
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    /* FLOW DIAGRAM CONTAINER */
+    .flow-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      position: relative;
+    }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1.25rem;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .flow-step-aside {
+      padding: 1.75rem;
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+    }
+
+    .flow-step-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .flow-step-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .flow-step-content {
+      padding: 1.75rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .flow-step {
+        grid-template-columns: 1fr;
+      }
+      .flow-step-aside {
+        border-right: none;
+        border-bottom: 1px solid var(--card-border);
+      }
+      .flow-step-content {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card-block {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 0.75rem;
+      padding: 1.15rem;
+    }
+
+    .card-block-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .bullet-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .bullet-list li {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .bullet-list li::before {
+      content: "→";
+      color: var(--accent-purple);
+      font-weight: bold;
+    }
+
+    /* CODE PILL */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      color: #38bdf8;
+    }
+
+    /* STEP COLOR ACCENTS */
+    .step-1 .flow-step-aside { background: linear-gradient(180deg, rgba(99, 102, 241, 0.15) 0%, transparent 100%); }
+    .step-1 .flow-step-tag { color: #818cf8; }
+
+    .step-2 .flow-step-aside { background: linear-gradient(180deg, rgba(6, 182, 212, 0.15) 0%, transparent 100%); }
+    .step-2 .flow-step-tag { color: #22d3ee; }
+
+    .step-3 .flow-step-aside { background: linear-gradient(180deg, rgba(139, 92, 246, 0.2) 0%, transparent 100%); }
+    .step-3 .flow-step-tag { color: #c084fc; }
+
+    .step-4 .flow-step-aside { background: linear-gradient(180deg, rgba(16, 185, 129, 0.15) 0%, transparent 100%); }
+    .step-4 .flow-step-tag { color: #34d399; }
+
+    .step-5 .flow-step-aside { background: linear-gradient(180deg, rgba(245, 158, 11, 0.15) 0%, transparent 100%); }
+    .step-5 .flow-step-tag { color: #fbbf24; }
+
+    /* CONNECTOR ARROWS */
+    .flow-connector {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 20px;
+      position: relative;
+    }
+
+    .flow-connector::after {
+      content: "↓";
+      font-size: 1.5rem;
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* HERMES MODULAR MATRIX */
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .module-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.35rem;
+      backdrop-filter: blur(12px);
+    }
+
+    .module-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .module-file {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .module-badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+    }
+
+    .module-desc {
+      font-size: 0.875rem;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    /* SUMMARY TABLE */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .status-live { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .status-built { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+    .status-plan { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <header>
+      <div class="badge">
+        <span class="badge-dot"></span>
+        Arquitectura de Hermes Autónomo v2.0
+      </div>
+      <h1>Mapa Maestro: Cerebro, Brazos y Flujo de Crecimiento</h1>
+      <p class="subtitle">
+        Diseño integral de cómo captamos eventos en Loja, cómo Hermes aplica el Playbook de Meta/SEO y cómo aprende cada semana sin arrancar de cero.
+      </p>
+    </header>
+
+    <!-- 3 GRANDES PILARES -->
+    <div class="pillars-grid">
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">⚡</div>
+        <div class="pillar-title">1. Captación & Filtrado</div>
+        <div class="pillar-desc">WhatsApp Worker extrae flyers, visión OCR Gemini valida fecha y lugar, Bunny CDN guarda imágenes permanentes.</div>
+      </div>
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background: rgba(139, 92, 246, 0.15); color: #c084fc;">🧠</div>
+        <div class="pillar-title">2. El Cerebro (Hermes)</div>
+        <div class="pillar-desc">Aplica el Playbook 2026 (foco en Saves/Shares y Title SEO) inyectando la memoria de lo que funcionó la semana previa.</div>
+      </div>
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">📈</div>
+        <div class="pillar-title">3. Bucle de Aprendizaje</div>
+        <div class="pillar-desc">Puente de Vercel mide likes, guardados y alcance a las 24h y 7 días; Hermes compara y ajusta su estrategia solo.</div>
+      </div>
+    </div>
+
+    <!-- EL FLUJO DE PUNTA A PUNTA -->
+    <div class="section-title-wrap">
+      <div class="section-number">1</div>
+      <div class="section-title">Flujo Completo de un Evento (Paso a Paso)</div>
+    </div>
+
+    <div class="flow-wrapper">
+
+      <!-- PASO 1 -->
+      <div class="flow-step step-1">
+        <div class="flow-step-aside">
+          <div class="flow-step-tag">Fase 01</div>
+          <div class="flow-step-name">Detección Silenciosa</div>
+        </div>
+        <div class="flow-step-content">
+          <div class="card-block">
+            <div class="card-block-title">Herramientas & Entradas</div>
+            <ul class="bullet-list">
+              <li><code>evolution-api</code> (WhatsApp Multi-Device)</li>
+              <li>Polling cada 15 min en grupos de Loja</li>
+              <li>Formulario público <code>/publicar</code> en la web</li>
+            </ul>
+          </div>
+          <div class="card-block">
+            <div class="card-block-title">Qué Ocurre Aquí</div>
+            <ul class="bullet-list">
+              <li>El worker detecta mensajes con enlaces o afiches.</li>
+              <li>Puppeteer extrae carruseles de Instagram (JSON).</li>
+              <li>Descarga la imagen del afiche en Base64.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-connector"></div>
+
+      <!-- PASO 2 -->
+      <div class="flow-step step-2">
+        <div class="flow-step-aside">
+          <div class="flow-step-tag">Fase 02</div>
+          <div class="flow-step-name">Visión & Deduplicación</div>
+        </div>
+        <div class="flow-step-content">
+          <div class="card-block">
+            <div class="card-block-title">Herramientas & CDN</div>
+            <ul class="bullet-list">
+              <li><code>Google Gemini Vision</code> (OCR Inteligente)</li>
+              <li><code>Bunny CDN</code> (Storage permanente)</li>
+              <li><code>limpiarLugar()</code> (Filtro anti-basura)</li>
+            </ul>
+          </div>
+          <div class="card-block">
+            <div class="card-block-title">Validaciones Obligatorias</div>
+            <ul class="bullet-list">
+              <li>Extrae Título, Fecha (futura), Lugar real y Precio.</li>
+              <li>Genera hash <code>SHA256(nombre+fecha+lugar)</code> para evitar duplicar.</li>
+              <li>Si la confianza es <code>≥ 50%</code>, auto-aprueba en MariaDB.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-connector"></div>
+
+      <!-- PASO 3 -->
+      <div class="flow-step step-3">
+        <div class="flow-step-aside">
+          <div class="flow-step-tag">Fase 03</div>
+          <div class="flow-step-name">Estrategia Hermes (Cerebro)</div>
+        </div>
+        <div class="flow-step-content">
+          <div class="card-block">
+            <div class="card-block-title">Playbook Precargado + Memoria</div>
+            <ul class="bullet-list">
+              <li><code>playbook/meta_rules.py</code> (Ganchos y formato 4:5)</li>
+              <li><code>playbook/local_seo_rules.py</code> (Titles & Slugs)</li>
+              <li><code>memory/learning_store.py</code> (Hallazgos previos)</li>
+            </ul>
+          </div>
+          <div class="card-block">
+            <div class="card-block-title">Generación Cognitiva</div>
+            <ul class="bullet-list">
+              <li>Genera copy en 3 actos enfocado en <b>GUARDAR (Save)</b>.</li>
+              <li>Title SEO & Meta Description para Google Search.</li>
+              <li>Guion Express de Reel de 15 segundos para César.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-connector"></div>
+
+      <!-- PASO 4 -->
+      <div class="flow-step step-4">
+        <div class="flow-step-aside">
+          <div class="flow-step-tag">Fase 04</div>
+          <div class="flow-step-name">Despacho & Publicación</div>
+        </div>
+        <div class="flow-step-content">
+          <div class="card-block">
+            <div class="card-block-title">Reglas de Control & Límites</div>
+            <ul class="bullet-list">
+              <li>Límite base: <b>5 eventos/día</b></li>
+              <li>Regla Urgente: <b>Hasta 7/día</b> si el evento es mañana</li>
+              <li>Caducidad: No publicar si faltan menos de 3h</li>
+            </ul>
+          </div>
+          <div class="card-block">
+            <div class="card-block-title">Destinos Finales</div>
+            <ul class="bullet-list">
+              <li><b>Web Oficial:</b> Ficha con Schema.org <code>Event</code>.</li>
+              <li><b>Puente Vercel:</b> Publica en Facebook e Instagram vía Meta Graph API en formato <b>JPEG 4:5</b>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-connector"></div>
+
+      <!-- PASO 5 -->
+      <div class="flow-step step-5">
+        <div class="flow-step-aside">
+          <div class="flow-step-tag">Fase 05</div>
+          <div class="flow-step-name">Medición & Auto-Mejora</div>
+        </div>
+        <div class="flow-step-content">
+          <div class="card-block">
+            <div class="card-block-title">Métricas Monitoreadas</div>
+            <ul class="bullet-list">
+              <li>Puente Vercel: Likes, Alcance, Shares y <b>Saves</b>.</li>
+              <li>Search Console API: Clics, Impresiones y CTR en Loja.</li>
+              <li>Tiempos: Lectura a las 24 horas y 7 días.</li>
+            </ul>
+          </div>
+          <div class="card-block">
+            <div class="card-block-title">Bucle Semanal (Weekly Loop)</div>
+            <ul class="bullet-list">
+              <li>Hermes compara qué copy tuvo más interacción.</li>
+              <li>Guarda en <code>hallazgos_semanales</code> qué funcionó.</li>
+              <li>El siguiente evento ya nace con ese aprendizaje inyectado.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CÓMO ESTÁ DIVIDIDO EL CEREBRO DE HERMES -->
+    <div class="section-title-wrap">
+      <div class="section-number">2</div>
+      <div class="section-title">Estructura Modular del Cerebro (Sin Monolitos)</div>
+    </div>
+
+    <div class="modules-grid">
+      <div class="module-item">
+        <div class="module-header">
+          <span class="module-file">playbook/meta_rules.py</span>
+          <span class="module-badge">Playbook</span>
+        </div>
+        <p class="module-desc">Contiene las reglas del algoritmo de Meta 2026: ganchos (hooks) que detienen el pulgar, llamadas a la acción para guardar y formato 4:5.</p>
+      </div>
+
+      <div class="module-item">
+        <div class="module-header">
+          <span class="module-file">playbook/local_seo_rules.py</span>
+          <span class="module-badge">Playbook</span>
+        </div>
+        <p class="module-desc">Generador de Title Tags &lt;60 caracteres, slugs semánticos y reglas para posicionar búsquedas como 'qué hacer en Loja'.</p>
+      </div>
+
+      <div class="module-item">
+        <div class="module-header">
+          <span class="module-file">memory/learning_store.py</span>
+          <span class="module-badge">Memoria</span>
+        </div>
+        <p class="module-desc">Gestiona la memoria acumulada. Si la BD es nueva, arranca con la <code>MEMORIA_SEMILLA</code> precargada; luego lee los hallazgos semanales.</p>
+      </div>
+
+      <div class="module-item">
+        <div class="module-header">
+          <span class="module-file">generation/copy_generator.py</span>
+          <span class="module-badge">Cognición</span>
+        </div>
+        <p class="module-desc">Combina los datos del evento con el Playbook y la Memoria para llamar a Gemini y devolver un JSON estructurado con copys, SEO y guion de Reel.</p>
+      </div>
+
+      <div class="module-item">
+        <div class="module-header">
+          <span class="module-file">analytics/redes_bridge_client.py</span>
+          <span class="module-badge">Brazos</span>
+        </div>
+        <p class="module-desc">Cliente HTTP hacia el puente de Vercel para descargar métricas reales de publicaciones (likes, alcance, comentarios y guardados).</p>
+      </div>
+
+      <div class="module-item">
+        <div class="module-header">
+          <span class="module-file">loop/weekly_optimizer.py</span>
+          <span class="module-badge">Aprendizaje</span>
+        </div>
+        <p class="module-desc">Calcula la fórmula de engagement: <code>(Saves * 4) + (Shares * 5) + Likes</code>. Determina el post ganador y actualiza las directivas.</p>
+      </div>
+    </div>
+
+    <!-- MATRIZ DE COMPONENTES Y ESTADO -->
+    <div class="section-title-wrap">
+      <div class="section-number">3</div>
+      <div class="section-title">Matriz de Herramientas y Estado de Integración</div>
+    </div>
+
+    <div class="card-block" style="padding: 0; overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Componente</th>
+            <th>Herramienta / Tecnología</th>
+            <th>Dónde Corre</th>
+            <th>Función Principal</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Captación Grupos</b></td>
+            <td>Evolution API + Puppeteer</td>
+            <td>VPS (Docker :8083)</td>
+            <td>Escucha WhatsApp y extrae afiches</td>
+            <td><span class="status-badge status-live">● En Producción</span></td>
+          </tr>
+          <tr>
+            <td><b>Visión OCR</b></td>
+            <td>Google Gemini 2.5 Flash</td>
+            <td>Cloud API (Google AI)</td>
+            <td>Lee afiches (fecha, lugar, precio, título)</td>
+            <td><span class="status-badge status-live">● En Producción</span></td>
+          </tr>
+          <tr>
+            <td><b>Almacenamiento CDN</b></td>
+            <td>Bunny CDN Storage</td>
+            <td>Cloud Global</td>
+            <td>Inmortaliza afiches (evita caída de Meta)</td>
+            <td><span class="status-badge status-live">● En Producción</span></td>
+          </tr>
+          <tr>
+            <td><b>Web & Cartelera</b></td>
+            <td>Next.js 16 + Tailwind 4</td>
+            <td>Vercel Edge</td>
+            <td>Cartelera provincial y Schema.org Event</td>
+            <td><span class="status-badge status-live">● En Producción</span></td>
+          </tr>
+          <tr>
+            <td><b>Puente Redes</b></td>
+            <td>Meta Graph API Scheduler</td>
+            <td>Vercel (redes-sociales)</td>
+            <td>Publica en FB/IG y custodia tokens</td>
+            <td><span class="status-badge status-live">● En Producción</span></td>
+          </tr>
+          <tr>
+            <td><b>Cerebro Hermes</b></td>
+            <td>hermes_core (Python Modular)</td>
+            <td>VPS (agenda-cultural-bot)</td>
+            <td>Playbook, generación y memoria viva</td>
+            <td><span class="status-badge status-built">● Módulos Listos</span></td>
+          </tr>
+          <tr>
+            <td><b>Bucle de Aprendizaje</b></td>
+            <td>Weekly Optimizer Cron</td>
+            <td>VPS + MariaDB StackCP</td>
+            <td>Auto-mejora semanal basada en métricas</td>
+            <td><span class="status-badge status-built">● Módulos Listos</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</body>
+</html>

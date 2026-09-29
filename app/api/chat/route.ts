@@ -161,22 +161,51 @@ function sinAcentos(texto: string): string {
 function extraerNombreUsuario(mensaje: string): string | null {
   const m = mensaje.trim();
   if (m.length > 50 || m.length < 2) return null;
-  // Patrones comunes: "Me llamo Juan", "Soy Carlos", "Mi nombre es Ana", o simplemente "Carlos" / "Juan Pérez"
-  const patrones = [
-    /(?:me\s+llamo|mi\s+nombre\s+es|soy)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20})?)/i,
-    /^a\s+nombre\s+de\s+([A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20})?)/i,
-    /^([A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20})?)$/,
+
+  // Lista de palabras comunes que NUNCA son nombres
+  const palabrasComunes = new Set([
+    "hola", "buenas", "buenos", "dias", "días", "tardes", "noches",
+    "gracias", "hotel", "hoteles", "restaurante", "restaurantes", "cafeteria", "cafetería",
+    "habitacion", "habitación", "habitaciones", "familiar", "matrimonial", "suite", "doble", "simple",
+    "precio", "precios", "cuanto", "cuánto", "costo", "tarifa", "valor", "nada", "ninguno", "ninguna",
+    "nadie", "ver", "donde", "dónde", "cuando", "cuándo", "bueno", "si", "sí", "no", "ok", "okay",
+    "porfavor", "por favor", "ayuda", "info", "informacion", "información", "menu", "menú", "carta",
+    "plato", "comida", "desayuno", "almuerzo", "cena", "reservar", "reserva", "whatsapp", "fotos",
+    "galeria", "ubicacion", "ubicación", "servicios", "estrellas"
+  ]);
+
+  // Patrón 1: "Me llamo Carlos", "Soy Maricela", "Mi nombre es Juan Pérez", "A nombre de Carlos"
+  const patronesPrefijo = [
+    /(?:me\s+llamo|mi\s+nombre\s+es|soy|nombre\s+es)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}){0,2})/i,
+    /^a\s+nombre\s+de\s+([A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}){0,2})/i,
   ];
-  for (const regex of patrones) {
+
+  for (const regex of patronesPrefijo) {
     const match = m.match(regex);
     if (match && match[1]) {
       const candidato = match[1].trim();
-      const descartar = new Set(["hola", "gracias", "hotel", "restaurante", "habitacion", "familiar", "matrimonial", "suite", "precio", "cuanto", "nada", "ninguno", "nadie", "ver", "donde", "cuando", "bueno", "buenas", "si", "no", "porfavor", "por favor"]);
-      if (!descartar.has(candidato.toLowerCase())) {
-        return candidato.charAt(0).toUpperCase() + candidato.slice(1);
+      const primeraPalabra = candidato.split(/\s+/)[0].toLowerCase();
+      if (!palabrasComunes.has(primeraPalabra)) {
+        return candidato
+          .split(/\s+/)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
       }
     }
   }
+
+  // Patrón 2: El usuario puso simplemente su nombre: "Maricela", "Carlos Gómez", etc.
+  // 1 a 3 palabras puras de letras
+  if (/^[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,20}){0,2}$/.test(m)) {
+    const primeraPalabra = m.split(/\s+/)[0].toLowerCase();
+    if (!palabrasComunes.has(primeraPalabra) && !palabrasComunes.has(m.toLowerCase())) {
+      return m
+        .split(/\s+/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(" ");
+    }
+  }
+
   return null;
 }
 
@@ -478,7 +507,12 @@ export async function POST(req: NextRequest) {
         const textoHandoff = `¡Perfecto! 🎉 Te conecto directamente con ${aliadoHandoff.nombre}. Solo haz clic en el botón de WhatsApp y ya tienen todos tus datos. ¡Que lo disfrutes mucho!`;
         if (sessionId) {
           prisma.chatMessage.create({
-            data: { sessionId, sender: "bot", contenido: textoHandoff },
+            data: {
+              sessionId,
+              sender: "bot",
+              contenido: textoHandoff,
+              aliadosIds: [aliadoHandoff.id],
+            },
           }).catch(() => {/* fail silently */});
         }
         return NextResponse.json({
@@ -993,21 +1027,13 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
              textoBot.includes("a nombre de") || textoBot.includes("tu nombre");
     })();
 
-    const esRespuestaNombre =
-      botPidioNombre &&
-      !nombreUsuarioSesion &&
-      lastUserMessage.length >= 2 &&
-      lastUserMessage.length <= 40 &&
-      !/hotel|restaurante|habitaci|precio|comer|eventos|reservar|whatsapp|si|sí|no|gracias|hola/i.test(lastUserMessage) &&
-      /^[A-Za-záéíóúñÁÉÍÓÚÑ\s'-]+$/.test(lastUserMessage.trim());
-
-    if (esRespuestaNombre && sessionId) {
-      const nombreDetectado = lastUserMessage.trim();
+    const nombreDetectadoEnVenta = !nombreUsuarioSesion ? extraerNombreUsuario(lastUserMessage) : null;
+    if (nombreDetectadoEnVenta && sessionId) {
       prisma.chatSession.update({
         where: { sessionId },
-        data: { nombreUsuario: nombreDetectado },
+        data: { nombreUsuario: nombreDetectadoEnVenta },
       }).catch(() => {/* fail silently */});
-      nombreUsuarioSesion = nombreDetectado;
+      nombreUsuarioSesion = nombreDetectadoEnVenta;
     }
 
     // Paso actual del flujo de venta (1..5)
@@ -1570,6 +1596,13 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
       respuestasRapidas,
       // WhatsApp Handoff: disponible en paso 4 y 5 del flujo de venta
       whatsappHandoff: whatsappHandoffVenta || null,
+      // Aliado disponible para abrir formulario de reserva directa
+      aliadoReserva: (esModoVenta && aliadoVenta && (pasoVenta === 4 || pasoVenta === 5)) ? {
+        id: aliadoVenta.id,
+        nombre: aliadoVenta.nombre,
+        tipo: aliadoVenta.tipo,
+        habitacionSugerida: habitacionMencionada?.nombre || null,
+      } : null,
     });
   } catch (error: any) {
     console.error("Error en /api/chat:", error);

@@ -202,8 +202,31 @@ export default async function ZonaPage({ params }: PageProps) {
           step={6}
         />
 
+        {/* Sección de contexto cultural y semántica SEO */}
+        <section className="mt-14 p-6 rounded-2xl bg-neutral-900/50 border border-neutral-800 text-sm text-neutral-300">
+          <h2 className="text-base font-bold text-white mb-2">
+            Vida cultural y actividades en {zonaInfo.nombre}, Loja
+          </h2>
+          <p className="leading-relaxed mb-3">
+            {zonaInfo.tipo === "URBANA"
+              ? `La parroquia urbana de ${zonaInfo.nombre} forma parte neurálgica del dinamismo cultural y artístico de la ciudad de Loja. Aquí convergen plazas públicas, espacios escénicos y centros comunitarios donde gestores y colectivos presentan constantemente obras teatrales, talleres formativos, recitales y exposiciones de arte.`
+              : `La parroquia rural de ${zonaInfo.nombre} destaca por su patrimonio vivo, fiestas patronales y tradiciones comunitarias en los alrededores del cantón Loja. Sus celebraciones y encuentros culturales invitan a lojanos y turistas a disfrutar de música tradicional, ferias gastronómicas y actividades al aire libre.`}
+          </p>
+          <div className="flex flex-wrap gap-4 text-xs font-semibold text-amber-500 pt-2 border-t border-neutral-800/80">
+            <Link href="/eventos" className="hover:underline">
+              ← Explorar toda la cartelera de Loja
+            </Link>
+            <Link href="/eventos/esta-semana" className="hover:underline">
+              📅 Qué hacer esta semana en Loja
+            </Link>
+            <Link href="/eventos/este-fin-de-semana" className="hover:underline">
+              🎉 Planes de este fin de semana
+            </Link>
+          </div>
+        </section>
+
         {/* Link de vuelta */}
-        <div className="mt-14 pt-8 border-t border-[var(--color-border)] text-center">
+        <div className="mt-10 text-center">
           <ZonaPageBackLinkClient />
         </div>
       </main>

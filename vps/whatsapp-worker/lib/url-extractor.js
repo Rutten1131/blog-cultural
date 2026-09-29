@@ -27,6 +27,8 @@ const {
 const crypto = require("crypto");
 const { descargarMedia, enviarTexto } = require("./evolution-client");
 const { programarPublicacionEnRedes } = require("./redes-sociales-worker");
+const { enriquecerEvento } = require("./hermes-enricher");
+const { forzarIndexacionGoogle, notificarIndexNow } = require("./google-indexer");
 
 // ─── Extracción de URLs desde texto ───────────────────────────────────────
 
@@ -1760,6 +1762,66 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
 
     const fotos = Array.isArray(post.multimedia) ? post.multimedia : [];
 
+    // ── HERMES: ENRIQUECIMIENTO SEO + COPY SOCIAL ──────────────────────────────
+    // Hermes mejora el slug, la descripción y genera el copy de redes basándose
+    // en los datos REALES del evento. No inventa nada. Si falla, usa fallback.
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://www.agendaculturalloja.com").replace(/\/$/, "");
+    const fechaStr = fecha.toLocaleDateString("es-EC", {
+      weekday: "long", day: "numeric", month: "long",
+      timeZone: "America/Guayaquil",
+    });
+    const horaStr = (post.horaDefinida === false)
+      ? "Por confirmar"
+      : fecha.toLocaleTimeString("es-EC", {
+          hour: "2-digit", minute: "2-digit", hour12: true,
+          timeZone: "America/Guayaquil",
+        });
+    const categoriaNombre = categorias.find((c) => c.id === categoriaId)?.nombre || "Cultura";
+
+    let slugFinal = slug;
+    let descFinal = descLimpia;
+    let hermesCopyRedes = null;
+
+    try {
+      const hermesData = await enriquecerEvento({
+        nombre,
+        lugar,
+        fechaIso,
+        fechaStr,
+        horaStr,
+        descripcion: descLimpia,
+        categoria: categoriaNombre,
+        appUrl,
+      });
+
+      // Solo aplicar el slug de Hermes si no existe ya en la BD
+      if (hermesData.slug && hermesData.slug !== slug) {
+        const slugHermesExiste = await prisma.evento.findUnique({ where: { slug: hermesData.slug } });
+        if (!slugHermesExiste) {
+          slugFinal = hermesData.slug;
+        }
+      }
+
+      // Usar la descripción SEO enriquecida si tiene contenido
+      if (hermesData.descripcion_seo && hermesData.descripcion_seo.length > descLimpia.length) {
+        descFinal = hermesData.descripcion_seo;
+      }
+
+      // Guardar el copy de redes para pasarlo al publicador de redes sociales
+      hermesCopyRedes = {
+        hook: hermesData.hook,
+        copy_instagram: hermesData.copy_instagram,
+        copy_facebook: hermesData.copy_facebook,
+        hashtags: hermesData.hashtags,
+        fuente: hermesData.fuente,
+      };
+
+      console.log(`[Hermes] ✨ Enriquecido (${hermesData.fuente}): slug="${slugFinal}" | desc=${descFinal.length} chars`);
+    } catch (hermesErr) {
+      console.warn("[Hermes] Error en enriquecimiento, usando datos originales:", hermesErr.message);
+    }
+    // ────────────────────────────────────────────────────────────────────────────
+
     // Generar token único para link de edición abierta
     const editToken = crypto.randomBytes(24).toString("hex");
     // El token expira al final del día del evento (o fechaFin si existe)
@@ -1769,21 +1831,22 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
     const nuevoEvento = await prisma.evento.create({
       data: {
         nombre,
-        slug,
+        slug: slugFinal,
         fecha,
         lugar,
-        descripcion: descLimpia,
+        descripcion: descFinal,
         imagenUrl: post.imagenUrl,
         multimedia: fotos.length > 1 ? fotos : undefined,
         nombreGestor: organizador,
         confianzaClasificacion: post.confianzaIA,
-        categoriaId,
-        zonaId,
+        categoria: categoriaId ? { connect: { id: categoriaId } } : undefined,
+        zona: zonaId ? { connect: { id: zonaId } } : undefined,
         estado: "APROBADO",
-        editToken,
-        editTokenExpiresAt: fechaExpiracion,
       },
     });
+
+    // Adjuntar el copy de Hermes al evento para que redes lo use
+    nuevoEvento._hermesCopy = hermesCopyRedes;
 
     await prisma.postSocial.update({
       where: { id: post.id },
@@ -1798,9 +1861,11 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
     console.log(`[AutoPublish] 🚀 EVENTO #${nuevoEvento.id} PUBLICADO DIRECTAMENTE: "${nombre}"`);
 
     // ── PROGRAMAR PUBLICACIÓN EN REDES SOCIALES ──
-    // Se ejecuta de forma asíncrona para no bloquear el flujo principal
+    // Pasa el copy generado por Hermes para que el worker de redes lo use
+    // en lugar del caption genérico. Si no hay copy de Hermes, el worker
+    // genera su propio caption estándar como siempre.
     try {
-      const resultadoRedes = await programarPublicacionEnRedes(nuevoEvento.id, prisma);
+      const resultadoRedes = await programarPublicacionEnRedes(nuevoEvento.id, prisma, nuevoEvento._hermesCopy);
       if (resultadoRedes.success) {
         console.log(`[AutoPublish] 📱 Publicación en redes sociales programada para evento #${nuevoEvento.id}`);
       } else {
@@ -1808,6 +1873,19 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
       }
     } catch (redesErr) {
       console.error("[AutoPublish] Error programando en redes sociales:", redesErr.message);
+    }
+
+    // ── INDEXACIÓN INMEDIATA EN GOOGLE (GSC) E INDEXNOW (BING / COPILOT) ──
+    try {
+      const urlEventoPublicado = `${appUrl}/eventos/${slugFinal}`;
+      forzarIndexacionGoogle(urlEventoPublicado).catch((err) =>
+        console.warn("[AutoPublish] Error en indexación Google:", err.message)
+      );
+      notificarIndexNow(urlEventoPublicado).catch((err) =>
+        console.warn("[AutoPublish] Error en indexación IndexNow:", err.message)
+      );
+    } catch (gErr) {
+      console.warn("[AutoPublish] Omitido ping de indexación:", gErr.message);
     }
 
     // ── NOTIFICACIÓN EXCLUSIVA A CÉSAR (593963410409) ──
@@ -1827,9 +1905,8 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
       }
 
       const numeroCesar = "593963410409"; // FIJO: César exclusivamente. Nadie más.
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://www.agendaculturalloja.com").replace(/\/$/, "");
       const linkEdicion = `${appUrl}/editar/${editToken}`;
-      const linkPublicado = `${appUrl}/eventos/${slug}`;
+      const linkPublicado = `${appUrl}/eventos/${slugFinal}`;
       const fechaCorta = fechaIso;
       const origenUrl = post.urlOriginal || "Publicación WhatsApp / Afiche";
 

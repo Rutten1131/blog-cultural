@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧠 BUCLE DE APRENDIZAJE Y AUTO-MEJORA CONTINUA — HERMES AGENT</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: #0c1017;
+      --border: #1e2638;
+      --accent-purple: #8b5cf6;
+      --accent-indigo: #6366f1;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text: #f1f5f9;
+      --text-muted: #8492a6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    .header-banner {
+      background: linear-gradient(90deg, #1e1b4b 0%, #0f172a 100%);
+      border: 1px solid #312e81;
+      border-radius: 8px;
+      padding: 1.25rem 1.75rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #e0e7ff;
+    }
+
+    .header-tag {
+      background: #7c3aed;
+      color: #fff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .diagram-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem 1rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      margin-bottom: 2.5rem;
+      overflow-x: auto;
+    }
+
+    /* Explanation cards under diagram */
+    .sections-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .sec-card {
+      background: #0f141f;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .sec-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #a78bfa;
+    }
+
+    .sec-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      font-size: 0.875rem;
+      color: #cbd5e1;
+    }
+
+    .sec-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      line-height: 1.5;
+    }
+
+    .sec-list li::before {
+      content: "▪";
+      color: var(--accent-cyan);
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      color: #7dd3fc;
+    }
+
+    .formula-box {
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px dashed rgba(139, 92, 246, 0.35);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #c4b5fd;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-banner">
+    <div class="header-title">
+      🧠 BUCLE INTERNO: Cómo Hermes Recuerda, Mide, Experimenta y se Auto-Mejora
+    </div>
+    <div class="header-tag">LEARNING LOOP & MEMORY</div>
+  </div>
+
+  <div class="diagram-container">
+    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Playbook as 📚 Playbook 2026 (Semilla)
+    participant Memory as 🗄️ Memoria Viva (MariaDB)
+    participant Core as 🧠 Hermes Core (FastAPI :8092)
+    participant LLM as 🤖 Gemini LLM (Generador & Crítico)
+    participant Puente as 🌐 Puente Vercel (Meta Insights)
+    participant GSC as 📊 Search Console API (Google)
+    participant Admin as 👤 César (WhatsApp)
+
+    Note over Playbook, Memory: CICLO 0: ARRANQUE CON INTELIGENCIA PRECARGADA
+    Core->>Playbook: Carga reglas base de Meta (Saves/Shares) y SEO Local
+    Core->>Memory: Consulta HallazgoSemanal (Últimos aprendizajes guardados)
+    alt Es la primera vez que corre
+        Memory-->>Core: Retorna MEMORIA_SEMILLA (Directivas base probadas)
+    else Ya existen semanas previas
+        Memory-->>Core: Retorna Directivas aprendidas ("Posts con pregunta ganan +40% saves")
+    end
+
+    Note over Core, LLM: CICLO 1: GENERACIÓN CON HIPÓTESIS Y MEMORIA ACTIVA
+    Core->>Core: Inyecta en el prompt: Datos Evento + Playbook + Aprendizajes Previos
+    Core->>LLM: Solicita Estrategia (Copy con gancho experimental + Title SEO + Guion 15s)
+    LLM-->>Core: Devuelve JSON estructurado con la hipótesis editorial
+    Core->>Memory: Guarda el post y registra la hipótesis (ej: "Hook tipo curiosidad")
+
+    Note over Core, Puente: CICLO 2: MONITOREO TEMPORAL (24 HORAS & 7 DÍAS)
+    loop Cada 24 Horas y 7 Días tras Publicar
+        Core->>Puente: Consulta métricas reales (Likes, Shares, Alcance y SAVES de IG)
+        Puente-->>Core: Retorna datos reales de Meta Graph Insights
+        Core->>GSC: Consulta clics orgánicos e impresiones en Google para la ficha del evento
+        GSC-->>Core: Retorna CTR y palabras clave que trajeron visitantes
+        Core->>Memory: INSERT/UPDATE MetricaPublicacion (alcance, likes, saves, shares, clics)
+    end
+
+    Note over Core, Memory: CICLO 3: BUCLE DOMINICAL DE AUTO-EVALUACIÓN (WEEKLY LOOP)
+    Note right of Core: Cada Domingo 00:00 (Cron Automático)
+    Core->>Memory: SELECT posts publicados en los últimos 7 días con sus métricas
+    Core->>Core: Calcula Engagement Score = (Saves * 4) + (Shares * 5) + Likes
+    Core->>Core: Identifica al "Post Ganador" y al "Post con Peor Rendimiento"
+    
+    Core->>LLM: "¿Por qué el Post A tuvo 3x más guardados que el Post B? ¿Qué patrón funcionó?"
+    LLM-->>Core: Analiza diferencias de texto, hora y formato. Concluye aprendizajes.
+
+    Note over Core, Memory: CICLO 4: EVOLUCIÓN DE LA MEMORIA (AUTO-MEJORA)
+    Core->>Memory: INSERT HallazgoSemanal (Guarda conclusiones y NUEVAS directivas para los prompts)
+    Note over Memory: A partir de este momento, TODOS los nuevos posts usarán este nuevo aprendizaje
+    Core-->>Admin: Envía Resumen Ejecutivo por WhatsApp ("Esta semana funcionaron los posts de música con llamados directos...")
+    </div>
+  </div>
+
+  <div class="formula-box">
+    <b>FÓRMULA MATEMÁTICA DE EVALUACIÓN DE HERMES (Score de Viralidad Orgánica):</b><br>
+    Score = (Saves_Instagram × 4) + (Shares_Compartidos × 5) + (Comentarios × 3) + (Likes × 1) + (Clics_Web × 2)
+  </div>
+
+  <!-- EXPLICACIÓN TÉCNICA DE LOS 4 PILARES DEL APRENDIZAJE -->
+  <div class="sections-grid">
+    <div class="sec-card">
+      <div class="sec-card-header">1. 🗄️ Cómo sabe lo que ya hizo (Trazabilidad)</div>
+      <ul class="sec-list">
+        <li><b>Tabla <code>publicaciones_redes_sociales</code>:</b> Registra cada post con su fecha, formato (Feed, Carrusel, Reel) y el ID externo en Meta.</li>
+        <li><b>Tabla <code>metricas_publicacion</code>:</b> Guarda la evolución del post en dos fotos fijas: a las <b>24 horas</b> (reacción inicial) y a los <b>7 días</b> (rendimiento acumulado).</li>
+        <li><b>Cero Amnesia:</b> Hermes jamás se olvida de un post porque todo queda indexado con su copy original y sus números reales.</li>
+      </ul>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-header">2. 📊 Cómo sabe cómo le va (Feedback Real)</div>
+      <ul class="sec-list">
+        <li><b>Meta Graph API Insights:</b> Lee mediante <code>instagram_manage_insights</code> la métrica que los humanos no ven en pantalla: <b>cuántas personas guardaron (saved) el post</b>.</li>
+        <li><b>Google Search Console API:</b> Mide si la ficha del evento en la web empezó a recibir clics de gente buscando en Google en Ecuador.</li>
+        <li><b>Detección de Caídas:</b> Si un post tiene alcance por debajo del promedio, se etiqueta como "Bajo Rendimiento" para investigar por qué falló.</li>
+      </ul>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-header">3. 🧪 Cómo experimenta y analiza (El Crítico)</div>
+      <ul class="sec-list">
+        <li><b>Cron Dominical (Weekly Optimizer):</b> Cada domingo a las 00:00, Hermes ejecuta una autopsia de la semana sin intervención humana.</li>
+        <li><b>Comparador A/B de Copys:</b> Pone a competir los mejores posts contra los peores. ¿Ganaron las preguntas abiertas? ¿Ganaron los llamados urgentes?</li>
+        <li><b>Inferencia Causal con Gemini:</b> El modelo reflexiona: <i>"El evento de teatro tuvo 45 guardados porque el gancho mencionó 'Solo por una noche en Loja'"</i>.</li>
+      </ul>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-header">4. 🚀 Cómo se auto-mejora (La Mutación de Prompts)</div>
+      <ul class="sec-list">
+        <li><b>Tabla <code>hallazgos_semanales</code>:</b> Guarda el campo <code>prompt_ajustes</code>.</li>
+        <li><b>Inyección Dinámica:</b> En la semana siguiente, cuando el worker le pase un nuevo evento, Hermes <b>inyecta esa directiva ganadora en su System Prompt</b>.</li>
+        <li><b>Evolución Acumulativa:</b> No arranca de cero. Semana a semana va descartando lo que no funciona en Loja y afinando lo que sí llena teatros y trae clics.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      sequence: {
+        actorMargin: 45,
+        boxMargin: 10,
+        boxTextMargin: 5,
+        noteMargin: 10,
+        messageMargin: 35,
+        mirrorActors: false,
+        bottomMarginAdj: 10,
+        useMaxWidth: false
+      },
+      themeVariables: {
+        darkColor: '#0c1017',
+        primaryColor: '#1e1b4b',
+        primaryBorderColor: '#7c3aed',
+        primaryTextColor: '#f8fafc',
+        lineColor: '#818cf8',
+        textColor: '#e2e8f0',
+        signalColor: '#22d3ee',
+        signalTextColor: '#f8fafc'
+      }
+    });
+  </script>
+</body>
+</html>

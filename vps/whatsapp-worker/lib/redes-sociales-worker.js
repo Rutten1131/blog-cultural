@@ -185,17 +185,26 @@ async function verificarLimiteDiario(prisma) {
   const finDia = new Date();
   finDia.setHours(23, 59, 59, 999);
 
-  const count = await prisma.publicacionRedSocial.count({
-    where: {
-      createdAt: {
-        gte: inicioDia,
-        lte: finDia,
-      },
-      estado: {
-        in: ['PENDIENTE', 'PROGRAMADO', 'PUBLICADO'],
-      },
-    },
-  });
+  let count = 0;
+  try {
+    if (prisma.publicacionRedSocial) {
+      count = await prisma.publicacionRedSocial.count({
+        where: {
+          createdAt: { gte: inicioDia, lte: finDia },
+          estado: { in: ['PENDIENTE', 'PROGRAMADO', 'PUBLICADO'] },
+        },
+      });
+    } else {
+      const rows = await prisma.$queryRaw`
+        SELECT COUNT(*) as total FROM publicaciones_redes_sociales 
+        WHERE created_at >= ${inicioDia} AND created_at <= ${finDia} 
+        AND estado IN ('PENDIENTE', 'PROGRAMADO', 'PUBLICADO')
+      `;
+      count = Number(rows?.[0]?.total || 0);
+    }
+  } catch (err) {
+    console.warn("[RedesSociales] Advertencia consultando límite:", err.message);
+  }
 
   return {
     count,
@@ -213,10 +222,20 @@ async function verificarLimiteDiario(prisma) {
  * @param {boolean} opciones.forzar - Forzar aunque se haya alcanzado el límite diario
  * @returns {Promise<Object>} Resultado de la operación
  */
-async function programarPublicacionEnRedes(eventoId, prisma, opciones = {}) {
-  const { forzar = false } = opciones;
+async function programarPublicacionEnRedes(eventoId, prisma, hermesCopy = null, opciones = {}) {
+  const forzar = Boolean(opciones && opciones.forzar);
 
   try {
+    // ── MODO SEGURO: VERIFICAR PAUSA DE REDES SOCIALES ──
+    const redesPausadas = process.env.REDES_PAUSADAS_PRUEBA === "true" || process.env.PAUSA_EMERGENCIA === "true";
+    if (redesPausadas && !forzar) {
+      console.log(`[RedesSociales] 🛑 MODO SEGURO ACTIVO (REDES_PAUSADAS_PRUEBA=true). Publicación en redes pausada para evento #${eventoId}`);
+      return {
+        success: false,
+        motivo: "Publicaciones en redes en pausa para pruebas controladas 1 a 1",
+      };
+    }
+
     // Verificar límite diario (excepto si se fuerza)
     if (!forzar) {
       const limite = await verificarLimiteDiario(prisma);
@@ -250,10 +269,20 @@ async function programarPublicacionEnRedes(eventoId, prisma, opciones = {}) {
       };
     }
 
-    // Verificar si ya fue programado
-    const existente = await prisma.publicacionRedSocial.findUnique({
-      where: { eventoId },
-    });
+    // Verificar si ya fue programado (seguro con queryRaw si el modelo no está en prisma client)
+    let existente = null;
+    try {
+      if (prisma.publicacionRedSocial) {
+        existente = await prisma.publicacionRedSocial.findFirst({ where: { eventoId } });
+      } else {
+        const rows = await prisma.$queryRaw`
+          SELECT id, estado FROM publicaciones_redes_sociales WHERE evento_id = ${eventoId} LIMIT 1
+        `;
+        if (rows && rows.length > 0) existente = rows[0];
+      }
+    } catch (e) {
+      console.warn("[RedesSociales] Advertencia verificando existente:", e.message);
+    }
 
     if (existente) {
       console.log(`[RedesSociales] ℹ️ Evento #${eventoId} ya programado en redes (estado: ${existente.estado})`);
@@ -265,17 +294,35 @@ async function programarPublicacionEnRedes(eventoId, prisma, opciones = {}) {
     }
 
     // Consultar horarios de publicaciones ya programadas para hoy/mañana para no solapar
-    const publicacionesRecientes = await prisma.publicacionRedSocial.findMany({
-      where: {
-        estado: { in: ["PENDIENTE", "PROGRAMADO"] },
-      },
-      select: { programadoAt: true },
-      take: 20,
-    });
-    const fechasOcupadas = publicacionesRecientes.map((p) => p.programadoAt);
+    let fechasOcupadas = [];
+    try {
+      if (prisma.publicacionRedSocial) {
+        const pubs = await prisma.publicacionRedSocial.findMany({
+          where: { estado: { in: ["PENDIENTE", "PROGRAMADO"] } },
+          select: { programadoAt: true },
+          take: 20,
+        });
+        fechasOcupadas = pubs.map((p) => p.programadoAt);
+      } else {
+        const rows = await prisma.$queryRaw`
+          SELECT programado_at as programadoAt FROM publicaciones_redes_sociales 
+          WHERE estado IN ('PENDIENTE', 'PROGRAMADO') LIMIT 20
+        `;
+        fechasOcupadas = (rows || []).map((r) => r.programadoAt);
+      }
+    } catch (e) {
+      console.warn("[RedesSociales] Advertencia consultando fechas ocupadas:", e.message);
+    }
 
-    // Construir caption
-    const caption = construirCaptionRedes(evento);
+    // Construir caption: si Hermes generó un copy optimizado, usarlo.
+    // Si no, usar el caption estándar basado en los datos del evento.
+    let caption;
+    if (hermesCopy && hermesCopy.copy_instagram) {
+      caption = hermesCopy.copy_instagram;
+      console.log(`[RedesSociales] 🧠 Usando copy de Hermes (${hermesCopy.fuente || 'hermes'}) para evento #${eventoId}`);
+    } else {
+      caption = construirCaptionRedes(evento);
+    }
     const scheduledAt = calcularFechaProgramadaHumana(evento.fecha, fechasOcupadas);
 
     // Preparar multimedia
@@ -377,20 +424,33 @@ async function programarPublicacionEnRedes(eventoId, prisma, opciones = {}) {
     console.log(`[RedesSociales] ✅ Publicación programada con éxito para evento #${evento.id}`);
 
     // Registrar éxito en BD
-    const registro = await prisma.publicacionRedSocial.create({
-      data: {
-        eventoId,
-        plataformas: JSON.stringify(plataformas),
-        tipo: tipoPublicacion,
-        programadoAt: new Date(scheduledAt),
-        estado: "PROGRAMADO",
-        respuestaApi: respuestaJson,
-      },
-    });
+    let registroId = null;
+    try {
+      if (prisma.publicacionRedSocial) {
+        const registro = await prisma.publicacionRedSocial.create({
+          data: {
+            eventoId,
+            plataformas: JSON.stringify(plataformas),
+            tipo: tipoPublicacion,
+            programadoAt: new Date(scheduledAt),
+            estado: "PROGRAMADO",
+            respuestaApi: respuestaJson,
+          },
+        });
+        registroId = registro.id;
+      } else {
+        await prisma.$executeRaw`
+          INSERT INTO publicaciones_redes_sociales (evento_id, plataforma, tipo, programado_at, estado, respuestaApi, created_at, updated_at)
+          VALUES (${eventoId}, ${plataformas[0] || 'INSTAGRAM'}, ${tipoPublicacion}, ${new Date(scheduledAt)}, 'PROGRAMADO', ${JSON.stringify(respuestaJson)}, NOW(), NOW())
+        `;
+      }
+    } catch (dbSuccessErr) {
+      console.warn("[RedesSociales] Advertencia guardando registro exitoso:", dbSuccessErr.message);
+    }
 
     return {
       success: true,
-      detalles: { ...respuestaJson, registroId: registro.id },
+      detalles: { ...respuestaJson, registroId },
     };
 
   } catch (error) {
@@ -398,16 +458,18 @@ async function programarPublicacionEnRedes(eventoId, prisma, opciones = {}) {
     
     // Intentar registrar el error en BD
     try {
-      await prisma.publicacionRedSocial.create({
-        data: {
-          eventoId,
-          plataformas: JSON.stringify(["FACEBOOK", "INSTAGRAM"]),
-          tipo: "FEED_POST",
-          programadoAt: new Date(),
-          estado: "FALLIDO",
-          error: error?.message || "Error de red al conectar con el webhook de redes sociales",
-        },
-      });
+      if (prisma.publicacionRedSocial) {
+        await prisma.publicacionRedSocial.create({
+          data: {
+            eventoId,
+            plataformas: JSON.stringify(["FACEBOOK", "INSTAGRAM"]),
+            tipo: "FEED_POST",
+            programadoAt: new Date(),
+            estado: "FALLIDO",
+            error: error?.message || "Error de red al conectar con el webhook de redes sociales",
+          },
+        });
+      }
     } catch (dbErr) {
       console.error("[RedesSociales] Error guardando registro de fallo:", dbErr.message);
     }

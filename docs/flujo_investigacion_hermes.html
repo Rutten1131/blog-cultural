@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ INVESTIGACIÓN DE MERCADO Y AUTO-MEJORA CONTINUA — HERMES v2.0</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: #0c1017;
+      --border: #1e2638;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --text: #f1f5f9;
+      --text-muted: #8492a6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    .header-banner {
+      background: linear-gradient(90deg, #1e1b4b 0%, #0f172a 100%);
+      border: 1px solid #312e81;
+      border-radius: 8px;
+      padding: 1.25rem 1.75rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #e0e7ff;
+    }
+
+    .header-tag {
+      background: #0284c7;
+      color: #fff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .diagram-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem 1rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      margin-bottom: 2.5rem;
+      overflow-x: auto;
+    }
+
+    .sections-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .sec-card {
+      background: #0f141f;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+    }
+
+    .sec-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #38bdf8;
+    }
+
+    .sec-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      font-size: 0.875rem;
+      color: #cbd5e1;
+    }
+
+    .sec-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      line-height: 1.5;
+    }
+
+    .sec-list li::before {
+      content: "▪";
+      color: var(--accent-cyan);
+      font-size: 1.1rem;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      color: #7dd3fc;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-banner">
+    <div class="header-title">
+      📡 INVESTIGACIÓN CONTINUA: Cómo Hermes Detecta Tendencias, Espía Competidores y se Auto-Mejora
+    </div>
+    <div class="header-tag">RESEARCH & AUTO-EVOLUTION</div>
+  </div>
+
+  <div class="diagram-container">
+    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Core as 🧠 Hermes Core (VPS :8092)
+    participant Radar as 📡 Radar de Tendencias (Google Autocomplete)
+    participant MetaAPI as 🔍 Meta Business Discovery (Competidores Loja)
+    participant GSC as 📊 Google Search Console (Intenciones de Búsqueda)
+    participant LLM as 🤖 Gemini LLM (Analista de Inteligencia)
+    participant Memory as 🗄️ Memoria Viva (MariaDB)
+    participant Produccion as 🚀 Próximos Posts & Páginas Web
+
+    Note over Core, GSC: PASO 1: INVESTIGACIÓN ACTIVA DEL MERCADO (FUERA DE CASA)
+    Core->>Radar: ¿Qué busca activamente la gente en Loja hoy? (Google Suggest API)
+    Radar-->>Core: "conciertos en loja este fin de semana", "teatro benjamín carrión", "fiestas loja"
+    Core->>MetaAPI: Escanea cuentas de referencia (Municipio, Casa de la Cultura, Teatros)
+    MetaAPI-->>Core: Retorna qué afiches y textos tuvieron más comentarios y engagement esta semana
+    Core->>GSC: Consulta queries en crecimiento con alto CTR y páginas con brechas de contenido
+
+    Note over Core, LLM: PASO 2: CRUCE DE DATOS Y RAZONAMIENTO ESTRATÉGICO
+    Core->>LLM: Cruza: (Nuestras Métricas) + (Tendencias Google) + (Competencia)
+    Note over LLM: Pregunta de Inteligencia:<br/>1. ¿Qué temas están explotando en Loja que no hemos cubierto?<br/>2. ¿Qué ganchos o formatos le funcionaron a otros que podemos mejorar?<br/>3. ¿Qué palabras exactas debemos meter en los copys para posicionar?
+    LLM-->>Core: Genera "Directiva de Mutación Semanal" (Nuevos Hooks, Horas Óptimas y Palabras Clave)
+
+    Note over Core, Memory: PASO 3: AUTO-MEJORA EN BASE DE DATOS
+    Core->>Memory: UPDATE hallazgos_semanales (Registra las nuevas directivas aprendidas)
+    Core->>Memory: Inserta palabras clave calientes para alimentar páginas temáticas (SEO Evergreen)
+
+    Note over Core, Produccion: PASO 4: APLICACIÓN INMEDIATA EN LA PRÁCTICA
+    Produccion->>Core: Entra un nuevo evento cultural
+    Core->>Memory: Carga la directiva recién actualizada
+    Core->>Produccion: Devuelve copy optimizado con las tendencias reales de Loja y el llamado a guardar
+    </div>
+  </div>
+
+  <!-- EXPLICACIÓN DE LAS 3 FUENTES DE INTELIGENCIA EXTERNA -->
+  <div class="sections-grid">
+    <div class="sec-card">
+      <div class="sec-card-header">1. 📡 Google Suggest & Trends (Demanda Real)</div>
+      <ul class="sec-list">
+        <li><b>Qué hace:</b> Consulta el autocompletado en tiempo real de Google Ecuador para saber qué escribe la gente en el buscador cuando piensa en eventos.</li>
+        <li><b>Para qué sirve:</b> Si la gente empieza a buscar <i>"feria artesanal Loja"</i>, Hermes lo detecta antes que nadie y mete esa frase exacta en los títulos web y en la primera línea de Instagram.</li>
+      </ul>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-header">2. 🕵️ Benchmarking de Competidores (Meta Graph)</div>
+      <ul class="sec-list">
+        <li><b>Qué hace:</b> Mediante la API oficial <code>Business Discovery</code> de Instagram, Hermes lee el engagement de cuentas culturales de Loja (Municipio, Casa de la Cultura, Teatros).</li>
+        <li><b>Para qué sirve:</b> Si un competidor sacó un post con video que tuvo 5 veces más comentarios, Hermes analiza por qué funcionó y adapta esa táctica a nuestro guion express de 15 segundos.</li>
+      </ul>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-header">3. 🔄 Auto-Mejora Aplicada (No se queda en papel)</div>
+      <ul class="sec-list">
+        <li><b>Mutación Automática de Prompts:</b> Las conclusiones no se quedan en un log que nadie lee; se guardan en <code>hallazgos_semanales</code> y se inyectan en cada nuevo post.</li>
+        <li><b>Páginas Evergreen Autónomas:</b> Si detecta alta búsqueda de <i>"Qué hacer en Loja este fin de semana"</i>, Hermes solicita actualizar esa landing page para ganar el primer lugar en Google.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      sequence: {
+        actorMargin: 45,
+        boxMargin: 10,
+        boxTextMargin: 5,
+        noteMargin: 10,
+        messageMargin: 35,
+        mirrorActors: false,
+        bottomMarginAdj: 10,
+        useMaxWidth: false
+      },
+      themeVariables: {
+        darkColor: '#0c1017',
+        primaryColor: '#1e1b4b',
+        primaryBorderColor: '#0284c7',
+        primaryTextColor: '#f8fafc',
+        lineColor: '#38bdf8',
+        textColor: '#e2e8f0',
+        signalColor: '#06b6d4',
+        signalTextColor: '#f8fafc'
+      }
+    });
+  </script>
+</body>
+</html>

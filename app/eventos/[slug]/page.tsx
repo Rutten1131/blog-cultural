@@ -276,22 +276,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: SITE_CONFIG.nombre,
       locale: SITE_CONFIG.locale,
       type: "article",
-      images: evento.imagenUrl
-        ? [
-            {
-              url: evento.imagenUrl,
-              alt: evento.nombre,
-              width: 1200,
-              height: 630,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: `${SITE_CONFIG.url}/api/og?slug=${encodeURIComponent(evento.slug)}`,
+          alt: evento.nombre,
+          width: 1200,
+          height: 630,
+        },
+        ...(evento.imagenUrl
+          ? [
+              {
+                url: evento.imagenUrl,
+                alt: evento.nombre,
+                width: 1200,
+                height: 630,
+              },
+            ]
+          : []),
+      ],
     },
     twitter: {
-      card: evento.imagenUrl ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       description,
-      images: evento.imagenUrl ? [evento.imagenUrl] : [],
+      images: [
+        `${SITE_CONFIG.url}/api/og?slug=${encodeURIComponent(evento.slug)}`,
+        ...(evento.imagenUrl ? [evento.imagenUrl] : []),
+      ],
     },
   };
 }

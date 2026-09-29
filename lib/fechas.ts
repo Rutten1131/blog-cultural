@@ -248,3 +248,70 @@ export function formatRangoFechasLoja(
 
   return `${partesIni} al ${partesFin}`;
 }
+
+/**
+ * Devuelve el rango [inicio, fin] de la semana en curso (Lunes 00:00 a Domingo 23:59:59.999)
+ * en hora de Loja (UTC-5), expresado en Date UTC.
+ */
+export function getRangoEstaSemanaLojaUTC(referencia: Date = new Date()): { inicio: Date; fin: Date } {
+  const hoyBounds = getDayBoundsLoja(referencia) || { inicio: new Date(), fin: new Date() };
+  // Día de la semana en Loja: 0=domingo, 1=lunes, ..., 6=sábado
+  const isoLoja = formatFechaLoja(hoyBounds.inicio, "iso"); // YYYY-MM-DD
+  const d = new Date(`${isoLoja}T12:00:00-05:00`);
+  const diaSemana = d.getDay(); // 0 (Dom) a 6 (Sáb)
+
+  // Desplazamiento al lunes de esta semana: si es domingo (0), el lunes fue hace 6 días
+  const diasDesdeLunes = diaSemana === 0 ? 6 : diaSemana - 1;
+  
+  const lunes = new Date(d);
+  lunes.setDate(d.getDate() - diasDesdeLunes);
+  const lunesIso = formatFechaLoja(lunes, "iso");
+
+  const domingo = new Date(lunes);
+  domingo.setDate(lunes.getDate() + 6);
+  const domingoIso = formatFechaLoja(domingo, "iso");
+
+  return {
+    inicio: new Date(`${lunesIso}T00:00:00-05:00`),
+    fin: new Date(`${domingoIso}T23:59:59.999-05:00`),
+  };
+}
+
+/**
+ * Devuelve el rango [inicio, fin] del próximo/actual fin de semana (Viernes 00:00 a Domingo 23:59:59.999)
+ * en hora de Loja (UTC-5), expresado en Date UTC.
+ */
+export function getRangoFinDeSemanaLojaUTC(referencia: Date = new Date()): { inicio: Date; fin: Date } {
+  const hoyBounds = getDayBoundsLoja(referencia) || { inicio: new Date(), fin: new Date() };
+  const isoLoja = formatFechaLoja(hoyBounds.inicio, "iso");
+  const d = new Date(`${isoLoja}T12:00:00-05:00`);
+  const diaSemana = d.getDay(); // 0: Dom, 1: Lun, 2: Mar, 3: Mié, 4: Jue, 5: Vie, 6: Sáb
+
+  let diasHastaViernes = 0;
+  if (diaSemana === 0) {
+    // Si hoy es domingo, el fin de semana actual termina hoy mismo (abarcamos viernes pasado a hoy)
+    diasHastaViernes = -2;
+  } else if (diaSemana === 6) {
+    // Si hoy es sábado, el viernes fue ayer
+    diasHastaViernes = -1;
+  } else if (diaSemana === 5) {
+    // Si hoy es viernes
+    diasHastaViernes = 0;
+  } else {
+    // Lunes a jueves: el viernes que viene
+    diasHastaViernes = 5 - diaSemana;
+  }
+
+  const viernes = new Date(d);
+  viernes.setDate(d.getDate() + diasHastaViernes);
+  const viernesIso = formatFechaLoja(viernes, "iso");
+
+  const domingo = new Date(viernes);
+  domingo.setDate(viernes.getDate() + 2);
+  const domingoIso = formatFechaLoja(domingo, "iso");
+
+  return {
+    inicio: new Date(`${viernesIso}T00:00:00-05:00`),
+    fin: new Date(`${domingoIso}T23:59:59.999-05:00`),
+  };
+}
