@@ -381,6 +381,15 @@ export default async function EventoDetailPage({ params }: PageProps) {
         eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
         inLanguage: "es-EC",
         category: evento.categoria?.nombre || "Cultura",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          url: `${SITE_CONFIG.url}/eventos/${evento.slug}`,
+          validFrom: isoStartDate,
+          description: "Entrada libre y gratuita sujeta al aforo del recinto",
+        },
         location: {
           "@type": "Place",
           name: evento.lugar,
@@ -390,6 +399,13 @@ export default async function EventoDetailPage({ params }: PageProps) {
             addressRegion: evento.zona?.nombre ?? "Loja",
             addressCountry: "EC",
           },
+          ...(recintoParaBoton && {
+            geo: {
+              "@type": "GeoCoordinates",
+              latitude: recintoParaBoton.lat,
+              longitude: recintoParaBoton.lng,
+            },
+          }),
         },
         ...(evento.imagenUrl && { image: [evento.imagenUrl] }),
         organizer: {
@@ -483,6 +499,14 @@ export default async function EventoDetailPage({ params }: PageProps) {
             acceptedAnswer: {
               "@type": "Answer",
               text: `Se llevará a cabo en ${evento.lugar}, sector ${evento.zona?.nombre ?? "Loja"}, Loja, Ecuador. Organizado por ${evento.nombreGestor}.`,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `¿Cuál es el costo de entrada para ${evento.nombre}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `El acceso a "${evento.nombre}" en ${evento.lugar} es de entrada libre y gratuita para todo el público hasta agotar el aforo disponible.`,
             },
           },
         ],
