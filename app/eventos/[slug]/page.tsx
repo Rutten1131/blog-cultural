@@ -90,6 +90,51 @@ function buscarCoordenadasRecinto(lugarTexto: string): { lat: number; lng: numbe
   return null;
 }
 
+/**
+ * Detecta si un evento pertenece a un festival o ciclo recurrente (EventSeries de Schema.org).
+ * Ayuda a que Google agrupe los eventos del FIAVL, festivales de música o ciclos de teatro.
+ */
+function detectarEventSeries(nombre: string, gestor?: string | null, descripcion?: string | null): { name: string; url?: string; description?: string } | null {
+  const texto = `${nombre} ${gestor || ""} ${descripcion || ""}`
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  if (texto.includes("fiavl") || texto.includes("artes vivas") || texto.includes("festival internacional de artes vivas")) {
+    return {
+      name: "Festival Internacional de Artes Vivas Loja (FIAVL)",
+      description: "El mayor encuentro de artes escénicas del Ecuador celebrado anualmente en la ciudad de Loja.",
+      url: "https://festivaldeloja.com",
+    };
+  }
+  if (texto.includes("musicaocupa") || texto.includes("musica ocupa")) {
+    return {
+      name: "Festival MúsicaOcupa Loja",
+      description: "Encuentro de música clásica y contemporánea en espacios públicos y patrimoniales.",
+    };
+  }
+  if (texto.includes("loja rock") || texto.includes("festival loja rock")) {
+    return {
+      name: "Festival Loja Rock",
+      description: "Festival anual de música alternativa, rock y metal en Loja.",
+    };
+  }
+  if (texto.includes("feria de loja") || texto.includes("feria internacional de loja") || texto.includes("feria 195") || texto.includes("feria 194")) {
+    return {
+      name: "Feria de Loja",
+      description: "La feria binacional y cultural más antigua del Ecuador fundada en 1829 por el libertador Simón Bolívar.",
+      url: "https://feriadeloja.com",
+    };
+  }
+  if (texto.includes("orquesta sinfonica de loja") || texto.includes("temporada sinfonica")) {
+    return {
+      name: "Temporada de Conciertos de la Orquesta Sinfónica de Loja",
+      description: "Ciclo anual de conciertos sinfónicos en el Teatro Benjamín Carrión y Teatro Bolívar.",
+    };
+  }
+  return null;
+}
+
 async function buildMapEmbedUrl(mapaUrl: string | null, lugarTexto: string): Promise<string> {
   // 1. Si no hay URL directa de mapa, comprobar si es un recinto o plaza conocida de Loja
   const recintoCoords = buscarCoordenadasRecinto(lugarTexto);
@@ -376,6 +421,9 @@ export default async function EventoDetailPage({ params }: PageProps) {
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${evento.lugar}, Loja, Ecuador`)}&query_place_id=`;
 
 
+  // Detectar si pertenece a una serie/festival para el Schema EventSeries
+  const eventSeries = detectarEventSeries(evento.nombre, evento.nombreGestor, evento.descripcion);
+
   // Schema múltiple (@graph) con Event, BreadcrumbList y FAQPage
   const jsonLd = {
     "@context": "https://schema.org",
@@ -391,6 +439,14 @@ export default async function EventoDetailPage({ params }: PageProps) {
         eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
         inLanguage: "es-EC",
         category: evento.categoria?.nombre || "Cultura",
+        ...(eventSeries && {
+          superEvent: {
+            "@type": "EventSeries",
+            name: eventSeries.name,
+            ...(eventSeries.description && { description: eventSeries.description }),
+            ...(eventSeries.url && { url: eventSeries.url }),
+          },
+        }),
         offers: {
           "@type": "Offer",
           price: "0",

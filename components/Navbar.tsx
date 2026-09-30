@@ -39,7 +39,7 @@ const NAV_KEYS = [
   { href: "/eventos/categoria/teatro",              key: "nav.teatro",       fallback: "Teatro" },
   { href: "/eventos/categoria/musica",              key: "nav.musica",       fallback: "Música" },
   { href: "/eventos/categoria/ferias",              key: "nav.ferias",       fallback: "Ferias" },
-  { href: "/eventos/categoria/artes-vivas",         key: "nav.artes_vivas",  fallback: "Artes Vivas" },
+  { href: "/festival-artes-vivas-loja-2026",        key: "nav.artes_vivas",  fallback: "Artes Vivas" },
   { href: "/sobre-el-proyecto",                      key: "nav.sobre_proyecto", fallback: "Sobre el proyecto" },
 ];
 

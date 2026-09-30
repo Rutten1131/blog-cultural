@@ -24,13 +24,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 1.0,
   };
 
-  // 2. Rutas de las 5 categorías cerradas
-  const categoriaRoutes: MetadataRoute.Sitemap = CATEGORIAS.map((cat) => ({
-    url: `${baseUrl}/eventos/categoria/${cat.slug}`,
-    lastModified: new Date(),
-    changeFrequency: "daily",
-    priority: 0.8,
-  }));
+  // 2. Rutas de las categorías activas (artes-vivas redirige a /festival-artes-vivas-loja-2026)
+  const categoriaRoutes: MetadataRoute.Sitemap = CATEGORIAS
+    .filter((cat) => cat.slug !== "artes-vivas")
+    .map((cat) => ({
+      url: `${baseUrl}/eventos/categoria/${cat.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.8,
+    }));
 
   // 3. Rutas de las 19 zonas / parroquias oficiales
   const zonaRoutes: MetadataRoute.Sitemap = ZONAS.map((zona) => ({
@@ -78,6 +80,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.95,
     },
     {
+      url: `${baseUrl}/festival-artes-vivas-loja-2026`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 1.0,
+    },
+    {
       url: `${baseUrl}/socios-fundadores`,
       lastModified: new Date(),
       changeFrequency: "weekly" as const,
@@ -97,5 +105,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  return [homeRoute, ...staticRoutes, ...categoriaRoutes, ...zonaRoutes, ...eventoRoutes];
+  // 6. Rutas de los recintos culturales (venues) de Loja
+  const venueSlugs = [
+    "teatro-benjamin-carrion",
+    "teatro-bolivar",
+    "teatro-segundo-cueva-celi",
+    "casona-cultural",
+    "casa-de-la-cultura",
+    "plaza-san-sebastian",
+    "parque-jipiro",
+    "museo-musica-loja",
+  ];
+  const venueRoutes: MetadataRoute.Sitemap = venueSlugs.map((slug) => ({
+    url: `${baseUrl}/lugar/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.85,
+  }));
+
+  return [homeRoute, ...staticRoutes, ...venueRoutes, ...categoriaRoutes, ...zonaRoutes, ...eventoRoutes];
 }

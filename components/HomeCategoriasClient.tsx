@@ -155,10 +155,11 @@ function ExplorarCategoriasClient({ categorias }: { categorias: CategoriaConEven
           {categorias.map((cat) => {
             const keys = SLUG_TO_KEYS[cat.slug];
             const nombre = keys ? t(keys.cat) : cat.slug;
+            const href = cat.slug === "artes-vivas" ? "/festival-artes-vivas-loja-2026" : `/eventos/categoria/${cat.slug}`;
             return (
               <Link
                 key={cat.slug}
-                href={`/eventos/categoria/${cat.slug}`}
+                href={href}
                 className="group relative flex h-44 sm:h-48 flex-col justify-end overflow-hidden rounded-2xl border border-white/20 p-4 shadow-md transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-white/40"
               >
                 {/* Imagen de fondo */}
