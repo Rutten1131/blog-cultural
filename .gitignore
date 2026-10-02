@@ -42,23 +42,21 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# ─── Claves SSH y secretos de VPS: NUNCA subir al repositorio ───
-# `vps/antigravity_vps_key` es la clave PRIVADA del servidor.
-# Si se filtra, cualquiera puede entrar al VPS.
-vps/antigravity_vps_key
-*_vps_key
-id_rsa
-id_ed25519
-*.key
-*-key
-vps/*.json
-vps/*.ps1
-vps/hermes_core/
-vps/*.py
-vps/PLAN_MAESTRO_HERMES.md
+# ─── VPS: NUNCA subir al repositorio (vive únicamente en el servidor) ───
+vps/
+Voz de videos.mp4
 
 # Volcados y backups locales
 *.rar
 *.zip
 *.bak
 *.log
+
+# Archivos pesados y demos de video/audio en VPS y local
+*.mp4
+*.mp3
+*.wav
+*.ass
+*.jpg
+*.png
+vps/contenido reels/
