@@ -8,6 +8,7 @@ import { AdminInstituciones } from "./admin-instituciones";
 import { AdminBanners, BannerHeroAdminItem } from "./admin-banners";
 import type { AliadoItem } from "./admin-aliados";
 import { BotPendientes, type PostBotItem } from "./admin-bot-posts";
+import { AdminActividadBot, type PublicacionRedItem } from "./admin-actividad-bot";
 import { logoutAdmin } from "@/lib/actions/authAdmin";
 
 interface Categoria {
@@ -87,6 +88,7 @@ export function AdminDashboardClient({
   banners = [],
   aliados = [],
   postsBot = [],
+  publicacionesRedes = [],
 }: {
   session: SessionData;
   eventosPendientes: EventoItem[];
@@ -99,11 +101,12 @@ export function AdminDashboardClient({
   banners?: BannerHeroAdminItem[];
   aliados?: AliadoItem[];
   postsBot?: PostBotItem[];
+  publicacionesRedes?: PublicacionRedItem[];
 }) {
   const esSuperadmin = session.role === "SUPERADMIN";
 
   const [activeTab, setActiveTab] = useState<
-    "pendientes" | "todos" | "banners" | "notificaciones" | "instituciones"
+    "pendientes" | "todos" | "bot_actividad" | "banners" | "notificaciones" | "instituciones"
   >("pendientes");
 
   // Control de acordeón único para moderar pendientes (uno a la vez)
@@ -281,6 +284,8 @@ export function AdminDashboardClient({
               {todosLosEventos.length}
             </span>
           </button>
+
+
 
           {/* Bot de WhatsApp: candidatos capturados automáticamente del grupo.
               NO tienen pestaña propia: se integran en "Moderar Pendientes"
@@ -547,7 +552,12 @@ export function AdminDashboardClient({
           </div>
         )}
 
-
+        {/* ===================== TAB: ACTIVIDAD REDES BOT ===================== */}
+        {activeTab === "bot_actividad" && (
+          <div className="animate-fadeIn">
+            <AdminActividadBot publicaciones={publicacionesRedes || []} />
+          </div>
+        )}
 
         {/* ===================== TAB: BANNERS HERO (SOLO SUPERADMIN) ===================== */}
         {esSuperadmin && activeTab === "banners" && (

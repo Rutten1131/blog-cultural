@@ -14,6 +14,7 @@ const { PrismaMariaDb } = require("@prisma/adapter-mariadb");
 const { extractAndProcessUrls } = require("./lib/url-extractor");
 const { gruposConfigurados, escanearTodo } = require("./lib/poller");
 const { listarGrupos, estadoInstancia } = require("./lib/evolution-client");
+const { escanearEventosMunicipio } = require("./lib/municipio-scraper");
 
 function createPrismaClient() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -214,6 +215,16 @@ app.post("/scrape/grupos", async (req, res) => {
   }
 });
 
+app.post("/scrape/municipio", async (req, res) => {
+  try {
+    const resultado = await escanearEventosMunicipio(prisma);
+    res.json({ ok: true, resultado });
+  } catch (error) {
+    console.error("[Municipio] Error escaneando portal municipal:", error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // ─── Arrancar ──────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`[WhatsApp] Worker escuchando en puerto ${PORT}`);
@@ -264,6 +275,13 @@ app.listen(PORT, () => {
     } catch (err) {
       console.error("[WhatsApp] Error en escaneo programado:", err.message);
     }
+
+    // Escaneo recurrente del portal del Municipio de Loja
+    try {
+      await escanearEventosMunicipio(prisma);
+    } catch (err) {
+      console.error("[Municipio] Error en escaneo periódico:", err.message);
+    }
   });
 
   // Primera pasada al arrancar (sin bloquear el arranque del servidor).
@@ -274,5 +292,10 @@ app.listen(PORT, () => {
         else console.log(`[WhatsApp] Escaneo inicial: ${r.totalPostsCreados} post(s)`);
       })
       .catch((err) => console.error("[WhatsApp] Error en escaneo inicial:", err.message));
+
+    // Escaneo inicial del portal del Municipio
+    escanearEventosMunicipio(prisma)
+      .then((res) => console.log(`[Municipio] Escaneo inicial completado: ${res.creados} nuevos.`))
+      .catch((err) => console.error("[Municipio] Error en escaneo inicial:", err.message));
   }, 5000);
 });

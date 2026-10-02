@@ -337,7 +337,7 @@ model PublicacionRedSocial {
   id           Int      @id @default(autoincrement())
   eventoId     Int      @map("evento_id")
   evento       Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
-  plataforma   String   @default("INSTAGRAM") @db.VarChar(50) // FACEBOOK | INSTAGRAM
+  plataformas  String   @default("INSTAGRAM") @db.VarChar(200) @map("plataformas") // FACEBOOK | INSTAGRAM
   tipo         String   @db.VarChar(50)   // FEED_POST, CAROUSEL, REEL, STORY
   programadoAt DateTime @map("programado_at")
   publicadoAt  DateTime? @map("publicado_at")

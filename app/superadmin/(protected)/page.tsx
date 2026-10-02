@@ -58,6 +58,37 @@ export default async function SuperAdminPage() {
     take: 50,
   });
 
+  // ─── MONITOREO DE PUBLICACIONES (WEB, REDES Y BOT) ───
+  const eventosWeb = await prisma.evento.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    include: {
+      categoria: { select: { nombre: true } },
+      zona: { select: { nombre: true } },
+    },
+  });
+
+  const publicacionesRedes = await prisma.publicacionRedSocial.findMany({
+    orderBy: { programadoAt: "desc" },
+    take: 200,
+    include: {
+      evento: {
+        select: {
+          id: true,
+          nombre: true,
+          fecha: true,
+          lugar: true,
+          imagenUrl: true,
+        },
+      },
+    },
+  });
+
+  const postsBot = await prisma.postSocial.findMany({
+    orderBy: { fechaDeteccion: "desc" },
+    take: 200,
+  });
+
   // ─── ANALYTICS POR ALIADO ───
   // Obtenemos los últimos 1000 mensajes del bot para auditar menciones de aliados de forma ultra rápida
   const mensajesBotRecientes = await prisma.chatMessage.findMany({
@@ -211,6 +242,9 @@ export default async function SuperAdminPage() {
       aliadosAnalytics={aliadosOrdenados}
       stats={{ total: totalSessions, conUbicacion, zonasFrecuentes, intencionesFrecuentes, totalMensajes }}
       initialRecomendaciones={recomendaciones}
+      eventosWeb={eventosWeb as any}
+      publicacionesRedes={publicacionesRedes as any}
+      postsBot={postsBot as any}
     />
   );
 }

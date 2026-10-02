@@ -4,6 +4,12 @@ import { useState } from "react";
 import { AdminAliados, AliadoItem } from "@/app/admin/admin-aliados";
 import { SuperAdminCRM } from "./superadmin-crm";
 import { SuperAdminAliadosAnalytics, AliadoAnalyticsData } from "./superadmin-aliados-analytics";
+import {
+  SuperAdminMonitoreo,
+  type EventoWebItem,
+  type PublicacionRedSocialItem,
+  type PostSocialBotItem,
+} from "./superadmin-monitoreo";
 
 export interface ChatMessageData {
   id: number;
@@ -56,9 +62,12 @@ interface Props {
     intencionesFrecuentes?: { intencion: string; count: number }[];
     totalMensajes?: number;
   };
+  eventosWeb?: EventoWebItem[];
+  publicacionesRedes?: PublicacionRedSocialItem[];
+  postsBot?: PostSocialBotItem[];
 }
 
-type Tab = "aliados" | "crm" | "buzon" | "analytics";
+type Tab = "monitoreo" | "aliados" | "crm" | "buzon" | "analytics";
 
 export function SuperAdminDashboardClient({
   initialAliados,
@@ -66,8 +75,11 @@ export function SuperAdminDashboardClient({
   initialRecomendaciones = [],
   aliadosAnalytics = [],
   stats,
+  eventosWeb = [],
+  publicacionesRedes = [],
+  postsBot = [],
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("crm");
+  const [activeTab, setActiveTab] = useState<Tab>("monitoreo");
 
   const handleLogout = async () => {
     await fetch("/api/superadmin/auth", { method: "DELETE" });
@@ -75,6 +87,7 @@ export function SuperAdminDashboardClient({
   };
 
   const tabs: { id: Tab; label: string; emoji: string; count?: number }[] = [
+    { id: "monitoreo", label: "Monitoreo Publicaciones", emoji: "📡", count: eventosWeb.length + publicacionesRedes.length + postsBot.length },
     { id: "crm", label: "CRM Chatbot", emoji: "📊" },
     { id: "analytics", label: "Analytics Aliados", emoji: "🤝", count: aliadosAnalytics.length },
     { id: "aliados", label: "Aliados Comerciales", emoji: "⚙️", count: initialAliados.length },
@@ -137,6 +150,13 @@ export function SuperAdminDashboardClient({
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {activeTab === "monitoreo" && (
+          <SuperAdminMonitoreo
+            eventosWeb={eventosWeb}
+            publicacionesRedes={publicacionesRedes}
+            postsBot={postsBot}
+          />
+        )}
         {activeTab === "crm" && (
           <SuperAdminCRM sessions={initialSessions} stats={stats} />
         )}

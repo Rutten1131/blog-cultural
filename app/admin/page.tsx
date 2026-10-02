@@ -95,6 +95,23 @@ export default async function AdminPage() {
     take: 200,
   });
 
+  // 7. Publicaciones programadas y realizadas en Redes Sociales por el bot
+  const publicacionesRedes = await prisma.publicacionRedSocial.findMany({
+    orderBy: { programadoAt: "desc" },
+    take: 100,
+    include: {
+      evento: {
+        select: {
+          id: true,
+          nombre: true,
+          fecha: true,
+          lugar: true,
+          imagenUrl: true,
+        },
+      },
+    },
+  });
+
   return (
     <AdminDashboardClient
       session={session}
@@ -108,6 +125,7 @@ export default async function AdminPage() {
       banners={banners}
       aliados={aliados}
       postsBot={postsBot}
+      publicacionesRedes={publicacionesRedes}
     />
   );
 }
