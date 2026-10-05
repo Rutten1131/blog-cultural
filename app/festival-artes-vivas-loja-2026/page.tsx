@@ -179,41 +179,61 @@ export default async function FestivalArtesVivasPage() {
           <span className="font-semibold text-[var(--color-dark)]">Festival Artes Vivas Loja 2026</span>
         </nav>
 
-        {/* Hero Section FIAVL */}
-        <header className="mb-12 relative overflow-hidden rounded-3xl border border-[var(--color-border)] bg-gradient-to-br from-purple-900/10 via-pink-900/5 to-transparent p-6 sm:p-10 backdrop-blur-sm">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 mb-4">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-600"></span>
-            </span>
-            Edición 2026 — Loja, Ecuador
-          </div>
+        {/* Hero Section FIAVL: Texto e Imagen Separados y Nítidos */}
+        <header className="mb-12 relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-6 sm:p-8 md:p-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            {/* Columna de Texto y Datos Informativos */}
+            <div className="lg:col-span-7 flex flex-col justify-center space-y-4">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 self-start shadow-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                </span>
+                ✨ Edición Oficial 2026 — Loja, Ecuador
+              </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black uppercase tracking-tight text-[var(--color-dark)] mb-4 leading-tight">
-            Festival Internacional de Artes Vivas Loja 2026 (FIAVL)
-          </h1>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black uppercase tracking-tight text-slate-900 leading-tight">
+                Festival Internacional de Artes Vivas Loja 2026 (FIAVL)
+              </h1>
 
-          <p className="text-base sm:text-lg text-[var(--color-muted)] max-w-3xl leading-relaxed mb-6">
-            Guía completa, cartelera de obras e itinerario del festival de artes escénicas más relevante del Ecuador. Disfruta de teatro, danza contemporánea, circo, música e intervenciones urbanas en salas y plazas patrimoniales de Loja.
-          </p>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
+                Guía completa, cartelera de obras e itinerario del festival de artes escénicas más relevante del Ecuador. Disfruta de teatro, danza contemporánea, circo, música e intervenciones urbanas en salas y plazas patrimoniales de Loja.
+              </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-[var(--color-border)]">
-            <div className="p-3 rounded-2xl bg-white/60 dark:bg-black/20 border border-[var(--color-border)]">
-              <span className="block text-xs text-[var(--color-muted)] font-medium">Temporada</span>
-              <span className="text-sm sm:text-base font-bold text-[var(--color-dark)]">Noviembre 2026</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4 border-t border-slate-100">
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="block text-[11px] text-slate-500 font-semibold">Temporada</span>
+                  <span className="text-xs sm:text-sm font-black text-slate-900">Noviembre 2026</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="block text-[11px] text-slate-500 font-semibold">Sede Principal</span>
+                  <span className="text-xs sm:text-sm font-black text-slate-900">Teatro Benjamín Carrión</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="block text-[11px] text-slate-500 font-semibold">Acceso Calles</span>
+                  <span className="text-xs sm:text-sm font-black text-emerald-600">Entrada Libre</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="block text-[11px] text-slate-500 font-semibold">Obras & Funciones</span>
+                  <span className="text-xs sm:text-sm font-black text-slate-900">{todosEventos.length} Registradas</span>
+                </div>
+              </div>
             </div>
-            <div className="p-3 rounded-2xl bg-white/60 dark:bg-black/20 border border-[var(--color-border)]">
-              <span className="block text-xs text-[var(--color-muted)] font-medium">Sede Principal</span>
-              <span className="text-sm sm:text-base font-bold text-[var(--color-dark)]">Teatro Benjamín Carrión</span>
+
+            {/* Columna de Fotografía Nítida (Sin texto encima) */}
+            <div className="lg:col-span-5 relative w-full h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden shadow-lg group">
+              <img
+                src="/artes-vivas-loja.jpg"
+                alt="Festival Internacional de Artes Vivas Loja 2026"
+                className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/10" />
+              <div className="absolute bottom-3 right-3 bg-slate-950/80 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1 rounded-lg shadow">
+                Calle Bolívar · Loja
+              </div>
             </div>
-            <div className="p-3 rounded-2xl bg-white/60 dark:bg-black/20 border border-[var(--color-border)]">
-              <span className="block text-xs text-[var(--color-muted)] font-medium">Acceso Calles</span>
-              <span className="text-sm sm:text-base font-bold text-emerald-600 dark:text-emerald-400">Entrada Libre</span>
-            </div>
-            <div className="p-3 rounded-2xl bg-white/60 dark:bg-black/20 border border-[var(--color-border)]">
-              <span className="block text-xs text-[var(--color-muted)] font-medium">Obras & Funciones</span>
-              <span className="text-sm sm:text-base font-bold text-[var(--color-dark)]">{todosEventos.length} Registradas</span>
-            </div>
+
           </div>
         </header>
 

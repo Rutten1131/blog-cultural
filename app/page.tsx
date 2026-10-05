@@ -221,10 +221,10 @@ export default async function Home() {
     }));
   }
 
-  // ── Cargar eventos de cada categoría para el cliente ──
+  // ── Cargar eventos de cada categoría para el cliente (estrictamente de hoy en adelante) ──
   const categoriasConEventos = await Promise.all(
     CATEGORIAS.map(async (cat, i) => {
-      let eventos = await prisma.evento.findMany({
+      const eventos = await prisma.evento.findMany({
         where: {
           estado: "APROBADO",
           categoria: { slug: cat.slug },
@@ -237,15 +237,6 @@ export default async function Home() {
         orderBy: { fecha: "asc" },
         take: 6,
       });
-
-      if (eventos.length === 0) {
-        eventos = await prisma.evento.findMany({
-          where: { estado: "APROBADO", categoria: { slug: cat.slug } },
-          include: { categoria: true, zona: true },
-          orderBy: { fecha: "desc" },
-          take: 4,
-        });
-      }
 
       const meta = CAT_META[cat.slug] ?? {
         emoji: "🎭",
