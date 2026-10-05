@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { ProximosEventosCarousel } from "@/components/ProximosEventosCarousel";
+
 
 /* ── Tipos ── */
 interface Evento {
@@ -292,21 +294,78 @@ export function HomeFooterClient({ categorias }: { categorias: CategoriaConEvent
   );
 }
 
-/* ── Componente principal — agrupa Explorar + Secciones ── */
+/* ── Componente principal — agrupa Explorar + Secciones en Tabs ── */
 export function HomeCategoriasClient({ categorias }: HomeCategoriasClientProps) {
   const { t } = useLanguage();
+  const [activeSlug, setActiveSlug] = useState<string>(
+    categorias[0]?.slug || "arte-y-exposiciones"
+  );
+
+  const activeCategory =
+    categorias.find((c) => c.slug === activeSlug) || categorias[0];
 
   return (
     <>
-      {/* ═══ CATEGORY CARDS ═══ */}
+      {/* ═══ CATEGORY CARDS (Acceso rápido visual) ═══ */}
       <ExplorarCategoriasClient categorias={categorias} />
 
-      {/* ═══ SECCIONES POR CATEGORÍA ═══ */}
-      <div className="mx-auto w-full max-w-6xl space-y-20 px-4 py-16 sm:px-6 sm:py-20">
-        {categorias.map((cat) => (
-          <SeccionCategoriaClient key={cat.slug} cat={cat} />
-        ))}
+      {/* ═══ SECCIÓN DE CATEGORÍAS CON TABS (COMPACTA) ═══ */}
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+        {/* Barra de Tabs de Categorías */}
+        <div className="mb-8 flex items-center justify-start sm:justify-center overflow-x-auto no-scrollbar pb-2 pt-1 gap-2 sm:gap-3">
+          {categorias.map((cat) => {
+            const keys = SLUG_TO_KEYS[cat.slug];
+            const nombre = keys ? t(keys.cat) : cat.slug;
+            const isActive = cat.slug === activeSlug;
+
+            return (
+              <button
+                key={cat.slug}
+                type="button"
+                onClick={() => setActiveSlug(cat.slug)}
+                className={`group relative flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-300 ${
+                  isActive
+                    ? "text-white shadow-lg scale-105"
+                    : "bg-[var(--color-bg-card)] text-[var(--color-muted)] hover:text-[var(--color-dark)] hover:bg-black/5 dark:hover:bg-white/5 border border-black/5 dark:border-white/10"
+                }`}
+                style={{
+                  backgroundColor: isActive ? cat.color : undefined,
+                  boxShadow: isActive
+                    ? `0 8px 20px -4px ${cat.color}66`
+                    : undefined,
+                }}
+              >
+                <span className="text-base sm:text-lg transition-transform group-hover:scale-110">
+                  {cat.emoji}
+                </span>
+                <span>{nombre}</span>
+                {cat.eventos.length > 0 && (
+                  <span
+                    className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      isActive
+                        ? "bg-white/20 text-white"
+                        : "bg-black/10 text-[var(--color-muted)] dark:bg-white/10"
+                    }`}
+                  >
+                    {cat.eventos.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Contenido de la categoría seleccionada */}
+        {activeCategory && (
+          <div
+            key={activeCategory.slug}
+            className="animate-in fade-in duration-300 transition-all"
+          >
+            <SeccionCategoriaClient cat={activeCategory} />
+          </div>
+        )}
       </div>
     </>
   );
 }
+
