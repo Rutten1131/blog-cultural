@@ -156,18 +156,22 @@ function CarruselHabitacion({ imagenes, alt }: { imagenes: string[]; alt: string
    botón de acción de ancho completo abajo.
    ══════════════════════════════════════════════════════════════════ */
 
-type AcentoChat = "purple" | "emerald" | "amber";
+type AcentoChat = "purple" | "emerald" | "amber" | "orange" | "teal";
 
 const ACENTO_TITULO: Record<AcentoChat, string> = {
   purple: "text-purple-700",
   emerald: "text-emerald-700",
   amber: "text-amber-600",
+  orange: "text-orange-600",
+  teal: "text-teal-700",
 };
 
 const ACENTO_BORDE: Record<AcentoChat, string> = {
   purple: "border-purple-100",
   emerald: "border-emerald-100",
   amber: "border-amber-200",
+  orange: "border-orange-100",
+  teal: "border-teal-100",
 };
 
 const ACENTO_BOTON: Record<AcentoChat, string> = {
@@ -176,12 +180,18 @@ const ACENTO_BOTON: Record<AcentoChat, string> = {
   emerald:
     "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-800/20",
   amber: "bg-amber-500 hover:bg-amber-400 text-black shadow-amber-700/20",
+  orange:
+    "bg-gradient-to-r from-orange-500 to-amber-400 hover:from-orange-400 hover:to-amber-300 text-white shadow-orange-600/20",
+  teal:
+    "bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white shadow-teal-700/20",
 };
 
 const ACENTO_VERMAS: Record<AcentoChat, string> = {
   purple: "border-purple-200/70 text-purple-700 hover:bg-purple-50",
   emerald: "border-emerald-200/70 text-emerald-700 hover:bg-emerald-50",
   amber: "border-amber-200/70 text-amber-700 hover:bg-amber-50",
+  orange: "border-orange-200/70 text-orange-600 hover:bg-orange-50",
+  teal: "border-teal-200/70 text-teal-700 hover:bg-teal-50",
 };
 
 /** Cantidad de tarjetas visibles antes de mostrar el botón "ver más" */
@@ -376,7 +386,51 @@ interface UbicacionData {
   pais?: string;
 }
 
-export function ChatbotWidget() {
+/** Configuración personalizable del ChatbotWidget para uso en múltiples sitios */
+export interface ChatbotWidgetConfig {
+  /** Identificador del sitio: "agendacultural" | "quecomerenloja" | "agendaturisticaloja" */
+  origen?: string;
+  /** URL completa del endpoint del chat (default: "/api/chat") */
+  apiUrl?: string;
+  /** Clave en localStorage para la sesión (evita colisiones entre sitios) */
+  sessionStorageKey?: string;
+  /** Clave en localStorage para el historial de mensajes */
+  historyStorageKey?: string;
+  /** Color de acento del widget */
+  acento?: AcentoChat;
+  /** Gradiente CSS del header y botón flotante (clase Tailwind completa) */
+  headerGradient?: string;
+  /** Emoji del ícono del bot */
+  iconEmoji?: string;
+  /** Texto del botón flotante */
+  btnLabel?: string;
+  /** Tooltip flotante (encima del botón) */
+  tooltipText?: string;
+  /** Título en el header del chat */
+  headerTitle?: string;
+  /** Subtítulo en el header del chat */
+  headerSubtitle?: string;
+  /** Mensaje de bienvenida inicial */
+  welcomeMessage?: string;
+  /** Sugerencias rápidas iniciales */
+  preguntasSugeridas?: string[];
+}
+
+export function ChatbotWidget({
+  origen = "agendacultural",
+  apiUrl = "/api/chat",
+  sessionStorageKey = "agenda_chat_session_id",
+  historyStorageKey = "agenda_chat_history",
+  acento = "purple",
+  headerGradient = "from-purple-800 via-purple-700 to-pink-600",
+  iconEmoji = "🎭",
+  btnLabel = "¿Qué hacer en Loja?",
+  tooltipText = "¿Buscas qué hacer u hospedaje en Loja?",
+  headerTitle = "¿Qué hacer en Loja?",
+  headerSubtitle = "Turismo, Cartelera Cultural & Aliados",
+  welcomeMessage = "¡Hola! 👋 Te doy la bienvenida a Loja. Pregúntame qué hacer en la ciudad, lugares culturales, rutas de naturaleza o dónde hospedarte con nuestros aliados recomendados.",
+  preguntasSugeridas,
+}: ChatbotWidgetConfig = {}) {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -388,7 +442,7 @@ export function ChatbotWidget() {
     {
       id: "welcome-1",
       sender: "bot",
-      text: "¡Hola! 👋 Te doy la bienvenida a Loja. Pregúntame qué hacer en la ciudad, lugares culturales, rutas de naturaleza o dónde hospedarte con nuestros aliados recomendados.",
+      text: welcomeMessage,
       time: "Ahora",
     },
   ]);
@@ -438,10 +492,10 @@ export function ChatbotWidget() {
 
   // Inicializar o recuperar sessionId único
   useEffect(() => {
-    let sid = localStorage.getItem("agenda_chat_session_id");
+    let sid = localStorage.getItem(sessionStorageKey);
     if (!sid) {
       sid = `ses_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      localStorage.setItem("agenda_chat_session_id", sid);
+      localStorage.setItem(sessionStorageKey, sid);
     }
     setSessionId(sid);
 
@@ -458,7 +512,7 @@ export function ChatbotWidget() {
     }
 
     // Recuperar historial de mensajes de la sesión para no perder el hilo si recarga la página
-    const savedMsgs = localStorage.getItem("agenda_chat_history");
+    const savedMsgs = localStorage.getItem(historyStorageKey);
     if (savedMsgs) {
       try {
         const parsedMsgs = JSON.parse(savedMsgs);
@@ -469,18 +523,18 @@ export function ChatbotWidget() {
         // ignore
       }
     }
-  }, []);
+  }, [sessionStorageKey, historyStorageKey]);
 
   const reiniciarChat = () => {
-    localStorage.removeItem("agenda_chat_history");
+    localStorage.removeItem(historyStorageKey);
     const newSid = `ses_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    localStorage.setItem("agenda_chat_session_id", newSid);
+    localStorage.setItem(sessionStorageKey, newSid);
     setSessionId(newSid);
     setMessages([
       {
         id: `welcome-${Date.now()}`,
         sender: "bot",
-        text: "¡Hola! 👋 Te doy la bienvenida a Loja. Pregúntame qué hacer en la ciudad, lugares culturales, rutas de naturaleza o dónde hospedarte con nuestros aliados recomendados.",
+        text: welcomeMessage,
         time: "Ahora",
       },
     ]);
@@ -603,11 +657,12 @@ export function ChatbotWidget() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId,
+          origen,
           ubicacion: ubicacion ? {
             lat: ubicacion.lat,
             lng: ubicacion.lng,
@@ -674,7 +729,7 @@ export function ChatbotWidget() {
                 const finalUpdated = prev.map((m) =>
                   m.id === botId ? { ...m, text: textoCompleto } : m
                 );
-                localStorage.setItem("agenda_chat_history", JSON.stringify(finalUpdated.slice(-20)));
+                localStorage.setItem(historyStorageKey, JSON.stringify(finalUpdated.slice(-20)));
                 return finalUpdated;
               });
               resolve();
@@ -710,15 +765,15 @@ export function ChatbotWidget() {
 
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="pointer-events-auto relative group px-3 py-2 sm:px-4 sm:py-3.5 bg-gradient-to-r from-purple-700 via-purple-600 to-pink-600 text-white font-bold rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl shadow-purple-600/30 hover:shadow-purple-600/50 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-1.5 sm:gap-2.5 cursor-pointer border border-white/20"
-          aria-label={t("chat.btn_label", "¿Qué hacer en Loja?")}
+          className={`pointer-events-auto relative group px-3 py-2 sm:px-4 sm:py-3.5 bg-gradient-to-r ${headerGradient} text-white font-bold rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-1.5 sm:gap-2.5 cursor-pointer border border-white/20`}
+          aria-label={btnLabel}
         >
           {isOpen ? (
             <span className="text-base sm:text-xl px-1">✕</span>
           ) : (
             <>
-              <span className="text-base sm:text-xl">🎭</span>
-              <span className="font-extrabold text-xs sm:text-sm tracking-wide">{t("chat.btn_label", "¿Qué hacer en Loja?")}</span>
+              <span className="text-base sm:text-xl">{iconEmoji}</span>
+              <span className="font-extrabold text-xs sm:text-sm tracking-wide">{btnLabel}</span>
             </>
           )}
         </button>
@@ -726,22 +781,22 @@ export function ChatbotWidget() {
 
       {/* Ventana Flotante del Chatbot con Estilo Coherente al Sitio Web */}
       {isOpen && (
-        <div className="fixed bottom-24 right-4 sm:right-6 z-50 w-[94vw] sm:w-[420px] max-h-[85vh] h-[640px] bg-white text-neutral-900 border border-purple-100 rounded-3xl shadow-2xl shadow-purple-950/20 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-24 right-4 sm:right-6 z-50 w-[94vw] sm:w-[420px] max-h-[85vh] h-[640px] bg-white text-neutral-900 border border-neutral-100 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
           
-          {/* Header con Paleta Oficial Agenda Cultural Loja */}
-          <div className="bg-gradient-to-r from-purple-800 via-purple-700 to-pink-600 p-4 text-white flex items-center justify-between shadow-md">
+          {/* Header con gradiente configurable */}
+          <div className={`bg-gradient-to-r ${headerGradient} p-4 text-white flex items-center justify-between shadow-md`}>
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="h-10 w-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shadow-inner border border-white/30">
-                  🎭
+                  {iconEmoji}
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-400 border-2 border-purple-800 rounded-full" />
+                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-400 border-2 border-white/30 rounded-full" />
               </div>
               <div>
                 <h3 className="font-extrabold text-white text-sm tracking-wide flex items-center gap-2">
-                  {t("chat.title", "¿Qué hacer en Loja?")}
+                  {headerTitle}
                 </h3>
-                <p className="text-[11px] text-purple-100/90 font-medium">{t("chat.subtitle", "Turismo, Cartelera Cultural & Aliados")}</p>
+                <p className="text-[11px] text-white/80 font-medium">{headerSubtitle}</p>
               </div>
             </div>
 

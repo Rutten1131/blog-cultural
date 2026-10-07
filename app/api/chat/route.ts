@@ -1,4 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
+
+// ─── CORS: dominios permitidos para acceder a esta API desde otros sitios ───
+const CORS_ORIGINS_PERMITIDOS = [
+  "https://quecomerenloja.com",
+  "https://www.quecomerenloja.com",
+  "https://agendaturisticaloja.com",
+  "https://www.agendaturisticaloja.com",
+  // Desarrollo local de los proyectos hermanos:
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:3003",
+];
+
+function corsHeaders(req: NextRequest): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  const allowedOrigin = CORS_ORIGINS_PERMITIDOS.includes(origin) ? origin : "";
+  return allowedOrigin
+    ? {
+        "Access-Control-Allow-Origin": allowedOrigin,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Max-Age": "86400",
+      }
+    : {};
+}
+
+/** Preflight CORS para solicitudes cross-origin */
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
+}
 import { prisma } from "@/lib/prisma";
 import { obtenerMemoriaSesion, sincronizarResumenSiCorresponde } from "@/lib/chat/chatMemory";
 import { clasificarIntencionUsuario } from "@/lib/chat/chatRouter";
@@ -292,9 +323,12 @@ function plantillaVentaPaso(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages, sessionId, ubicacion } = body as {
+    const { messages, sessionId, ubicacion, origen } = body as {
       messages: any[];
       sessionId?: string;
+      /** Identificador del sitio que origina la solicitud:
+       *  "agendacultural" (default) | "quecomerenloja" | "agendaturisticaloja" */
+      origen?: string;
       ubicacion?: {
         lat: number;
         lng: number;
@@ -305,6 +339,11 @@ export async function POST(req: NextRequest) {
         pais?: string;
       };
     };
+
+    const origenNorm = (origen || "agendacultural").toLowerCase().trim();
+    const esQueComer = origenNorm === "quecomerenloja";
+    const esTurismo = origenNorm === "agendaturisticaloja";
+    const cors = corsHeaders(req);
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Mensajes no válidos" }, { status: 400 });
@@ -1223,8 +1262,8 @@ ${datosVenta}`
       ? `\nRESUMEN DE LA CONVERSACIÓN PREVIA CON ESTE USUARIO:\n${memoriaSesion.resumen}\n(Usa este resumen para mantener consistencia, recordar qué hotel o evento le gustó y no contradecirte).`
       : "";
 
-    const systemPrompt = `Eres el asistente turístico y cultural oficial de la Agenda Cultural Loja (Ecuador).
-ZONA HORARIA Y UBICACIÓN: Estás en Ecuador (GMT-5, hora de Ecuador continental / Loja).
+    // ─── SYSTEM PROMPT: varía según el sitio que llama a la API ───
+    const systemPromptBase = `ZONA HORARIA Y UBICACIÓN: Estás en Ecuador (GMT-5, hora de Ecuador continental / Loja).
 FECHA Y HORA ACTUAL: ${fechaHoyStr}.
 
 REGLAS TEMPORALES CRÍTICAS:
@@ -1232,7 +1271,7 @@ REGLAS TEMPORALES CRÍTICAS:
 - "Esta semana" corresponde a la semana en curso de Lunes a Domingo.
 - "Fin de semana" corresponde de Viernes a Domingo.
 - Si el usuario pregunta por eventos de "esta semana", "este fin de semana", "hoy" o fechas futuras, responde ÚNICAMENTE con eventos programados para ese periodo en EVENTOS DISPONIBLES.
-- NUNCA presentes eventos pasados o finalizados como si fueran a ocurrir esta semana o en el futuro. Si en EVENTOS DISPONIBLES no hay eventos para el rango solicitado, dilo con honestidad y amabilidad (ej: "Para esta semana no tenemos eventos culturales registrados en cartelera en este momento...") e invita al usuario a consultar otras fechas, atractivos turísticos o gastronomía.
+- NUNCA presentes eventos pasados o finalizados como si fueran a ocurrir esta semana o en el futuro.
 ${detalleUbicacion}
 ${detalleRango}
 ${detalleMemoria}
@@ -1244,13 +1283,13 @@ TONO Y ESTILO DE CONVERSACIÓN (NATURAL, AMABLE Y ENGAGEMENT):
 2. CONTINUIDAD CONVERSACIONAL: Si el usuario pregunta "¿y eso de qué es?" o similar, responde directamente sobre el evento o aliado en discusión.
 3. CIERRE CONVERSACIONAL ACTIVO: Termina SIEMPRE con una pregunta sugerente o invitación natural para continuar la charla.
 4. RELEVANCIA TEMÁTICA:
-   - Mantente enfocado en lo que el usuario preguntó. Si pregunta por un evento, habla de ese evento.
-   - Solo sugiere hospedaje o gastronomía si el usuario lo menciona, o si es oportuno vincularlo a un evento nocturno/fin de semana.
+   - Mantente enfocado en lo que el usuario preguntó.
+   - Solo sugiere hospedaje o gastronomía si el usuario lo menciona.
 4.1 NATURALEZA PRIMERO: si el usuario pide naturaleza, rutas, parques, cascadas, cerros, senderismo, miradores, ríos o actividades al aire libre y NO pidió eventos de cartelera, NO recomiendes eventos: responde con los ATRACTIVOS CANTONALES y usa sus IDs en "atractivosRecomendadosIds".
 5. CERO ALUCINACIÓN (ESTRICTO):
    - Solo asocia IDs de la lista EVENTOS DISPONIBLES o ALIADOS COMERCIALES.
    - NUNCA inventes platos, comidas, bebidas, servicios, tipos de habitación, precios o características que NO estén en la ficha del aliado de la base de datos.
-   - Si el usuario te pregunta por algo puntual (un plato específico, un servicio o detalle) que NO figura en los datos provistos del aliado, responde con sinceridad y amabilidad diciendo que no dispones de ese dato exacto en sistema, e invítalo a consultarlo o confirmarlo directo por WhatsApp con el establecimiento.
+   - Si el usuario te pregunta por algo puntual que NO figura en los datos provistos del aliado, responde con sinceridad e invítalo a consultar por WhatsApp con el establecimiento.
 5.1 ALIADOS COMERCIALES SON PRIORIDAD: si el usuario pregunta por hospedaje, hoteles, dónde dormir o dónde comer, incluye SIEMPRE en "aliadosRecomendadosIds" los IDs de los aliados comerciales prioritarios (máximo 3).
 6. NO REPITAS datos obvios ni vuelvas a mandar la misma tarjeta si ya se la mostraste al usuario.
 
@@ -1270,6 +1309,23 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
   "aliadosRecomendadosIds": [],
   "atractivosRecomendadosIds": []
 }`;
+
+    // Cabecera de identidad según el sitio que llama
+    const identidadPrompt = esQueComer
+      ? `Eres el asistente gastronómico oficial de QueComerEnLoja.com — el directorio de gastronomía de Loja, Ecuador.
+Tu especialidad es EXCLUSIVAMENTE la gastronomía lojana: restaurantes, cafeterías, platos típicos, postres, bebidas y dónde comer según el presupuesto, zona o tipo de cocina.
+NO eres un guía turístico ni de eventos culturales. Si el usuario pregunta por eventos o cultura, puedes mencionarlos brevemente pero redirige siempre hacia opciones gastronómicas.
+PRIORIDAD ABSOLUTA: recomienda siempre los aliados de tipo GASTRONOMIA y CAFETERIA. Nunca recomiendes hoteles a menos que el usuario lo pida explícitamente.`
+      : esTurismo
+      ? `Eres el asistente turístico oficial de AgendaTuristicaLoja.com — la guía de turismo de Loja y sus cantones, Ecuador.
+Tu especialidad es el turismo: atractivos naturales, rutas de aventura, ecoturismo, cantones, cascadas, miradores, parques nacionales, senderos y hospedaje para viajeros.
+Cuando el usuario pregunte qué hacer o visitar, prioriza los ATRACTIVOS CANTONALES. Incluye hoteles cuando el usuario busque dónde hospedarse.
+NO eres una cartelera de eventos culturales urbanos. Si el usuario pregunta por eventos, puedes mencionarlos pero redirige hacia el turismo y la naturaleza.`
+      : `Eres el asistente turístico y cultural oficial de la Agenda Cultural Loja (Ecuador).
+Cubres toda la oferta de Loja: eventos culturales, cartelera, gastronomía, hospedaje y atractivos naturales cantonales.`;
+
+    const systemPrompt = `${identidadPrompt}
+${systemPromptBase}`;
 
     const groqKey = process.env.GROQ_API_KEY;
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
@@ -1622,9 +1678,10 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
         tipo: aliadoVenta.tipo,
         habitacionSugerida: habitacionMencionada?.nombre || null,
       } : null,
-    });
+    }, { headers: cors });
   } catch (error: any) {
     console.error("Error en /api/chat:", error);
+    const cors = corsHeaders(req);
     return NextResponse.json(
       {
         texto: "¡Hola! Estoy listo para ayudarte a descubrir los mejores rincones culturales, hospedajes y gastronomía de Loja. ¿Por dónde empezamos?",
@@ -1632,7 +1689,7 @@ FORMATO DE RESPUESTA — SOLO JSON válido:
         atractivos: [],
         eventos: [],
       },
-      { status: 200 }
+      { status: 200, headers: cors }
     );
   }
 }
