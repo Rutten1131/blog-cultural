@@ -6,6 +6,7 @@ import { inicioDelDiaLojaUTC } from "@/lib/fechas";
 import { EventoListCard, EstadoVacioEvento } from "@/components/EventoListCard";
 import { EventosPasadosList } from "@/components/EventosPasadosList";
 import { Navbar } from "@/components/Navbar";
+import FiavlLiquidHero from "@/components/FiavlLiquidHero";
 
 export const revalidate = 1800; // 30 minutos
 
@@ -169,73 +170,86 @@ export default async function FestivalArtesVivasPage() {
 
       <Navbar />
 
-      <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-16 flex-1">
-        {/* Breadcrumb Visual */}
-        <nav aria-label="Breadcrumb" className="mb-6 text-xs text-[var(--color-muted)] flex items-center gap-2">
-          <Link href="/" className="hover:text-[var(--color-dark)] transition-colors">Inicio</Link>
-          <span>/</span>
-          <Link href="/eventos" className="hover:text-[var(--color-dark)] transition-colors">Eventos</Link>
-          <span>/</span>
-          <span className="font-semibold text-[var(--color-dark)]">Festival Artes Vivas Loja 2026</span>
-        </nav>
+      {/* ── HERO FULLSCREEN INTERACTIVO LIQUID (ORDENADOR Y MÓVIL) ── */}
+      <FiavlLiquidHero>
+        {/* Contenido superior / espaciador para no tapar el navbar fijo */}
+        <div className="pt-24 sm:pt-28 px-4 sm:px-8 max-w-7xl mx-auto w-full">
+          {/* Breadcrumb translúcido con estilo escénico */}
+          <nav
+            aria-label="Breadcrumb"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white/80"
+          >
+            <Link href="/" className="hover:text-pink-400 transition-colors">Inicio</Link>
+            <span className="text-white/40">/</span>
+            <Link href="/eventos" className="hover:text-pink-400 transition-colors">Eventos</Link>
+            <span className="text-white/40">/</span>
+            <span className="font-semibold text-white">FIAVL 2026</span>
+          </nav>
+        </div>
 
-        {/* Hero Section FIAVL: Texto e Imagen Separados y Nítidos */}
-        <header className="mb-12 relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-6 sm:p-8 md:p-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
-            {/* Columna de Texto y Datos Informativos */}
-            <div className="lg:col-span-7 flex flex-col justify-center space-y-4">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 self-start shadow-sm">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-                </span>
-                ✨ Edición Oficial 2026 — Loja, Ecuador
-              </div>
-
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black uppercase tracking-tight text-slate-900 leading-tight">
-                Festival Internacional de Artes Vivas Loja 2026 (FIAVL)
-              </h1>
-
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
-                Guía completa, cartelera de obras e itinerario del festival de artes escénicas más relevante del Ecuador. Disfruta de teatro, danza contemporánea, circo, música e intervenciones urbanas en salas y plazas patrimoniales de Loja.
-              </p>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4 border-t border-slate-100">
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-                  <span className="block text-[11px] text-slate-500 font-semibold">Temporada</span>
-                  <span className="text-xs sm:text-sm font-black text-slate-900">Noviembre 2026</span>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-                  <span className="block text-[11px] text-slate-500 font-semibold">Sede Principal</span>
-                  <span className="text-xs sm:text-sm font-black text-slate-900">Teatro Benjamín Carrión</span>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-                  <span className="block text-[11px] text-slate-500 font-semibold">Acceso Calles</span>
-                  <span className="text-xs sm:text-sm font-black text-emerald-600">Entrada Libre</span>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-                  <span className="block text-[11px] text-slate-500 font-semibold">Obras & Funciones</span>
-                  <span className="text-xs sm:text-sm font-black text-slate-900">{todosEventos.length} Registradas</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Columna de Fotografía Nítida (Sin texto encima) */}
-            <div className="lg:col-span-5 relative w-full h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden shadow-lg group">
-              <img
-                src="/artes-vivas-loja.jpg"
-                alt="Festival Internacional de Artes Vivas Loja 2026"
-                className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/10" />
-              <div className="absolute bottom-3 right-3 bg-slate-950/80 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1 rounded-lg shadow">
-                Calle Bolívar · Loja
-              </div>
-            </div>
-
+        {/* Bloque central: Texto limpio, moderno y de impacto visual con colores FIAVL */}
+        <div className="px-4 sm:px-8 max-w-5xl mx-auto w-full py-8 my-auto text-center flex flex-col items-center">
+          {/* Badge vibrante */}
+          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full text-xs font-black tracking-wider uppercase bg-gradient-to-r from-violet-600/80 to-pink-600/80 text-white border border-pink-400/30 backdrop-blur-md shadow-[0_0_24px_rgba(236,72,153,0.35)] mb-5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-300"></span>
+            </span>
+            ✨ 10ª Edición Oficial 2026 · Loja, Ecuador
           </div>
-        </header>
+
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-display font-black uppercase tracking-tight text-white leading-[1.05] drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] max-w-4xl">
+            Festival Internacional de <br className="hidden sm:inline" />
+            <span className="bg-gradient-to-r from-violet-300 via-pink-400 to-amber-300 bg-clip-text text-transparent">
+              Artes Vivas Loja
+            </span>
+          </h1>
+
+          <p className="hidden md:block mt-5 text-sm sm:text-base md:text-lg text-slate-200/90 max-w-2xl font-medium leading-relaxed drop-shadow-md">
+            El encuentro de artes escénicas más trascendente del Ecuador. Descubre el itinerario oficial, salas de teatro y las expresiones culturales vivas que transforman las calles lojanas.
+          </p>
+
+          {/* Botones de acción limpia */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">
+            <a
+              href="#itinerario"
+              className="px-6 py-3 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-600 text-white shadow-[0_4px_20px_rgba(236,72,153,0.45)] hover:shadow-[0_6px_28px_rgba(236,72,153,0.7)] hover:scale-105 active:scale-95 transition-all duration-200"
+            >
+              🎭 Ver Obras en Cartelera
+            </a>
+            <Link
+              href="/publicar"
+              className="px-6 py-3 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 hover:border-white/40 transition-all duration-200"
+            >
+              + Publicar Función
+            </Link>
+          </div>
+        </div>
+
+        {/* Fila inferior de micro-datos flotantes del festival */}
+        <div className="w-full pb-8 pt-4 px-4 sm:px-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/60 backdrop-blur-xl border border-white/10 p-3 sm:p-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
+            <div className="px-3 py-1.5 border-r border-white/10 last:border-none">
+              <span className="block text-[10px] sm:text-[11px] text-pink-300/80 font-bold uppercase tracking-wider">Temporada</span>
+              <span className="text-xs sm:text-sm font-black text-white">Noviembre 2026</span>
+            </div>
+            <div className="px-3 py-1.5 border-r border-white/10 last:border-none">
+              <span className="block text-[10px] sm:text-[11px] text-pink-300/80 font-bold uppercase tracking-wider">Sede Principal</span>
+              <span className="text-xs sm:text-sm font-black text-white truncate block">Teatro Benjamín Carrión</span>
+            </div>
+            <div className="px-3 py-1.5 border-r border-white/10 last:border-none">
+              <span className="block text-[10px] sm:text-[11px] text-pink-300/80 font-bold uppercase tracking-wider">Acceso Calles</span>
+              <span className="text-xs sm:text-sm font-black text-emerald-400">Entrada Libre</span>
+            </div>
+            <div className="px-3 py-1.5">
+              <span className="block text-[10px] sm:text-[11px] text-pink-300/80 font-bold uppercase tracking-wider">Obras & Funciones</span>
+              <span className="text-xs sm:text-sm font-black text-white">{todosEventos.length} Registradas</span>
+            </div>
+          </div>
+        </div>
+      </FiavlLiquidHero>
+
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-16 flex-1" id="itinerario">
 
         {/* ── SECCIÓN 1: EVENTOS VIGENTES / PRÓXIMOS EN CARTELERA ── */}
         <section className="mb-14">

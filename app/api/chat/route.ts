@@ -16,63 +16,83 @@ function startOfDayEcuador(d: Date): Date {
   return local;
 }
 
+function endOfDayEcuador(d: Date): Date {
+  const local = new Date(d);
+  local.setHours(23, 59, 59, 999);
+  return local;
+}
+
 function extraerRangoFecha(query: string): { desde: Date; hasta: Date; etiqueta: string } | null {
   const q = query.toLowerCase();
   const hoy = nowEcuador();
   const anio = hoy.getFullYear();
 
-  if (q.includes("mañana")) {
+  // Día de la semana en Ecuador: 0=domingo, 1=lunes, ..., 6=sábado
+  const diaSemana = hoy.getDay();
+  // Diferencia para retroceder hasta el lunes de la semana actual
+  const difLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+  const lunesEstaSemana = new Date(hoy);
+  lunesEstaSemana.setDate(hoy.getDate() + difLunes);
+
+  if (q.includes("mañana") || q.includes("manana")) {
     const manana = new Date(hoy);
     manana.setDate(manana.getDate() + 1);
     const desde = startOfDayEcuador(manana);
-    const hasta = new Date(desde);
-    hasta.setHours(23, 59, 59, 999);
+    const hasta = endOfDayEcuador(manana);
     return { desde, hasta, etiqueta: manana.toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" }) };
   }
 
   if (q.includes("hoy") || q.includes("esta noche")) {
     const desde = startOfDayEcuador(hoy);
-    const hasta = new Date(desde);
-    hasta.setHours(23, 59, 59, 999);
-    return { desde, hasta, etiqueta: "hoy" };
+    const hasta = endOfDayEcuador(hoy);
+    return { desde, hasta, etiqueta: "hoy (" + hoy.toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" }) + ")" };
   }
 
+  // Fin de semana: Viernes a Domingo
   if (q.includes("fin de semana") || q.includes("finde")) {
-    const dia = hoy.getDay();
-    const difSab = dia <= 6 ? (6 - dia) : 0;
-    const sab = new Date(hoy);
-    sab.setDate(sab.getDate() + difSab);
-    const dom = new Date(sab);
-    dom.setDate(dom.getDate() + 1);
-    const desde = startOfDayEcuador(sab);
-    const hasta = new Date(startOfDayEcuador(dom));
-    hasta.setHours(23, 59, 59, 999);
-    return { desde, hasta, etiqueta: "este fin de semana" };
+    const esProximo = q.includes("proximo") || q.includes("próximo") || q.includes("siguiente") || q.includes("que viene");
+    const viernes = new Date(lunesEstaSemana);
+    viernes.setDate(lunesEstaSemana.getDate() + (esProximo ? 11 : 4)); // lunes + 4 = viernes
+    const domingo = new Date(viernes);
+    domingo.setDate(viernes.getDate() + 2); // viernes + 2 = domingo
+    const desde = startOfDayEcuador(viernes);
+    const hasta = endOfDayEcuador(domingo);
+    const dStr = desde.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
+    const hStr = hasta.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
+    return {
+      desde,
+      hasta,
+      etiqueta: (esProximo ? "el próximo fin de semana" : "este fin de semana") + ` (del ${dStr} al ${hStr})`,
+    };
   }
 
-  if (q.includes("esta semana")) {
-    const desde = startOfDayEcuador(hoy);
-    const hasta = new Date(desde);
-    hasta.setDate(hasta.getDate() + 7);
-    hasta.setHours(23, 59, 59, 999);
-    return { desde, hasta, etiqueta: "esta semana" };
+  // Próxima semana: de lunes a domingo siguiente
+  if (
+    q.includes("proxima semana") ||
+    q.includes("próxima semana") ||
+    q.includes("la otra semana") ||
+    q.includes("siguiente semana")
+  ) {
+    const lunesProx = new Date(lunesEstaSemana);
+    lunesProx.setDate(lunesEstaSemana.getDate() + 7);
+    const domingoProx = new Date(lunesProx);
+    domingoProx.setDate(lunesProx.getDate() + 6);
+    const desde = startOfDayEcuador(lunesProx);
+    const hasta = endOfDayEcuador(domingoProx);
+    const dStr = desde.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
+    const hStr = hasta.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
+    return { desde, hasta, etiqueta: `la próxima semana (del ${dStr} al ${hStr})` };
   }
 
-  if (q.includes("proxima semana") || q.includes("próxima semana") || q.includes("la otra semana") || q.includes("siguiente semana")) {
-    const desde = startOfDayEcuador(hoy);
-    desde.setDate(desde.getDate() + 7);
-    const hasta = new Date(desde);
-    hasta.setDate(hasta.getDate() + 7);
-    hasta.setHours(23, 59, 59, 999);
-    return { desde, hasta, etiqueta: "la próxima semana" };
-  }
-
-  if (q.includes("semana") && !q.includes("fin de semana") && !q.includes("finde")) {
-    const desde = startOfDayEcuador(hoy);
-    const hasta = new Date(desde);
-    hasta.setDate(hasta.getDate() + 7);
-    hasta.setHours(23, 59, 59, 999);
-    return { desde, hasta, etiqueta: "esta semana" };
+  // Esta semana (o mención genérica de semana): de lunes a domingo de la semana en curso
+  if (q.includes("semana")) {
+    const domingo = new Date(lunesEstaSemana);
+    domingo.setDate(lunesEstaSemana.getDate() + 6);
+    const desde = startOfDayEcuador(lunesEstaSemana);
+    const hasta = endOfDayEcuador(domingo);
+    const dStr = desde.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
+    const hStr = hasta.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
+    return { desde, hasta, etiqueta: `esta semana (del ${dStr} al ${hStr})` };
   }
 
   const MESES: Record<string, number> = {
@@ -127,14 +147,15 @@ function extraerIntencionBusqueda(query: string) {
     q.includes("en este momento");
 
   // Extracción de palabras clave de temática / género / lugar
-  // Quitamos stopwords y palabras genéricas del chat
+  // Quitamos stopwords y palabras genéricas del chat (incluyendo typos comunes como 'evnetos' o 'abra')
   const stopwords = new Set([
     "hay", "algo", "de", "un", "una", "unos", "unas", "el", "la", "los", "las",
     "en", "para", "por", "con", "que", "qué", "donde", "dónde", "cuando", "cuándo",
-    "cual", "cuál", "como", "cómo", "evento", "eventos", "actividad", "actividades",
-    "hacer", "puedo", "podemos", "ir", "recomiendas", "recomiéndame", "dime", "cuenta",
-    "sobre", "hola", "buenas", "buenos", "dias", "días", "tardes", "noches", "porfavor",
-    "favor", "este", "esta", "estos", "estas", "mes", "semana", "dia", "día", "loja"
+    "cual", "cuál", "como", "cómo", "evento", "eventos", "evneto", "evnetos", "ebento", "ebentos",
+    "actividad", "actividades", "hacer", "puedo", "podemos", "ir", "recomiendas", "recomiéndame",
+    "dime", "cuenta", "sobre", "hola", "buenas", "buenos", "dias", "días", "tardes", "noches",
+    "porfavor", "favor", "este", "esta", "estos", "estas", "mes", "semana", "dia", "día", "loja",
+    "habra", "habrá", "abra", "habran", "habrán", "abran", "tienen", "tiene", "cartelera", "agenda"
   ]);
 
   const palabras = q
@@ -763,8 +784,9 @@ Reglas de formato:
         },
       });
 
-      // Si no hay futuros de ese tema, buscar si hubo alguno recientemente para informar al usuario
-      if (eventosParaContexto.length === 0) {
+      // Si no hay futuros de ese tema y NO se pidió un rango de fecha específico,
+      // verificar si hubo alguno recientemente solo para informar al usuario de que ya pasaron
+      if (eventosParaContexto.length === 0 && !rangoFecha) {
         const eventosPasadosTema = await prisma.evento.findMany({
           where: {
             estado: "APROBADO",
@@ -801,7 +823,7 @@ Reglas de formato:
       });
     }
 
-    // D. Si no hubo resultados temáticos o no hubo búsqueda específica, traer próximos eventos vigentes
+    // D. Si no hubo resultados temáticos o no hubo búsqueda específica de fecha, traer próximos eventos vigentes
     if (eventosParaContexto.length === 0 && !rangoFecha && !intencion.quierePasados) {
       tipoBusqueda = "general";
       eventosParaContexto = await prisma.evento.findMany({
@@ -817,18 +839,8 @@ Reglas de formato:
         },
       });
 
-      // Fallback si la cartelera futura estuviese vacía
-      if (eventosParaContexto.length === 0) {
-        eventosParaContexto = await prisma.evento.findMany({
-          where: { estado: "APROBADO" },
-          orderBy: { fecha: "desc" },
-          take: 6,
-          select: {
-            id: true, nombre: true, fecha: true, lugar: true,
-            slug: true, imagenUrl: true, descripcion: true,
-          },
-        });
-      }
+      // Si no hay eventos futuros en cartelera general, NO inyectar eventos pasados a menos que se hayan pedido
+      // ya que confundirían al usuario diciendo que son vigentes.
     }
 
     // ─── 2. OBTENCIÓN DE ALIADOS Y ATRACTIVOS ───
@@ -1212,13 +1224,20 @@ ${datosVenta}`
       : "";
 
     const systemPrompt = `Eres el asistente turístico y cultural oficial de la Agenda Cultural Loja (Ecuador).
+ZONA HORARIA Y UBICACIÓN: Estás en Ecuador (GMT-5, hora de Ecuador continental / Loja).
+FECHA Y HORA ACTUAL: ${fechaHoyStr}.
+
+REGLAS TEMPORALES CRÍTICAS:
+- Tu fecha de referencia de HOY es estrictamente: ${fechaHoyStr}.
+- "Esta semana" corresponde a la semana en curso de Lunes a Domingo.
+- "Fin de semana" corresponde de Viernes a Domingo.
+- Si el usuario pregunta por eventos de "esta semana", "este fin de semana", "hoy" o fechas futuras, responde ÚNICAMENTE con eventos programados para ese periodo en EVENTOS DISPONIBLES.
+- NUNCA presentes eventos pasados o finalizados como si fueran a ocurrir esta semana o en el futuro. Si en EVENTOS DISPONIBLES no hay eventos para el rango solicitado, dilo con honestidad y amabilidad (ej: "Para esta semana no tenemos eventos culturales registrados en cartelera en este momento...") e invita al usuario a consultar otras fechas, atractivos turísticos o gastronomía.
 ${detalleUbicacion}
 ${detalleRango}
 ${detalleMemoria}
 ${guiaBusqueda}
 ${guiaVenta}
-
-FECHA ACTUAL: ${fechaHoyStr}.
 
 TONO Y ESTILO DE CONVERSACIÓN (NATURAL, AMABLE Y ENGAGEMENT):
 1. EQUILIBRIO PERFECTO: Responde con calidez humana en 2 o 3 frases fluidas. No seas un robot que repite lo mismo.
