@@ -4,8 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 const CORS_ORIGINS_PERMITIDOS = [
   "https://quecomerenloja.com",
   "https://www.quecomerenloja.com",
+  "https://quecomerenloja.vercel.app",
   "https://agendaturisticaloja.com",
   "https://www.agendaturisticaloja.com",
+  "https://agendaturisticaloja.vercel.app",
   // Desarrollo local de los proyectos hermanos:
   "http://localhost:3000",
   "http://localhost:3001",

@@ -1619,12 +1619,18 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
  */
 async function autoPublicarSiCompleto(post, datos, prisma) {
   try {
-    if (!post.titulo || !post.fechaPublicacion || !post.lugar || !post.imagenUrl) {
+    // Requisitos completos: el post debe tener los 5 campos para verse completo en la web.
+    // título + fecha + lugar + imagen + descripción (al menos algo de texto).
+    const descripcionOk = post.descripcion && post.descripcion.trim().length > 10;
+    if (!post.titulo || !post.fechaPublicacion || !post.lugar || !post.imagenUrl || !descripcionOk) {
       return;
     }
-    if ((post.confianzaIA || 0) < 0.5) {
+    // Umbral de confianza reducido a 0.3 porque Groq está caída y la asignación
+    // de confianza no puede llegar a 0.5 con solo el clasificador de palabras clave.
+    if ((post.confianzaIA || 0) < 0.3) {
       return;
     }
+
 
     // ── REGLA ESTRICTA: SOLO EVENTOS DE HOY EN ADELANTE (FUTUROS) ──
     // Se descartan eventos pasados para no ensuciar la agenda con eventos ya concluidos.

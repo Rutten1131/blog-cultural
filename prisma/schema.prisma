@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,124 +6,63 @@ datasource db {
   provider = "mysql"
 }
 
-// ─── Catálogo cerrado: Categorías ───────────────────────────
-// Solo lectura para usuarios. Editable solo desde admin.
-model Categoria {
-  id     Int      @id @default(autoincrement())
-  slug   String   @unique @db.VarChar(50)
-  nombre String   @db.VarChar(100)
+model aliado_habitaciones {
+  id              Int      @id @default(autoincrement())
+  aliadoId        Int
+  nombre          String   @db.VarChar(150)
+  precio          String?  @db.VarChar(100)
+  caracteristicas String?  @db.Text
+  imagenes        String?  @db.Text
+  orden           Int      @default(0)
+  createdAt       DateTime @default(now())
+  aliados         aliados  @relation(fields: [aliadoId], references: [id], onDelete: Cascade)
 
-  eventos Evento[]
-
-  @@map("categorias")
+  @@index([aliadoId])
 }
 
-// ─── Catálogo cerrado: Zonas / Parroquias ───────────────────
-// 6 urbanas + 13 rurales del cantón Loja.
-// Solo lectura para usuarios. Editable solo desde admin.
-model Zona {
-  id     Int      @id @default(autoincrement())
-  nombre String   @unique @db.VarChar(100)
-  tipo   TipoZona
+model aliados {
+  id                  Int                   @id @default(autoincrement())
+  nombre              String                @db.VarChar(150)
+  tipo                aliados_tipo          @default(HOSPEDAJE)
+  imagenUrl           String?               @db.VarChar(500)
+  servicios           String?               @db.Text
+  telefono            String?               @db.VarChar(50)
+  destacado           Boolean               @default(true)
+  activo              Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  cuartos             String?               @db.Text
+  descripcion         String                @db.Text
+  mapaUrl             String?               @db.VarChar(500)
+  rangoPrecio         String?               @db.VarChar(100)
+  redesUrl            String?               @db.VarChar(255)
+  ubicacion           String                @db.VarChar(255)
+  websiteUrl          String?               @db.VarChar(255)
+  ubicacionLat        Float?
+  ubicacionLng        Float?
+  estrellas           Int?
+  numeroCuartos       Int?
+  aliado_habitaciones aliado_habitaciones[]
+  solicitudes_reserva solicitudes_reserva[]
 
-  eventos Evento[]
-
-  @@map("zonas")
+  @@index([tipo, activo])
 }
 
-enum TipoZona {
-  URBANA
-  RURAL
-}
-
-// ─── Evento ─────────────────────────────────────────────────
-model Evento {
-  id           Int           @id @default(autoincrement())
-  nombre       String        @db.VarChar(255)
-  slug         String        @unique @db.VarChar(300)
-  fecha        DateTime
-  fechaFin     DateTime?     @map("fecha_fin")
-  lugar        String        @db.VarChar(255)
-  descripcion  String        @db.Text
-  imagenUrl    String?       @db.VarChar(500)
-  multimedia   Json?         // Array de URLs de imágenes para el carrusel
-  videoUrl     String?       @db.VarChar(500) // Enlace a video (FB, IG, TikTok, YT)
-  mapaUrl      String?       @db.VarChar(500) // URL de Google Maps del lugar exacto del evento
-  patrocinadores Json?       // Array de objetos [{ nombre: string, logoUrl: string }]
-  estado       EstadoEvento  @default(PENDIENTE)
-  nombreGestor          String        @db.VarChar(200)
-  confianzaClasificacion Float?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-
-  institucionRelacionada String?       @db.VarChar(150)
-  editToken              String?       @unique @db.VarChar(100)   // Token único para link de edición sin login
-  editTokenExpiresAt     DateTime?     @map("edit_token_expires_at") // Expira en la fecha del evento
-  categoriaId  Int?
-  categoria    Categoria?    @relation(fields: [categoriaId], references: [id])
-
-  zonaId       Int?
-  zona         Zona?         @relation(fields: [zonaId], references: [id])
-
-  publicacionesRedes PublicacionRedSocial[]
-
-  @@index([estado])
-  @@index([fecha])
-  @@index([fechaFin])
-  @@index([categoriaId])
-  @@index([zonaId])
-  @@map("eventos")
-}
-
-enum EstadoEvento {
-  PENDIENTE
-  APROBADO
-  RECHAZADO
-}
-
-// ─── Buzón de sugerencias y recomendaciones ciudadanas ───────
-model Recomendacion {
-  id        Int      @id @default(autoincrement())
-  mensaje   String   @db.Text
-  contacto  String?  @db.VarChar(150)
-  createdAt DateTime @default(now())
-
-  @@map("recomendaciones")
-}
-
-// ─── Números de WhatsApp para notificaciones de admin ────────
-// Gestionados desde el panel /admin. Se notifica cuando
-// un nuevo evento es enviado para revisión (al superadmin o a la institución).
-model NumeroNotificacion {
-  id            Int          @id @default(autoincrement())
-  nombre        String       @db.VarChar(100)   // Etiqueta descriptiva (Ej: "César - Admin")
-  numero        String       @db.VarChar(20)    // Formato internacional sin + (Ej: 593987654321)
-  activo        Boolean      @default(true)
-  institucionId Int?         @map("institucion_id")
-  institucion   Institucion? @relation(fields: [institucionId], references: [id], onDelete: Cascade)
-  createdAt     DateTime     @default(now())
-
-  @@index([institucionId])
-  @@index([numero])
-  @@map("numeros_notificacion")
-}
-
-// ─── Instituciones asociadas / Cuentas de Acceso ───────────────
-model Institucion {
+model atractivos_cantonales {
   id          Int      @id @default(autoincrement())
-  nombre      String   @unique @db.VarChar(150)
-  slug        String   @unique @db.VarChar(100)
-  password    String   @db.VarChar(255)
-  activa      Boolean  @default(true)
+  nombre      String   @db.VarChar(150)
+  canton      String   @db.VarChar(100)
+  descripcion String   @db.Text
+  distancia   String   @db.VarChar(100)
+  ruta        String   @db.VarChar(255)
+  imagenUrl   String?  @db.VarChar(500)
+  mapaUrl     String?  @db.VarChar(500)
+  activo      Boolean  @default(true)
   createdAt   DateTime @default(now())
 
-  numerosNotificacion NumeroNotificacion[]
-
-  @@map("instituciones")
+  @@index([canton, activo])
 }
 
-// ─── Banners del Hero Principal ──────────────────────────────
-model BannerHero {
+model banners_hero {
   id            Int      @id @default(autoincrement())
   titulo        String   @db.VarChar(200)
   subtitulo     String?  @db.VarChar(255)
@@ -139,55 +75,207 @@ model BannerHero {
   createdAt     DateTime @default(now())
 
   @@index([activo, orden])
-  @@map("banners_hero")
 }
 
-// ─── Aliados Comerciales (Patrocinadores, Hoteles, Restaurantes) ─
-model Aliado {
-  id          Int         @id @default(autoincrement())
-  nombre      String      @db.VarChar(150)
-  tipo        TipoAliado  @default(HOSPEDAJE)
-  descripcion String      @db.Text
-  ubicacion   String      @db.VarChar(255)
-  ubicacionLat Float?
-  ubicacionLng Float?
-  mapaUrl     String?     @db.VarChar(500)
-  rangoPrecio String?     @db.VarChar(100) // Ej: "$35 - $65 / noche"
-  servicios   String?     @db.Text         // Ej: "Wifi fibra, Desayuno buffet, Parqueadero privado"
-  cuartos     String?     @db.Text         // Ej: "Matrimoniales, Suites ejecutivas, Familiares"
-  numeroCuartos Int?                       // Cantidad de habitaciones del establecimiento
-  estrellas   Int?                         // Categoría / cantidad de estrellas (1-5)
-  telefono    String?     @db.VarChar(50)  // WhatsApp internacional ej: 593991234567
-  websiteUrl  String?     @db.VarChar(255)
-  redesUrl    String?     @db.VarChar(255) // Instagram / Facebook / TikTok
-  imagenUrl   String?     @db.VarChar(500)
-  destacado   Boolean     @default(true)
-  activo      Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  habitaciones AliadoHabitacion[]
-  solicitudesReserva SolicitudReserva[]
-
-  @@index([tipo, activo])
-  @@map("aliados")
+model categorias {
+  id      Int       @id @default(autoincrement())
+  slug    String    @unique @db.VarChar(50)
+  nombre  String    @db.VarChar(100)
+  eventos eventos[]
 }
 
-/// Categorías / tipos de habitación de un aliado (precio, características y galería de imágenes)
-model AliadoHabitacion {
-  id              Int      @id @default(autoincrement())
+model chat_messages {
+  id            Int           @id @default(autoincrement())
+  sessionId     String        @db.VarChar(64)
+  sender        String        @db.VarChar(10)
+  contenido     String        @db.Text
+  aliadosIds    String?       @db.LongText
+  eventosIds    String?       @db.LongText
+  atractivosIds String?       @db.LongText
+  createdAt     DateTime      @default(now())
+  chat_sessions chat_sessions @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model chat_sessions {
+  id                  Int                   @id @default(autoincrement())
+  sessionId           String                @unique @db.VarChar(64)
+  ubicacionLat        Float?
+  ubicacionLng        Float?
+  zonaDetectada       String?               @db.VarChar(150)
+  ciudad              String?               @db.VarChar(100)
+  provincia           String?               @db.VarChar(100)
+  pais                String?               @db.VarChar(50)
+  userAgent           String?               @db.VarChar(500)
+  ipAddress           String?               @db.VarChar(60)
+  totalMensajes       Int                   @default(0)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  direccionDetallada  String?               @db.VarChar(500)
+  contextoResumen     String?               @db.Text
+  intencionDetectada  String?               @db.VarChar(50)
+  nombreUsuario       String?               @db.VarChar(150)
+  chat_messages       chat_messages[]
+  solicitudes_reserva solicitudes_reserva[]
+
+  @@index([createdAt])
+  @@index([zonaDetectada])
+}
+
+model eventos {
+  id                           Int                           @id @default(autoincrement())
+  nombre                       String                        @db.VarChar(255)
+  slug                         String                        @unique @db.VarChar(300)
+  fecha                        DateTime
+  lugar                        String                        @db.VarChar(255)
+  descripcion                  String                        @db.Text
+  imagenUrl                    String?                       @db.VarChar(500)
+  estado                       eventos_estado                @default(PENDIENTE)
+  nombreGestor                 String                        @db.VarChar(200)
+  createdAt                    DateTime                      @default(now())
+  categoriaId                  Int?
+  zonaId                       Int?
+  confianzaClasificacion       Float?
+  multimedia                   String?                       @db.LongText
+  videoUrl                     String?                       @db.VarChar(500)
+  institucionRelacionada       String?                       @db.VarChar(150)
+  fecha_fin                    DateTime?
+  updatedAt                    DateTime
+  mapaUrl                      String?                       @db.VarChar(500)
+  patrocinadores               String?                       @db.LongText
+  editToken                    String?                       @unique @db.VarChar(100)
+  edit_token_expires_at        DateTime?
+  categorias                   categorias?                   @relation(fields: [categoriaId], references: [id])
+  zonas                        zonas?                        @relation(fields: [zonaId], references: [id])
+  publicaciones_redes_sociales publicaciones_redes_sociales?
+
+  @@index([categoriaId])
+  @@index([estado])
+  @@index([fecha_fin])
+  @@index([fecha])
+  @@index([zonaId])
+}
+
+model instituciones {
+  id                   Int                    @id @default(autoincrement())
+  nombre               String                 @unique @db.VarChar(150)
+  slug                 String                 @unique @db.VarChar(100)
+  password             String                 @db.VarChar(255)
+  activa               Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  numeros_notificacion numeros_notificacion[]
+}
+
+model numeros_notificacion {
+  id             Int            @id @default(autoincrement())
+  nombre         String         @db.VarChar(100)
+  numero         String         @db.VarChar(20)
+  activo         Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  institucion_id Int?
+  instituciones  instituciones? @relation(fields: [institucion_id], references: [id], onDelete: Cascade)
+
+  @@index([institucion_id])
+  @@index([numero])
+}
+
+model posts_social {
+  id                   Int                 @id @default(autoincrement())
+  origen               String              @db.VarChar(50)
+  urlOriginal          String?             @db.VarChar(500)
+  textoOriginal        String?             @db.Text
+  titulo               String?             @db.VarChar(255)
+  descripcion          String?             @db.Text
+  imagenUrl            String?             @db.VarChar(500)
+  fechaPublicacion     DateTime?
+  lugar                String?             @db.VarChar(255)
+  estado               posts_social_estado @default(PENDIENTE)
+  grupoId              String?             @db.VarChar(100)
+  moderadoPor          String?             @db.VarChar(100)
+  moderadoAt           DateTime?
+  moderationComentario String?             @db.Text
+  confianzaIA          Float?
+  fechaDeteccion       DateTime            @default(now())
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime
+  multimedia           String?             @db.LongText
+
+  @@index([estado])
+  @@index([fechaDeteccion])
+  @@index([origen])
+}
+
+model publicaciones_redes_sociales {
+  id            Int                                 @id @default(autoincrement())
+  evento_id     Int                                 @unique
+  plataformas   String                              @db.VarChar(200)
+  tipo          String                              @db.VarChar(50)
+  programado_at DateTime
+  publicado_at  DateTime?
+  estado        publicaciones_redes_sociales_estado @default(PENDIENTE)
+  respuestaApi  String?                             @db.LongText
+  error         String?                             @db.Text
+  created_at    DateTime                            @default(now())
+  updated_at    DateTime
+  eventos       eventos                             @relation(fields: [evento_id], references: [id], onDelete: Cascade)
+
+  @@index([estado])
+  @@index([programado_at])
+}
+
+model recomendaciones {
+  id        Int      @id @default(autoincrement())
+  mensaje   String   @db.Text
+  contacto  String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+}
+
+model solicitudes_reserva {
+  id              Int            @id @default(autoincrement())
+  sessionId       String?        @db.VarChar(64)
   aliadoId        Int
-  aliado          Aliado   @relation(fields: [aliadoId], references: [id], onDelete: Cascade)
-  nombre          String   @db.VarChar(150) // Ej: "Suite Ejecutiva con balcón"
-  precio          String?  @db.VarChar(100) // Ej: "$65 / noche"
-  caracteristicas String?  @db.Text         // Qué incluye / qué tiene
-  imagenes        String?  @db.Text         // JSON array de URLs para el carrusel
-  orden           Int      @default(0)
-  createdAt       DateTime @default(now())
+  nombreCliente   String         @db.VarChar(150)
+  telefonoCliente String         @db.VarChar(50)
+  fechaInicio     String?        @db.VarChar(50)
+  fechaFin        String?        @db.VarChar(50)
+  numPersonas     Int            @default(1)
+  detalle         String?        @db.Text
+  estado          String         @default("PENDIENTE") @db.VarChar(30)
+  createdAt       DateTime       @default(now())
+  aliados         aliados        @relation(fields: [aliadoId], references: [id], onDelete: Cascade)
+  chat_sessions   chat_sessions? @relation(fields: [sessionId], references: [sessionId])
 
   @@index([aliadoId])
-  @@map("aliado_habitaciones")
+  @@index([createdAt])
+  @@index([sessionId], map: "solicitudes_reserva_sessionId_fkey")
 }
 
-enum TipoAliado {
+model wa_mensajes_procesados {
+  id               String   @id @db.VarChar(128)
+  grupoId          String   @db.VarChar(100)
+  messageTimestamp BigInt?
+  urlsEncontradas  Int      @default(0)
+  postsCreados     Int      @default(0)
+  procesadoAt      DateTime @default(now())
+
+  @@index([grupoId], map: "wa_msg_grupo_idx")
+  @@index([procesadoAt], map: "wa_msg_procesado_idx")
+}
+
+model zonas {
+  id      Int        @id @default(autoincrement())
+  nombre  String     @unique @db.VarChar(100)
+  tipo    zonas_tipo
+  eventos eventos[]
+}
+
+enum zonas_tipo {
+  URBANA
+  RURAL
+}
+
+enum aliados_tipo {
   HOSPEDAJE
   GASTRONOMIA
   CAFETERIA
@@ -199,163 +287,7 @@ enum TipoAliado {
   OTRO
 }
 
-// ─── Atractivos Cantonales (Recomendación B2G Cruzada) ──────────
-model AtractivoCantonal {
-  id          Int      @id @default(autoincrement())
-  nombre      String   @db.VarChar(150)
-  canton      String   @db.VarChar(100) // Ej: "Saraguro", "Vilcabamba", "Catamayo", "Zamora"
-  descripcion String   @db.Text
-  distancia   String   @db.VarChar(100) // Ej: "A 1h 20min de Loja (65 km)"
-  ruta        String   @db.VarChar(255) // Ej: "Vía Panamericana Norte hacia Saraguro"
-  imagenUrl   String?  @db.VarChar(500)
-  mapaUrl     String?  @db.VarChar(500)
-  activo      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-
-  @@index([canton, activo])
-  @@map("atractivos_cantonales")
-}
-
-
-// --- CRM Chatbot - Sesiones ---
-model ChatSession {
-  id               Int      @id @default(autoincrement())
-  sessionId        String   @unique @db.VarChar(64)
-  ubicacionLat     Float?
-  ubicacionLng     Float?
-  zonaDetectada    String?  @db.VarChar(150)
-  direccionDetallada String? @db.VarChar(500)
-  ciudad           String?  @db.VarChar(100)
-  provincia        String?  @db.VarChar(100)
-  pais             String?  @db.VarChar(50)
-  userAgent        String?  @db.VarChar(500)
-  ipAddress        String?  @db.VarChar(60)
-  totalMensajes    Int      @default(0)
-  contextoResumen  String?  @db.Text
-  intencionDetectada String? @db.VarChar(50)
-  nombreUsuario    String?  @db.VarChar(150)  // Lead qualification: nombre capturado durante flujo de venta
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  mensajes         ChatMessage[]
-  solicitudesReserva SolicitudReserva[]
-  @@index([createdAt])
-  @@index([zonaDetectada])
-  @@map("chat_sessions")
-}
-
-model ChatMessage {
-  id               Int         @id @default(autoincrement())
-  sessionId        String      @db.VarChar(64)
-  sesion           ChatSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
-  sender           String      @db.VarChar(10)
-  contenido        String      @db.Text
-  aliadosIds       Json?
-  eventosIds       Json?
-  atractivosIds    Json?
-  createdAt        DateTime    @default(now())
-  @@index([sessionId])
-  @@map("chat_messages")
-}
-
-// ─── Solicitudes de Reserva Directa (Formulario Chatbot) ───
-model SolicitudReserva {
-  id               Int         @id @default(autoincrement())
-  sessionId        String?     @db.VarChar(64)
-  sesion           ChatSession? @relation(fields: [sessionId], references: [sessionId], onDelete: SetNull)
-  aliadoId         Int
-  aliado           Aliado      @relation(fields: [aliadoId], references: [id], onDelete: Cascade)
-  nombreCliente    String      @db.VarChar(150)
-  telefonoCliente  String      @db.VarChar(50)
-  fechaInicio      String?     @db.VarChar(50)  // Ej: 2026-10-15
-  fechaFin         String?     @db.VarChar(50)  // Ej: 2026-10-18
-  numPersonas      Int         @default(1)
-  detalle          String?     @db.Text         // Habitación deseada, notas especiales o menú
-  estado           String      @default("PENDIENTE") @db.VarChar(30) // PENDIENTE, ENVIADO, CONFIRMADO
-  createdAt        DateTime    @default(now())
-
-  @@index([aliadoId])
-  @@index([createdAt])
-  @@map("solicitudes_reserva")
-}
-
-// ─── Posts de Moderación Social (WhatsApp Worker) ───────────
-// Posts extraídos de redes sociales/WhatsApp para moderación.
-// No se publican automáticamente; requieren revisión humana.
-model PostSocial {
-  id             Int            @id @default(autoincrement())
-  origen         String         @db.VarChar(50)   // WHATSAPP_GRUPO, MANUAL, etc.
-  urlOriginal    String?        @db.VarChar(500)
-  textoOriginal  String?        @db.Text
-  titulo         String?        @db.VarChar(255)
-  descripcion    String?        @db.Text
-  imagenUrl      String?        @db.VarChar(500)
-  // Todas las fotos del carrusel (la primera es la portada de imagenUrl).
-  // Se guardan ya re-alojadas en Bunny: las URLs de Instagram/Facebook caducan.
-  multimedia     Json?
-  fechaPublicacion DateTime?
-  lugar          String?        @db.VarChar(255)
-  estado         EstadoPost     @default(PENDIENTE)
-  grupoId        String?        @db.VarChar(100)
-  moderadoPor    String?        @db.VarChar(100)
-  moderadoAt     DateTime?
-  moderationComentario String?   @db.Text
-  confianzaIA    Float?
-  fechaDeteccion DateTime        @default(now())
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  @@index([estado])
-  @@index([fechaDeteccion])
-  @@index([origen])
-  @@map("posts_social")
-}
-
-enum EstadoPost {
-  PENDIENTE
-  APROBADO
-  RECHAZADO
-}
-
-// Registro de idempotencia para el scraper de WhatsApp
-model WaMensajeProcesado {
-  id               String   @id @db.VarChar(128)
-  grupoId          String   @db.VarChar(100)
-  messageTimestamp BigInt?
-  urlsEncontradas  Int      @default(0)
-  postsCreados     Int      @default(0)
-  procesadoAt      DateTime @default(now())
-
-  @@index([grupoId], map: "wa_msg_grupo_idx")
-  @@index([procesadoAt], map: "wa_msg_procesado_idx")
-  @@map("wa_mensajes_procesados")
-}
-
-// ─── Registro de Publicaciones en Redes Sociales ──────────────
-// Rastrea qué eventos se han publicado en redes sociales para evitar duplicados
-// y aplicar límites diarios (máx. 5 publicaciones/día, hasta 7 por urgencias).
-model PublicacionRedSocial {
-  id           Int      @id @default(autoincrement())
-  eventoId     Int      @map("evento_id")
-  evento       Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
-  plataformas  String   @default("INSTAGRAM") @db.VarChar(200) @map("plataformas") // FACEBOOK | INSTAGRAM
-  tipo         String   @db.VarChar(50)   // FEED_POST, CAROUSEL, REEL, STORY
-  programadoAt DateTime @map("programado_at")
-  publicadoAt  DateTime? @map("publicado_at")
-  estado       EstadoPublicacionRed @default(PENDIENTE)
-  respuestaApi Json?    // Respuesta del webhook/scheduler
-  error        String?  @db.Text
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  metricas     MetricaPublicacion[]
-
-  @@index([programadoAt])
-  @@index([estado])
-  @@index([eventoId])
-  @@map("publicaciones_redes_sociales")
-}
-
-enum EstadoPublicacionRed {
+enum publicaciones_redes_sociales_estado {
   PENDIENTE
   PROGRAMADO
   PUBLICADO
@@ -363,67 +295,14 @@ enum EstadoPublicacionRed {
   CANCELADO
 }
 
-// ─── Métricas de Rendimiento en Redes (24h y 7 días) ───────────
-model MetricaPublicacion {
-  id              Int       @id @default(autoincrement())
-  publicacionId   Int       @map("publicacion_id")
-  publicacion     PublicacionRedSocial @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
-  postIdExterno   String?   @map("post_id_externo") @db.VarChar(100)
-  alcance         Int       @default(0)
-  likes           Int       @default(0)
-  comentarios     Int       @default(0)
-  guardados       Int       @default(0)
-  compartidos     Int       @default(0)
-  clicsEnlace     Int       @default(0)
-  medidoAt        DateTime  @default(now()) @map("medido_at")
-  periodo         String    @db.VarChar(20) // "24_HORAS" | "7_DIAS"
-
-  @@index([publicacionId])
-  @@index([periodo])
-  @@map("metricas_publicacion")
+enum eventos_estado {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
 }
 
-// ─── Log de Moderación y Calidad del Extractor ─────────────────
-model ModeracionLog {
-  id             Int       @id @default(autoincrement())
-  postId         Int?      @map("post_id")
-  eventoId       Int?      @map("evento_id")
-  origen         String    @db.VarChar(50)   // "WHATSAPP_WORKER" | "FORMULARIO_PUBLICO"
-  accion         String    @db.VarChar(50)   // "AUTO_APROBADO" | "APROBADO_MANUAL" | "EDITADO" | "RECHAZADO"
-  usuario        String    @db.VarChar(100)  // "SISTEMA_AUTO_PUBLISH" o nombre
-  camposEditados Json?     @map("campos_editados")
-  motivoRechazo  String?   @map("motivo_rechazo") @db.Text
-  confianzaIA    Float?    @map("confianza_ia")
-  createdAt      DateTime  @default(now())   @map("created_at")
-
-  @@index([accion])
-  @@index([createdAt])
-  @@map("moderacion_log")
+enum posts_social_estado {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
 }
-
-// ─── Parámetros de Control y Botón de Emergencia ───────────────
-model SistemaConfig {
-  id          Int      @id @default(autoincrement())
-  clave       String   @unique @db.VarChar(50) // PAUSA_EMERGENCIA, MAX_POSTS_DIARIOS, etc.
-  valor       String   @db.VarChar(255)
-  descripcion String?  @db.VarChar(255)
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@map("sistema_config")
-}
-
-// ─── Memoria Estratégica Semanal de Hermes ─────────────────────
-model HallazgoSemanal {
-  id               Int      @id @default(autoincrement())
-  semanaInicio     DateTime @map("semana_inicio")
-  semanaFin        DateTime @map("semana_fin")
-  resumen          String   @db.Text
-  mejorPostId      Int?     @map("mejor_post_id")
-  palabrasClaveGSC Json?    @map("palabras_clave_gsc")
-  promptAjustes    String?  @map("prompt_ajustes") @db.Text
-  createdAt        DateTime @default(now()) @map("created_at")
-
-  @@map("hallazgos_semanales")
-}
-
-

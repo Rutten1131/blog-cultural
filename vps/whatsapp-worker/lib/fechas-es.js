@@ -135,9 +135,9 @@ function extraerHoraDeTexto(texto) {
     if (hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) return { hh, mm };
   }
 
-  // "19h00" / "19:00" / "19h30"
+  // "19h00" / "19:00" / "19h30" / "15H00"
   // El lookbehind evita capturar pedazos de fechas como "2026-10-20".
-  m = /(?<![\d/-])(\d{1,2})\s*(?:h|:)\s*(\d{2})(?!\d)/.exec(texto);
+  m = /(?<![\d/-])(\d{1,2})\s*(?:h|:)\s*(\d{2})(?!\d)/i.exec(texto);
   if (m) {
     const hh = Number(m[1]);
     const mm = Number(m[2]);
