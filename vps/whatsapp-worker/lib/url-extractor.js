@@ -18,9 +18,10 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 const { fechaDesdeIso, extraerRangoDeTexto } = require("./fechas-es");
-const { rehospedarImagen, configurado: bunnyConfigurado } = require("./imagenes");
+const { rehospedarImagen, recortarYSubirCuadro, configurado: bunnyConfigurado } = require("./imagenes");
 const {
   leerAfiche,
+  leerCarteleraMultiple,
   imagenesValidas,
   configurado: visionConfigurada,
 } = require("./vision");
@@ -572,7 +573,7 @@ async function seleccionarImagenes(crudo, capturadas) {
   }
 
   const carrusel = fotosDelCarrusel(crudo.jsonCarrusel);
-  const MAX_CARRUSEL = Number(process.env.MAX_FOTOS_CARRUSEL) || 10;
+  const MAX_CARRUSEL = Number(process.env.MAX_FOTOS_CARRUSEL) || 20;
   const pedidas = carrusel.slice(0, MAX_CARRUSEL).map((f) => f.url);
 
   console.log(
@@ -932,11 +933,28 @@ async function extraerEvento(url, textoMensaje = "") {
   // El afiche es la fuente MÁS confiable de nombre, fecha y lugar: es lo
   // que el organizador publicó para anunciar el evento. Los metadatos de
   // la página (og:) suelen traer solo el texto de quien lo compartió.
+  let carteleraMultiple = null;
   if (crudo && visionConfigurada()) {
-    // Se mandan TODAS las fotos del carrusel (hasta el límite): en un
-    // carrusel los datos del evento suelen estar repartidos entre láminas.
-    const MAX_VISION = Number(process.env.MAX_FOTOS_AFICHE) || 10;
-    afiche = await leerAfiche((crudo.imagenesEnVivo || []).slice(0, MAX_VISION));
+    const MAX_VISION = Number(process.env.MAX_FOTOS_AFICHE) || 20;
+    const imagenesParaVision = (crudo.imagenesEnVivo || []).slice(0, MAX_VISION);
+
+    // Si tiene más de 1 imagen (carrusel), primero evaluamos si es una cartelera con múltiples eventos
+    if (imagenesParaVision.length > 1) {
+      try {
+        const carteleraRes = await leerCarteleraMultiple(imagenesParaVision);
+        if (carteleraRes && carteleraRes.esCarteleraMultiple && Array.isArray(carteleraRes.eventos) && carteleraRes.eventos.length > 1) {
+          carteleraMultiple = carteleraRes.eventos;
+          console.log(`[Visión] 🗓️ Publicación identificada como CARTELERA MÚLTIPLE con ${carteleraMultiple.length} eventos.`);
+        }
+      } catch (errCartelera) {
+        console.warn(`[Visión] Error evaluando cartelera múltiple:`, errCartelera.message);
+      }
+    }
+
+    // Si no fue cartelera múltiple o falló, procesar con el analizador estándar de 1 evento
+    if (!carteleraMultiple) {
+      afiche = await leerAfiche(imagenesParaVision);
+    }
   }
 
   // Si el afiche dice claramente que NO es un evento cultural, se anota.
@@ -1194,6 +1212,8 @@ async function extraerEvento(url, textoMensaje = "") {
     jsonLdEncontrado: Boolean(eventoJsonLd),
     // Lo que la IA leyó del afiche (útil para auditar).
     afiche,
+    // Lista de eventos si se detectó una cartelera múltiple con calendario
+    carteleraMultiple,
   };
 }
 
@@ -1422,9 +1442,10 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
       // El mismo evento se comparte varias veces en el grupo: en la primera cola
       // real, 4 de 15 filas eran repetidas y los 3 grupos compartían el mismo
       // enlace. Se compara la URL normalizada contra lo ya guardado, ANTES de
-      // subir nada al CDN.
+      // subir nada al CDN. (Se omite si es una cartelera con múltiples eventos para no bloquear los eventos hijos).
+      const esCartelera = Array.isArray(datos.carteleraMultiple) && datos.carteleraMultiple.length > 0;
       const urlNorm = normalizarUrl(datos.urlOriginal);
-      if (urlNorm) {
+      if (urlNorm && !esCartelera) {
         const existente = await prisma.$queryRaw`
           SELECT id FROM posts_social
           WHERE TRIM(TRAILING '/' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(urlOriginal, '?', 1), '#', 1))
@@ -1510,6 +1531,115 @@ async function extractAndProcessUrls(text, grupoId, prisma) {
             `[Extractor] Carrusel: ${fotosPermanentes.length}/${fotos.length} fotos guardadas en el CDN`
           );
         }
+      }
+
+      // ── MODO CARTELERA MÚLTIPLE (1 PUBLICACIÓN → MÚLTIPLES EVENTOS) ──
+      if (Array.isArray(datos.carteleraMultiple) && datos.carteleraMultiple.length > 0) {
+        console.log(`[Extractor] 📚 Descomponiendo cartelera en ${datos.carteleraMultiple.length} eventos individuales...`);
+
+        const ahoraEcuador = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Guayaquil" }));
+        ahoraEcuador.setHours(0, 0, 0, 0);
+
+        for (let idx = 0; idx < datos.carteleraMultiple.length; idx++) {
+          const item = datos.carteleraMultiple[idx];
+          if (!item.nombre) continue;
+
+          // Extraer fecha y hora del bloque
+          const txtFecha = [item.fechaTexto, item.horaTexto].filter(Boolean).join(" ");
+          const rango = txtFecha ? extraerRangoDeTexto(txtFecha) : null;
+          const fechaEv = rango ? rango.fecha : null;
+
+          // Portada correspondiente: Si la IA dio las coordenadas del cuadro, recortar individualmente
+          const fotosEnVivo = datos.imagenesEnVivo?.length
+            ? datos.imagenesEnVivo
+            : datos.imagenEnVivo
+              ? [datos.imagenEnVivo]
+              : [];
+
+          const laminaIdx = Number.isInteger(item.indiceLamina) && item.indiceLamina >= 0 && item.indiceLamina < fotosPermanentes.length
+            ? item.indiceLamina
+            : 0;
+
+          let imagenItem = null;
+          if (fotosEnVivo[laminaIdx] && item.cuadroRecorte && bunnyConfigurado()) {
+            imagenItem = await recortarYSubirCuadro(fotosEnVivo[laminaIdx], item.cuadroRecorte, "evento-carrusel");
+          }
+          if (!imagenItem) {
+            imagenItem = fotosPermanentes[laminaIdx] ?? fotosPermanentes[0] ?? datos.imagenUrl;
+          }
+
+          const tituloLimpio = limpiarTitulo(item.nombre);
+          const lugarLimpio = limpiarLugar(item.lugar) || "Loja";
+
+          // Dedupe por título y fecha en la tabla de eventos ya aprobados
+          if (fechaEv) {
+            const fechaMin = new Date(fechaEv);
+            fechaMin.setDate(fechaMin.getDate() - 2);
+            const fechaMax = new Date(fechaEv);
+            fechaMax.setDate(fechaMax.getDate() + 2);
+
+            const eventoExistente = await prisma.$queryRaw`
+              SELECT id FROM eventos
+              WHERE nombre = ${tituloLimpio}
+                AND fecha BETWEEN ${fechaMin} AND ${fechaMax}
+              LIMIT 1
+            `;
+            if (Array.isArray(eventoExistente) && eventoExistente[0]) {
+              console.log(`[Extractor Cartelera] Evento ya existe (#${eventoExistente[0].id}), se omite: "${tituloLimpio}"`);
+              continue;
+            }
+          }
+
+          // Crear PostSocial individual para este evento
+          const descripcionEvento = `Evento cultural en Loja: ${tituloLimpio}. Lugar: ${lugarLimpio}. Organiza: ${item.organizador || "Municipio de Loja"}.${item.precio ? ` Entrada: ${item.precio}.` : ""}`;
+
+          const postSub = await prisma.postSocial.create({
+            data: {
+              origen: "WHATSAPP_GRUPO",
+              urlOriginal: `${datos.urlOriginal}#evento-${idx + 1}`,
+              textoOriginal: `[Cartelera Múltiple] ${item.nombre} | ${txtFecha} | ${lugarLimpio}`,
+              titulo: tituloLimpio,
+              descripcion: descripcionEvento,
+              imagenUrl: imagenItem,
+              fechaPublicacion: fechaEv,
+              lugar: lugarLimpio,
+              estado: "PENDIENTE",
+              grupoId: grupoId || null,
+              confianzaIA: 0.55,
+            },
+          });
+
+          posts.push({
+            id: postSub.id,
+            url: postSub.urlOriginal,
+            titulo: tituloLimpio,
+            fecha: fechaEv,
+            fotos: 1,
+          });
+
+          console.log(`[Extractor Cartelera] Post #${postSub.id} creado para "${tituloLimpio}" (${txtFecha})`);
+
+          // Auto-publicar si tiene fecha futura y datos completos
+          const datosSub = {
+            ...datos,
+            titulo: tituloLimpio,
+            descripcion: descripcionEvento,
+            imagenUrl: imagenItem,
+            fecha: fechaEv,
+            lugar: lugarLimpio,
+            confianza: 0.55,
+            afiche: {
+              ...item,
+              nombre: tituloLimpio,
+              organizador: item.organizador,
+              lugar: lugarLimpio,
+            },
+          };
+
+          await autoPublicarSiCompleto(postSub, datosSub, prisma);
+        }
+
+        continue; // Terminar procesamiento de esta URL ya que se descompuso en sus eventos
       }
 
       // Un post sin NADA no es un candidato: es ruido.

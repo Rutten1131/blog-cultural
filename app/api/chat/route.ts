@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// ─── CORS: dominios permitidos para acceder a esta API desde otros sitios ───
+// ─── CORS: solo localhost para pruebas cruzadas en desarrollo local ─────────
+// Cada proyecto (quecomerenloja, agendaturistica) tiene su PROPIO /api/chat.
+// No hay llamadas cross-origin en producción — cada site llama a su propio endpoint.
 const CORS_ORIGINS_PERMITIDOS = [
-  "https://quecomerenloja.com",
-  "https://www.quecomerenloja.com",
-  "https://quecomerenloja.vercel.app",
-  "https://agendaturisticaloja.com",
-  "https://www.agendaturisticaloja.com",
-  "https://agendaturisticaloja.vercel.app",
-  // Desarrollo local de los proyectos hermanos:
+  // Desarrollo local (en caso de probar integración entre proyectos localmente):
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:3002",
@@ -33,69 +29,94 @@ export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
 }
 import { prisma } from "@/lib/prisma";
+import { prismaBot } from "@/lib/prisma-bot";
 import { obtenerMemoriaSesion, sincronizarResumenSiCorresponde } from "@/lib/chat/chatMemory";
 import { clasificarIntencionUsuario } from "@/lib/chat/chatRouter";
 import { chatCache, chatRateLimiter } from "@/lib/chat/chatCache";
+import {
+  eventosService,
+  gastronomiaService,
+  turismoService,
+  consultarFuentesContenido,
+  AliadoItem,
+  HabitacionItem,
+} from "@/lib/chat/contenidoService";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Devuelve la fecha y hora ACTUAL en Ecuador (GMT-5, Loja/Guayaquil).
+ * Se calcula restando 5 horas al UTC para evitar problemas de
+ * parseado con toLocaleString() en entornos Node.js.
+ */
 function nowEcuador(): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Guayaquil" }));
+  const utcMs = Date.now();
+  // Ecuador continental = UTC −5h
+  const ecuadorOffset = -5 * 60 * 60 * 1000;
+  return new Date(utcMs + ecuadorOffset);
 }
 
 function startOfDayEcuador(d: Date): Date {
+  // d ya viene como instancia "offset" de nowEcuador()
   const local = new Date(d);
-  local.setHours(0, 0, 0, 0);
+  local.setUTCHours(0, 0, 0, 0); // trabajar en coordenadas UTC de la fecha local Ecuador
   return local;
 }
 
 function endOfDayEcuador(d: Date): Date {
   const local = new Date(d);
-  local.setHours(23, 59, 59, 999);
+  local.setUTCHours(23, 59, 59, 999);
   return local;
 }
 
 function extraerRangoFecha(query: string): { desde: Date; hasta: Date; etiqueta: string } | null {
   const q = query.toLowerCase();
   const hoy = nowEcuador();
-  const anio = hoy.getFullYear();
+  const anio = hoy.getUTCFullYear();
 
-  // Día de la semana en Ecuador: 0=domingo, 1=lunes, ..., 6=sábado
-  const diaSemana = hoy.getDay();
-  // Diferencia para retroceder hasta el lunes de la semana actual
+  const DIAS_LOC = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+  const MESES_LOC = ["enero","febrero","marzo","abril","mayo","junio",
+                     "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+  /** Formatea una fecha offset (nowEcuador) usando getUTC* — sin depender de toLocaleDateString */
+  const fmt = (d: Date, conDia = true): string =>
+    conDia
+      ? `${DIAS_LOC[d.getUTCDay()]} ${d.getUTCDate()} de ${MESES_LOC[d.getUTCMonth()]}`
+      : `${d.getUTCDate()} de ${MESES_LOC[d.getUTCMonth()]}`;
+
+  // Día de la semana en Ecuador
+  const diaSemana = hoy.getUTCDay(); // 0=domingo, 1=lunes, ..., 6=sábado
   const difLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
   const lunesEstaSemana = new Date(hoy);
-  lunesEstaSemana.setDate(hoy.getDate() + difLunes);
+  lunesEstaSemana.setUTCDate(hoy.getUTCDate() + difLunes);
 
   if (q.includes("mañana") || q.includes("manana")) {
     const manana = new Date(hoy);
-    manana.setDate(manana.getDate() + 1);
+    manana.setUTCDate(manana.getUTCDate() + 1);
     const desde = startOfDayEcuador(manana);
     const hasta = endOfDayEcuador(manana);
-    return { desde, hasta, etiqueta: manana.toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" }) };
+    return { desde, hasta, etiqueta: fmt(manana) };
   }
 
   if (q.includes("hoy") || q.includes("esta noche")) {
     const desde = startOfDayEcuador(hoy);
     const hasta = endOfDayEcuador(hoy);
-    return { desde, hasta, etiqueta: "hoy (" + hoy.toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" }) + ")" };
+    return { desde, hasta, etiqueta: `hoy (${fmt(hoy)})` };
   }
 
   // Fin de semana: Viernes a Domingo
   if (q.includes("fin de semana") || q.includes("finde")) {
     const esProximo = q.includes("proximo") || q.includes("próximo") || q.includes("siguiente") || q.includes("que viene");
     const viernes = new Date(lunesEstaSemana);
-    viernes.setDate(lunesEstaSemana.getDate() + (esProximo ? 11 : 4)); // lunes + 4 = viernes
+    viernes.setUTCDate(lunesEstaSemana.getUTCDate() + (esProximo ? 11 : 4)); // lunes + 4 = viernes
     const domingo = new Date(viernes);
-    domingo.setDate(viernes.getDate() + 2); // viernes + 2 = domingo
+    domingo.setUTCDate(viernes.getUTCDate() + 2); // viernes + 2 = domingo
     const desde = startOfDayEcuador(viernes);
     const hasta = endOfDayEcuador(domingo);
-    const dStr = desde.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
-    const hStr = hasta.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
     return {
       desde,
       hasta,
-      etiqueta: (esProximo ? "el próximo fin de semana" : "este fin de semana") + ` (del ${dStr} al ${hStr})`,
+      etiqueta: (esProximo ? "el próximo fin de semana" : "este fin de semana") + ` (del ${fmt(viernes, false)} al ${fmt(domingo, false)})`,
     };
   }
 
@@ -107,25 +128,21 @@ function extraerRangoFecha(query: string): { desde: Date; hasta: Date; etiqueta:
     q.includes("siguiente semana")
   ) {
     const lunesProx = new Date(lunesEstaSemana);
-    lunesProx.setDate(lunesEstaSemana.getDate() + 7);
+    lunesProx.setUTCDate(lunesEstaSemana.getUTCDate() + 7);
     const domingoProx = new Date(lunesProx);
-    domingoProx.setDate(lunesProx.getDate() + 6);
+    domingoProx.setUTCDate(lunesProx.getUTCDate() + 6);
     const desde = startOfDayEcuador(lunesProx);
     const hasta = endOfDayEcuador(domingoProx);
-    const dStr = desde.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
-    const hStr = hasta.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
-    return { desde, hasta, etiqueta: `la próxima semana (del ${dStr} al ${hStr})` };
+    return { desde, hasta, etiqueta: `la próxima semana (del ${fmt(lunesProx, false)} al ${fmt(domingoProx, false)})` };
   }
 
-  // Esta semana (o mención genérica de semana): de lunes a domingo de la semana en curso
+  // Esta semana: de lunes a domingo de la semana en curso
   if (q.includes("semana")) {
     const domingo = new Date(lunesEstaSemana);
-    domingo.setDate(lunesEstaSemana.getDate() + 6);
+    domingo.setUTCDate(lunesEstaSemana.getUTCDate() + 6);
     const desde = startOfDayEcuador(lunesEstaSemana);
     const hasta = endOfDayEcuador(domingo);
-    const dStr = desde.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
-    const hStr = hasta.toLocaleDateString("es-EC", { day: "numeric", month: "long" });
-    return { desde, hasta, etiqueta: `esta semana (del ${dStr} al ${hStr})` };
+    return { desde, hasta, etiqueta: `esta semana (del ${fmt(lunesEstaSemana, false)} al ${fmt(domingo, false)})` };
   }
 
   const MESES: Record<string, number> = {
@@ -139,9 +156,9 @@ function extraerRangoFecha(query: string): { desde: Date; hasta: Date; etiqueta:
     const mesNombre = matchDiaMes[2];
     const mes = MESES[mesNombre];
     if (mes !== undefined && dia >= 1 && dia <= 31) {
-      const desde = new Date(anio, mes, dia, 0, 0, 0, 0);
-      const hasta = new Date(anio, mes, dia, 23, 59, 59, 999);
-      return { desde, hasta, etiqueta: desde.toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" }) };
+      const desde = new Date(Date.UTC(anio, mes, dia, 0, 0, 0, 0));
+      const hasta = new Date(Date.UTC(anio, mes, dia, 23, 59, 59, 999));
+      return { desde, hasta, etiqueta: fmt(desde) };
     }
   }
 
@@ -149,23 +166,24 @@ function extraerRangoFecha(query: string): { desde: Date; hasta: Date; etiqueta:
   if (matchSoloDia) {
     const dia = parseInt(matchSoloDia[1], 10);
     if (dia >= 1 && dia <= 31) {
-      const mes = hoy.getMonth();
-      const desde = new Date(anio, mes, dia, 0, 0, 0, 0);
-      const hasta = new Date(anio, mes, dia, 23, 59, 59, 999);
-      return { desde, hasta, etiqueta: desde.toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" }) };
+      const mes = hoy.getUTCMonth();
+      const desde = new Date(Date.UTC(anio, mes, dia, 0, 0, 0, 0));
+      const hasta = new Date(Date.UTC(anio, mes, dia, 23, 59, 59, 999));
+      return { desde, hasta, etiqueta: fmt(desde) };
     }
   }
 
   for (const [nombre, idx] of Object.entries(MESES)) {
     if (q.includes(nombre)) {
-      const desde = new Date(anio, idx, 1, 0, 0, 0, 0);
-      const hasta = new Date(anio, idx + 1, 0, 23, 59, 59, 999);
+      const desde = new Date(Date.UTC(anio, idx, 1, 0, 0, 0, 0));
+      const hasta = new Date(Date.UTC(anio, idx + 1, 0, 23, 59, 59, 999));
       return { desde, hasta, etiqueta: "en " + nombre };
     }
   }
 
   return null;
 }
+
 
 function extraerIntencionBusqueda(query: string) {
   const q = query.toLowerCase();
@@ -345,6 +363,13 @@ export async function POST(req: NextRequest) {
     const origenNorm = (origen || "agendacultural").toLowerCase().trim();
     const esQueComer = origenNorm === "quecomerenloja";
     const esTurismo = origenNorm === "agendaturisticaloja";
+    // siteId para la DB del bot multisite
+    const siteIdMap: Record<string, string> = {
+      agendacultural: "agenda-cultural-loja",
+      quecomerenloja: "quecomerenloja",
+      agendaturisticaloja: "agendaturisticaloja",
+    };
+    const siteId = siteIdMap[origenNorm] || process.env.CHATBOT_SITE_ID || origenNorm;
     const cors = corsHeaders(req);
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -379,7 +404,7 @@ export async function POST(req: NextRequest) {
     // 1b. Obtener nombre del usuario de la sesión (Lead Qualification)
     let nombreUsuarioSesion: string | null = null;
     if (sessionId) {
-      const sesionDb = await prisma.chatSession.findUnique({
+      const sesionDb = await prismaBot.chat_sessions.findUnique({
         where: { sessionId },
         select: { nombreUsuario: true },
       }).catch(() => null);
@@ -408,10 +433,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (sessionId) {
-      prisma.chatSession.upsert({
+      prismaBot.chat_sessions.upsert({
         where: { sessionId },
         create: {
           sessionId,
+          siteId,
           ubicacionLat: ubicacion?.lat ?? null,
           ubicacionLng: ubicacion?.lng ?? null,
           zonaDetectada: ubicacion?.zona ?? null,
@@ -442,7 +468,7 @@ export async function POST(req: NextRequest) {
         },
       }).catch(() => {/* fail silently */});
 
-      prisma.chatMessage.create({
+      prismaBot.chat_messages.create({
         data: {
           sessionId,
           sender: "user",
@@ -457,7 +483,7 @@ export async function POST(req: NextRequest) {
     // 3a. RETORNO TEMPRANO: DEVOLUCIÓN DE LA PELOTA (ambiguo / contradictorio)
     if (decisionRouter.requiereRepregunta && decisionRouter.preguntaAclaratoria) {
       if (sessionId) {
-        prisma.chatMessage.create({
+        prismaBot.chat_messages.create({
           data: {
             sessionId,
             sender: "bot",
@@ -492,29 +518,25 @@ export async function POST(req: NextRequest) {
     if (esConsultaCachable) {
       const cached = chatCache.get(lastUserMessage, ubicacion?.zona);
       if (cached) {
-        // Cargar las entidades frescas correspondientes a los IDs cacheados
-        const [cachedEventos, cachedAliados, cachedAtractivos] = await Promise.all([
+        // Cargar las entidades frescas correspondientes a los IDs cacheados desde los servicios respectivos
+        const [cachedEventos, cachedRestaurantes, cachedHoteles, cachedAtractivos] = await Promise.all([
           cached.eventosRecomendadosIds.length > 0
-            ? prisma.evento.findMany({
-                where: { id: { in: cached.eventosRecomendadosIds }, estado: "APROBADO" },
-                select: { id: true, nombre: true, fecha: true, lugar: true, slug: true, imagenUrl: true, descripcion: true },
-              })
+            ? eventosService.obtenerPorIds(cached.eventosRecomendadosIds)
             : [],
           cached.aliadosRecomendadosIds.length > 0
-            ? prisma.aliado.findMany({
-                where: { id: { in: cached.aliadosRecomendadosIds }, activo: true },
-                include: { habitaciones: { orderBy: [{ orden: "asc" }, { id: "asc" }] } },
-              })
+            ? gastronomiaService.obtenerPorIds(cached.aliadosRecomendadosIds)
+            : [],
+          cached.aliadosRecomendadosIds.length > 0
+            ? turismoService.obtenerHotelesPorIds(cached.aliadosRecomendadosIds)
             : [],
           cached.atractivosRecomendadosIds.length > 0
-            ? prisma.atractivoCantonal.findMany({
-                where: { id: { in: cached.atractivosRecomendadosIds }, activo: true },
-              })
+            ? turismoService.obtenerAtractivosPorIds(cached.atractivosRecomendadosIds)
             : [],
         ]);
+        const cachedAliados = [...cachedHoteles, ...cachedRestaurantes];
 
         if (sessionId) {
-          prisma.chatMessage.create({
+          prismaBot.chat_messages.create({
             data: {
               sessionId,
               sender: "bot",
@@ -547,14 +569,14 @@ export async function POST(req: NextRequest) {
     // Se resuelve aquí solo si no hay aliado activo en conversación;
     // si hay aliado en conversación el paso 5 del flujo de venta lo maneja mejor.
     if (decisionRouter.intencion === "WHATSAPP_HANDOFF") {
-      // Buscamos el aliado más reciente mencionado en la conversación
-      const aliadosMenciaonados = await prisma.aliado.findMany({
-        where: { activo: true },
-        select: { id: true, nombre: true, telefono: true, tipo: true },
-        take: 20,
-      });
+      // Buscamos el aliado más reciente mencionado en la conversación desde las fuentes de gastronomía y hospedaje
+      const [restaurantesHandoff, hotelesHandoff] = await Promise.all([
+        gastronomiaService.obtenerRestaurantesYCafes(15),
+        turismoService.obtenerHoteles(15),
+      ]);
+      const aliadosMencionados = [...hotelesHandoff, ...restaurantesHandoff];
       const textoConversacion = sinAcentos(ultimosMensajesTexto);
-      const aliadoHandoff = aliadosMenciaonados.find((a) =>
+      const aliadoHandoff = aliadosMencionados.find((a) =>
         textoConversacion.includes(sinAcentos(a.nombre))
       );
 
@@ -568,7 +590,7 @@ export async function POST(req: NextRequest) {
         const linkWA = `https://wa.me/${telLimpio}?text=${mensajeWA}`;
         const textoHandoff = `¡Perfecto! 🎉 Te conecto directamente con ${aliadoHandoff.nombre}. Solo haz clic en el botón de WhatsApp y ya tienen todos tus datos. ¡Que lo disfrutes mucho!`;
         if (sessionId) {
-          prisma.chatMessage.create({
+          prismaBot.chat_messages.create({
             data: {
               sessionId,
               sender: "bot",
@@ -592,9 +614,15 @@ export async function POST(req: NextRequest) {
 
     const ahora = nowEcuador();
     const hoyInicio = startOfDayEcuador(ahora);
-    const fechaHoyStr = ahora.toLocaleDateString("es-EC", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
-    });
+    // Formato legíble de la fecha actual en Ecuador
+    const DIAS_ES = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+    const MESES_ES = ["enero","febrero","marzo","abril","mayo","junio",
+                      "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    const diaNumero = ahora.getUTCDate();
+    const diaSemanaNombre = DIAS_ES[ahora.getUTCDay()];
+    const mesNombreActual = MESES_ES[ahora.getUTCMonth()];
+    const anioActual = ahora.getUTCFullYear();
+    const fechaHoyStr = `${diaSemanaNombre}, ${diaNumero} de ${mesNombreActual} de ${anioActual}`;
 
     // El rango de fecha SOLO se calcula a partir del mensaje actual del usuario
     const rangoFecha = extraerRangoFecha(lastUserMessage);
@@ -614,19 +642,7 @@ export async function POST(req: NextRequest) {
       const botTexto = (ultimoBotMsg?.content || ultimoBotMsg?.text || "").toLowerCase();
 
       // Buscar eventos activos en la DB que hayan sido mencionados en el texto del bot
-      const eventosCandidatos = await prisma.evento.findMany({
-        where: { estado: "APROBADO" },
-        orderBy: { fecha: "asc" },
-        select: {
-          id: true,
-          nombre: true,
-          fecha: true,
-          lugar: true,
-          slug: true,
-          imagenUrl: true,
-          descripcion: true,
-        },
-      });
+      const eventosCandidatos = await eventosService.obtenerCandidatosReferenciales(30);
 
       eventoEnDiscusion = eventosCandidatos.find((e) =>
         botTexto.includes(e.nombre.toLowerCase()) ||
@@ -650,30 +666,14 @@ export async function POST(req: NextRequest) {
       const hoyInicio2 = startOfDayEcuador(ahora2);
 
       const [eventosVisita, hotelesVisita, gastroVisita, atractivosVisita] = await Promise.all([
-        prisma.evento.findMany({
-          where: {
-            estado: "APROBADO",
-            ...(rangoVisita
-              ? { fecha: { gte: rangoVisita.desde, lte: rangoVisita.hasta } }
-              : { fecha: { gte: hoyInicio2 } }),
-          },
-          orderBy: { fecha: "asc" },
-          take: 4,
-          select: { id: true, nombre: true, fecha: true, lugar: true, slug: true, imagenUrl: true, descripcion: true },
-        }),
-        prisma.aliado.findMany({
-          where: { activo: true, tipo: "HOSPEDAJE" },
-          orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
-          take: 3,
-          include: { habitaciones: { orderBy: [{ orden: "asc" }], take: 3 } },
-        }),
-        prisma.aliado.findMany({
-          where: { activo: true, tipo: { in: ["GASTRONOMIA", "CAFETERIA"] } },
-          orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
-          take: 3,
-          include: { habitaciones: { orderBy: [{ orden: "asc" }], take: 3 } },
-        }),
-        prisma.atractivoCantonal.findMany({ where: { activo: true }, take: 3 }),
+        eventosService.obtenerParaPlanVisita(
+          rangoVisita ? rangoVisita.desde : hoyInicio2,
+          rangoVisita ? rangoVisita.hasta : undefined,
+          4
+        ),
+        turismoService.obtenerHoteles(3),
+        gastronomiaService.obtenerRestaurantesYCafes(3),
+        turismoService.obtenerAtractivos(3),
       ]);
 
       const fechaLabel = rangoVisita ? rangoVisita.etiqueta : "próximos días";
@@ -747,7 +747,7 @@ Reglas de formato:
       const fullAtractivosVisita = atractivosVisita.filter((at) => planParsed.atractivosRecomendadosIds.includes(at.id));
 
       if (sessionId) {
-        prisma.chatMessage.create({
+        prismaBot.chat_messages.create({
           data: {
             sessionId, sender: "bot", contenido: planParsed.texto.slice(0, 5000),
             eventosIds: fullEventosVisita.map((e) => e.id),
@@ -779,68 +779,22 @@ Reglas de formato:
     // A. Si el usuario pregunta por eventos PASADOS / HISTÓRICOS:
     if (intencion.quierePasados) {
       tipoBusqueda = "pasados";
-      eventosParaContexto = await prisma.evento.findMany({
-        where: {
-          estado: "APROBADO",
-          fecha: { lt: hoyInicio },
-          ...(intencion.palabrasClave.length > 0 && {
-            OR: intencion.palabrasClave.flatMap((palabra) => [
-              { nombre: { contains: palabra } },
-              { descripcion: { contains: palabra } },
-              { lugar: { contains: palabra } },
-            ]),
-          }),
-        },
-        orderBy: { fecha: "desc" },
-        take: 6,
-        select: {
-          id: true, nombre: true, fecha: true, lugar: true,
-          slug: true, imagenUrl: true, descripcion: true,
-        },
-      });
+      eventosParaContexto = await eventosService.obtenerPasados(hoyInicio, intencion.palabrasClave, 6);
     }
     // B. Si hay palabras clave temáticas (ej: "rock", "danza", "teatro", "infantil", "feria", "bolero"):
     else if (intencion.palabrasClave.length > 0) {
       tipoBusqueda = "tematica";
-      const filtrosOr = intencion.palabrasClave.flatMap((palabra) => [
-        { nombre: { contains: palabra } },
-        { descripcion: { contains: palabra } },
-        { lugar: { contains: palabra } },
-      ]);
-
-      // Buscar tanto eventos futuros como en el rango de fecha si fue pedido
-      eventosParaContexto = await prisma.evento.findMany({
-        where: {
-          estado: "APROBADO",
-          ...(rangoFecha
-            ? { fecha: { gte: rangoFecha.desde, lte: rangoFecha.hasta } }
-            : { fecha: { gte: hoyInicio } }),
-          OR: filtrosOr,
-        },
-        orderBy: { fecha: "asc" },
-        take: 6,
-        select: {
-          id: true, nombre: true, fecha: true, lugar: true,
-          slug: true, imagenUrl: true, descripcion: true,
-        },
-      });
+      eventosParaContexto = await eventosService.obtenerPorTematica(
+        intencion.palabrasClave,
+        rangoFecha ? rangoFecha.desde : hoyInicio,
+        rangoFecha ? rangoFecha.hasta : undefined,
+        6
+      );
 
       // Si no hay futuros de ese tema y NO se pidió un rango de fecha específico,
       // verificar si hubo alguno recientemente solo para informar al usuario de que ya pasaron
       if (eventosParaContexto.length === 0 && !rangoFecha) {
-        const eventosPasadosTema = await prisma.evento.findMany({
-          where: {
-            estado: "APROBADO",
-            fecha: { lt: hoyInicio },
-            OR: filtrosOr,
-          },
-          orderBy: { fecha: "desc" },
-          take: 3,
-          select: {
-            id: true, nombre: true, fecha: true, lugar: true,
-            slug: true, imagenUrl: true, descripcion: true,
-          },
-        });
+        const eventosPasadosTema = await eventosService.obtenerPasados(hoyInicio, intencion.palabrasClave, 3);
         if (eventosPasadosTema.length > 0) {
           tipoBusqueda = "tematica_pasada";
           eventosParaContexto = eventosPasadosTema;
@@ -850,108 +804,30 @@ Reglas de formato:
     // C. Si preguntó por un rango de fecha específico (ej: "el 15 de octubre", "este fin de semana"):
     else if (rangoFecha) {
       tipoBusqueda = "rango_fecha";
-      eventosParaContexto = await prisma.evento.findMany({
-        where: {
-          estado: "APROBADO",
-          fecha: { gte: rangoFecha.desde, lte: rangoFecha.hasta },
-        },
-        orderBy: { fecha: "asc" },
-        take: 8,
-        select: {
-          id: true, nombre: true, fecha: true, lugar: true,
-          slug: true, imagenUrl: true, descripcion: true,
-        },
-      });
+      eventosParaContexto = await eventosService.obtenerPorRango(rangoFecha.desde, rangoFecha.hasta, 8);
     }
 
     // D. Si no hubo resultados temáticos o no hubo búsqueda específica de fecha, traer próximos eventos vigentes
     if (eventosParaContexto.length === 0 && !rangoFecha && !intencion.quierePasados) {
       tipoBusqueda = "general";
-      eventosParaContexto = await prisma.evento.findMany({
-        where: {
-          estado: "APROBADO",
-          fecha: { gte: hoyInicio },
-        },
-        orderBy: { fecha: "asc" },
-        take: 6,
-        select: {
-          id: true, nombre: true, fecha: true, lugar: true,
-          slug: true, imagenUrl: true, descripcion: true,
-        },
-      });
-
-      // Si no hay eventos futuros en cartelera general, NO inyectar eventos pasados a menos que se hayan pedido
-      // ya que confundirían al usuario diciendo que son vigentes.
+      eventosParaContexto = await eventosService.obtenerProximos(hoyInicio, 6);
     }
 
-    // ─── 2. OBTENCIÓN DE ALIADOS Y ATRACTIVOS ───
-    const aliados = await prisma.aliado.findMany({
-      where: { activo: true },
-      orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
-      take: 20,
-      include: { habitaciones: { orderBy: [{ orden: "asc" }, { id: "asc" }] } },
+    // ─── 2. OBTENCIÓN DE ALIADOS Y ATRACTIVOS (MULTI-FUENTE DESACOPLADA) ───
+    // Simula en paralelo la extracción desde DB Gastronomía (restaurantes) + DB Turismo (hoteles y atractivos)
+    const fuentesContenido = await consultarFuentesContenido({
+      ubicacion: ubicacion?.lat && ubicacion?.lng ? { lat: ubicacion.lat, lng: ubicacion.lng } : undefined,
     });
-
-    const atractivos = await prisma.atractivoCantonal.findMany({
-      where: { activo: true },
-      take: 6,
-    });
-
-    // Función Haversine para distancia GPS
-    const calcularDistanciaKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-      const R = 6371; // km
-      const dLat = (lat2 - lat1) * (Math.PI / 180);
-      const dLon = (lon2 - lon1) * (Math.PI / 180);
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * (Math.PI / 180)) *
-          Math.cos(lat2 * (Math.PI / 180)) *
-          Math.sin(dLon / 2) *
-          Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    };
-
-    const aliadosConDistancia = aliados.map((a) => {
-      let distanciaTexto = "";
-      let distanciaKm: number | null = null;
-      if (
-        ubicacion?.lat &&
-        ubicacion?.lng &&
-        a.ubicacionLat !== null &&
-        a.ubicacionLng !== null
-      ) {
-        distanciaKm = calcularDistanciaKm(
-          ubicacion.lat,
-          ubicacion.lng,
-          a.ubicacionLat,
-          a.ubicacionLng
-        );
-        if (distanciaKm < 1) {
-          distanciaTexto = ` | DISTANCIA GPS: a ${(distanciaKm * 1000).toFixed(0)} metros (¡MUY CERCA!)`;
-        } else {
-          distanciaTexto = ` | DISTANCIA GPS: a ${distanciaKm.toFixed(1)} km`;
-        }
-      }
-      return { ...a, distanciaKm, distanciaTexto };
-    });
-
-    // Ordenar aliados por cercanía al usuario
-    if (ubicacion?.lat && ubicacion?.lng) {
-      aliadosConDistancia.sort((a, b) => {
-        if (a.distanciaKm !== null && b.distanciaKm !== null) return a.distanciaKm - b.distanciaKm;
-        if (a.distanciaKm !== null) return -1;
-        if (b.distanciaKm !== null) return 1;
-        return 0;
-      });
-    }
+    const aliados: AliadoItem[] = fuentesContenido.aliados;
+    const atractivos = fuentesContenido.atractivos;
+    const aliadosConDistancia = aliados;
 
     // ─── 3. FORMATEO DE CONTEXTO PARA EL SYSTEM PROMPT ───
     const aliadosContexto = aliadosConDistancia
       .map((a) => {
         const tiposHabitacion = (a.habitaciones || [])
           .map(
-            (h) =>
+            (h: HabitacionItem) =>
               `${h.nombre}${h.precio ? ` (${h.precio})` : ""}${
                 h.caracteristicas ? `: ${h.caracteristicas}` : ""
               }`
@@ -977,14 +853,20 @@ Reglas de formato:
     const eventosContexto = eventosParaContexto
       .map((e) => {
         const fechaEv = new Date(e.fecha);
+        // Comparar en coordenadas UTC-5 usando getUTCDate() de la fecha desplazada
+        const esMismaFecha =
+          fechaEv.getUTCFullYear() === ahora.getUTCFullYear() &&
+          fechaEv.getUTCMonth() === ahora.getUTCMonth() &&
+          fechaEv.getUTCDate() === ahora.getUTCDate();
         let estadoTemporal = "PRÓXIMO";
-        if (fechaEv.toDateString() === ahora.toDateString()) {
+        if (esMismaFecha) {
           estadoTemporal = "¡HOY!";
         } else if (fechaEv < hoyInicio) {
           estadoTemporal = "FINALIZADO / PASADO";
         }
-        const horaStr = fechaEv.toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
-        return `[ID:${e.id}] ${e.nombre} | Estado:${estadoTemporal} | Fecha:${fechaEv.toLocaleDateString("es-EC", { weekday: "short", day: "numeric", month: "long", year: "numeric" })} ${horaStr} | Lugar:${e.lugar} | Descripción Completa:${(e.descripcion || e.nombre || "").slice(0, 600)} | Enlace:/eventos/${e.slug}`;
+        const horaStr = fechaEv.toISOString().slice(11, 16); // HH:MM en UTC (la hora guardada es local Ecuador)
+        const fechaEvStr = `${DIAS_ES[fechaEv.getUTCDay()]} ${fechaEv.getUTCDate()} de ${MESES_ES[fechaEv.getUTCMonth()]} de ${fechaEv.getUTCFullYear()}`;
+        return `[ID:${e.id}] ${e.nombre} | Estado:${estadoTemporal} | Fecha:${fechaEvStr} ${horaStr} | Lugar:${e.lugar} | Descripción Completa:${(e.descripcion || e.nombre || "").slice(0, 600)} | Enlace:/eventos/${e.slug}`;
       })
       .join("\n");
 
@@ -1050,8 +932,8 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
     const hotelEnConversacion = aliados.find((a) => textoReciente.includes(sinAcentos(a.nombre)));
 
     // Detectar si el usuario menciona una habitación específica (ej: "habitación familiar", "matrimonial", "suite")
-    const todasLasHabitaciones = hotelEnConversacion?.habitaciones || aliadoEspecifico?.habitaciones || [];
-    const habitacionMencionada = todasLasHabitaciones.find((h) => {
+    const todasLasHabitaciones: HabitacionItem[] = hotelEnConversacion?.habitaciones || aliadoEspecifico?.habitaciones || [];
+    const habitacionMencionada = todasLasHabitaciones.find((h: HabitacionItem) => {
       const hNorm = sinAcentos(h.nombre);
       const palabrasHab = hNorm.split(/\s+/).filter((w) => w.length > 3 && !["habitacion", "suite", "para"].includes(w));
       return (
@@ -1082,7 +964,7 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
 
     const nombreDetectadoEnVenta = !nombreUsuarioSesion ? extraerNombreUsuario(lastUserMessage) : null;
     if (nombreDetectadoEnVenta && sessionId) {
-      prisma.chatSession.update({
+      prismaBot.chat_sessions.update({
         where: { sessionId },
         data: { nombreUsuario: nombreDetectadoEnVenta },
       }).catch(() => {/* fail silently */});
@@ -1108,7 +990,7 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
       }
     }
 
-    const habitacionesVenta = aliadoVenta?.habitaciones || [];
+    const habitacionesVenta: HabitacionItem[] = aliadoVenta?.habitaciones || [];
 
     // Etiquetas según el tipo de aliado (hotel / restaurante / cafetería)
     const tipoAliadoVenta = aliadoVenta?.tipo;
@@ -1137,11 +1019,11 @@ El usuario está preguntando de qué trata, qué es o pidiendo más detalles sob
 
     const listaCategorias = habitacionesVenta
       .map(
-        (h) =>
+        (h: HabitacionItem) =>
           `${h.nombre}${h.precio ? ` (${h.precio})` : ""}${h.caracteristicas ? ` — ${h.caracteristicas}` : ""}`
       )
       .join("\n  • ");
-    const precioDesde = habitacionesVenta.find((h) => h.precio)?.precio;
+    const precioDesde = habitacionesVenta.find((h: HabitacionItem) => h.precio)?.precio;
     const textoCategorias = habitacionesVenta.length
       ? `Tiene ${habitacionesVenta.length} ${palabraCategorias}:\n  • ${listaCategorias}`
       : "";
@@ -1268,12 +1150,15 @@ ${datosVenta}`
     const systemPromptBase = `ZONA HORARIA Y UBICACIÓN: Estás en Ecuador (GMT-5, hora de Ecuador continental / Loja).
 FECHA Y HORA ACTUAL: ${fechaHoyStr}.
 
-REGLAS TEMPORALES CRÍTICAS:
-- Tu fecha de referencia de HOY es estrictamente: ${fechaHoyStr}.
+REGLAS TEMPORALES CRÍTICAS — OBLIGATORIAS:
+- HOY es estrictamente: ${fechaHoyStr}. El número del día es ${diaNumero}, el mes es ${mesNombreActual}, el año es ${anioActual}.
+- El día de la semana de hoy es "${diaSemanaNombre}". NO puedes mencionar otro día de la semana para referirte a la fecha ${diaNumero} de ${mesNombreActual}.
+- Si un evento indica Fecha "${diaNumero} de ${mesNombreActual}", corresponde a "${diaSemanaNombre}" — usa siempre ESE nombre de día.
 - "Esta semana" corresponde a la semana en curso de Lunes a Domingo.
 - "Fin de semana" corresponde de Viernes a Domingo.
 - Si el usuario pregunta por eventos de "esta semana", "este fin de semana", "hoy" o fechas futuras, responde ÚNICAMENTE con eventos programados para ese periodo en EVENTOS DISPONIBLES.
 - NUNCA presentes eventos pasados o finalizados como si fueran a ocurrir esta semana o en el futuro.
+- NUNCA inventes ni deduzcas un día de la semana distinto al que corresponde según las fechas en EVENTOS DISPONIBLES.
 ${detalleUbicacion}
 ${detalleRango}
 ${detalleMemoria}
@@ -1515,13 +1400,30 @@ ${systemPromptBase}`;
     const aliadosComerciales = aliados.filter(
       (a) => a.tipo === "HOSPEDAJE" || a.tipo === "GASTRONOMIA" || a.tipo === "CAFETERIA"
     );
-    // Prioridad por tema: cafeterías si piden café, restaurantes si piden comer, hoteles si buscan dormir
-    const aliadosAfines = esCafe
-      ? aliados.filter((a) => a.tipo === "CAFETERIA")
-      : esGastronomia && !esHospedaje
-      ? aliados.filter((a) => a.tipo === "GASTRONOMIA")
-      : aliados.filter((a) => a.tipo === "HOSPEDAJE");
-    // Prioridad: si el usuario pidió un tema (dormir / comer / café) se muestran SOLO los aliados de ese rubro.
+    // Prioridad por tema: si piden hospedaje Y gastronomía/café a la vez, balancear ambos rubros
+    const aliadosHospedaje = aliados.filter((a) => a.tipo === "HOSPEDAJE");
+    const aliadosGastro = aliados.filter((a) => a.tipo === "GASTRONOMIA");
+    const aliadosCafe = aliados.filter((a) => a.tipo === "CAFETERIA");
+
+    let aliadosAfines: typeof aliados = [];
+    if (esHospedaje && (esGastronomia || esCafe)) {
+      // Combinado: 2 hoteles + 2 restaurantes/cafeterías
+      const seleccionGastro = esCafe ? [...aliadosCafe, ...aliadosGastro] : [...aliadosGastro, ...aliadosCafe];
+      aliadosAfines = [
+        ...aliadosHospedaje.slice(0, 2),
+        ...seleccionGastro.slice(0, 2),
+        ...aliadosHospedaje.slice(2),
+        ...seleccionGastro.slice(2),
+      ];
+    } else if (esCafe) {
+      aliadosAfines = [...aliadosCafe, ...aliadosGastro];
+    } else if (esGastronomia) {
+      aliadosAfines = [...aliadosGastro, ...aliadosCafe];
+    } else {
+      aliadosAfines = aliadosHospedaje;
+    }
+
+    // Prioridad: si el usuario pidió un tema (dormir / comer / café) se muestran los aliados afines.
     // Si no hay tema claro, se muestran todos los comerciales.
     const hayTemaAliado = esCafe || esGastronomia || esHospedaje;
     const idsPrioridadAliados = Array.from(
@@ -1637,7 +1539,7 @@ ${systemPromptBase}`;
 
     // Guardar mensaje del bot en CRM
     if (sessionId) {
-      prisma.chatMessage.create({
+      prismaBot.chat_messages.create({
         data: {
           sessionId,
           sender: "bot",

@@ -112,9 +112,47 @@ function limpiarJson(texto) {
     .trim();
 }
 
-/** Una tentativa con una key y un modelo concretos. */
-async function intentar(key, modelo, imagenes) {
-  const partes = [{ text: PROMPT }];
+const CARTELERA_PROMPT = `Sos un asistente especializado en extraer agendas y carteleras culturales de Loja, Ecuador.
+
+Mirá las imágenes. Contienen una CARTELERA o CALENDARIO MENSUAL con MÚLTIPLES EVENTOS distintos organizados en bloques, cuadrículas (grids) o páginas (ej: carruseles de la Dirección de Cultura o del Municipio de Loja).
+
+Tu tarea es extraer CADA UNO de los eventos individuales que aparecen en estas láminas.
+
+REGLAS ESTRICTAS:
+- Si las imágenes muestran múltiples eventos (cartelera/agenda con varios eventos): pon "esCarteleraMultiple": true y lista cada evento en el array "eventos".
+- Si las imágenes son de un SOLO evento (un único flyer o afiche repetido): pon "esCarteleraMultiple": false y "eventos": [].
+- Para cada evento individual extraé:
+  * "nombre": Nombre artístico y conciso del evento (ej: "Concierto de Temporada Tierra, Viaje y Libertad", "Martes de Folklore: Loja Ritmo y Tradición", "Feria Artesanal").
+  * "organizador": Institución, artista o grupo real (ej: "Municipio de Loja", "Orquesta Sinfónica de Loja", "UCOT").
+  * "fechaTexto": Copiá la fecha exacta tal como está escrita (ej: "02 de Octubre", "13 de Octubre", "28 de Octubre", "09 - 11 de Octubre", "29 y 30 de Octubre").
+  * "horaTexto": La hora tal como aparece (ej: "20h00", "15h00", "09h00 a 17h00", "11h00"), o null si no indica.
+  * "lugar": Recinto o lugar exacto (ej: "Teatro Bolívar", "Teatro Benjamín Carrión Mora", "Paseo Cultural de la calle Rocafuerte", "Museo Puerta de la Ciudad", "Casona Cultural").
+  * "precio": "Entrada libre", "Donación de caramelos", o el valor si aparece, o null.
+  * "categoriaSugerida": "Música" | "Teatro" | "Ferias" | "Artes Vivas" | "Arte y exposiciones" | null.
+  * "indiceLamina": El índice (base 0) de la imagen donde se encuentra este evento.
+  * "cuadroRecorte": { "top": número de 0 a 100, "left": número de 0 a 100, "width": número de 0 a 100, "height": número de 0 a 100 }. Si la lámina tiene varios eventos en cuadrícula/bloques, especifica las coordenadas porcentuales exactas de la caja/cuadrícula que contiene este evento y su imagen o texto para poder recortarlo limpiamente. Si ocupa toda la lámina, pon { "top": 0, "left": 0, "width": 100, "height": 100 }.
+
+Respondé ÚNICAMENTE con este JSON:
+{
+  "esCarteleraMultiple": true,
+  "eventos": [
+    {
+      "nombre": "...",
+      "organizador": "...",
+      "fechaTexto": "...",
+      "horaTexto": "...",
+      "lugar": "...",
+      "precio": "...",
+      "categoriaSugerida": "...",
+      "indiceLamina": 0,
+      "cuadroRecorte": { "top": 0, "left": 0, "width": 50, "height": 50 }
+    }
+  ]
+}`;
+
+/** Una tentativa con una key, un modelo y un prompt concretos. */
+async function intentarConPrompt(key, modelo, imagenes, promptTexto) {
+  const partes = [{ text: promptTexto }];
 
   for (const img of imagenes) {
     partes.push({ inline_data: { mime_type: img.tipo, data: img.base64 } });
@@ -138,8 +176,6 @@ async function intentar(key, modelo, imagenes) {
 
   const crudo = await res.text();
 
-  // 429 = cupo agotado, 503 = saturado. En ambos casos conviene probar
-  // otra combinación en vez de rendirse.
   if (!res.ok) {
     const error = new Error(`HTTP ${res.status}`);
     error.reintentable = res.status === 429 || res.status === 503;
@@ -169,6 +205,11 @@ async function intentar(key, modelo, imagenes) {
   return limpio;
 }
 
+/** Una tentativa estándar con una key y un modelo concretos. */
+async function intentar(key, modelo, imagenes) {
+  return intentarConPrompt(key, modelo, imagenes, PROMPT);
+}
+
 /**
  * Lee un afiche (una o varias imágenes del mismo post).
  *
@@ -183,8 +224,6 @@ async function leerAfiche(imagenes) {
 
   if (!Array.isArray(imagenes) || imagenes.length === 0) return null;
 
-  // Se descartan los formatos que la API no acepta (por ejemplo image/avif),
-  // porque provocan un HTTP 400 que tumba la lectura completa.
   const utiles = imagenesValidas(imagenes);
   if (utiles.length === 0) {
     const tipos = [...new Set((imagenes || []).map((i) => i.tipo))].join(", ");
@@ -225,8 +264,6 @@ async function leerAfiche(imagenes) {
       } catch (err) {
         errores.push(`${etiqueta}: ${err.message}`);
 
-        // Si el problema es de red o de contenido, no sirve insistir con
-        // otra key: se corta y se devuelve null.
         if (!err.reintentable && !/HTTP 5\d\d/.test(err.message)) {
           console.warn(`[Visión] ${etiqueta} → ${err.message} (no reintentable)`);
           if (err.detalle) console.warn(`[Visión]   detalle: ${err.detalle}`);
@@ -243,4 +280,65 @@ async function leerAfiche(imagenes) {
   return null;
 }
 
-module.exports = { leerAfiche, imagenesValidas, configurado, MODELOS, PROMPT };
+/**
+ * Lee una cartelera completa o carrusel con múltiples eventos.
+ *
+ * @param {Array<{base64: string, tipo: string}>} imagenes
+ * @returns {Promise<{esCarteleraMultiple: boolean, eventos: Array<Object>}|null>}
+ */
+async function leerCarteleraMultiple(imagenes) {
+  if (!configurado()) {
+    console.warn("[Visión] Sin GEMINI_API_KEYS configuradas: no se leen las carteleras");
+    return null;
+  }
+
+  if (!Array.isArray(imagenes) || imagenes.length === 0) return null;
+
+  const utiles = imagenesValidas(imagenes);
+  if (utiles.length === 0) return null;
+
+  const pesoKB = Math.round(
+    utiles.reduce((a, i) => a + (i.base64?.length ?? 0), 0) * 0.75 / 1024
+  );
+
+  for (let k = 0; k < KEYS.length; k++) {
+    for (const modelo of MODELOS) {
+      const etiqueta = `key#${k + 1} + ${modelo}`;
+      const inicio = Date.now();
+
+      try {
+        const resultado = await intentarConPrompt(KEYS[k], modelo, utiles, CARTELERA_PROMPT);
+
+        if (!resultado || typeof resultado !== "object") {
+          throw new Error("respuesta vacía");
+        }
+
+        console.log(
+          `[Visión] Cartelera leída con ${etiqueta} en ${((Date.now() - inicio) / 1000).toFixed(1)}s ` +
+            `(${utiles.length} láminas, ${pesoKB} KB, ${resultado.eventos?.length || 0} eventos detectados)`
+        );
+
+        return resultado;
+      } catch (err) {
+        if (!err.reintentable && !/HTTP 5\d\d/.test(err.message)) {
+          console.warn(`[Visión Cartelera] ${etiqueta} → ${err.message} (no reintentable)`);
+          return null;
+        }
+        console.warn(`[Visión Cartelera] ${etiqueta} → ${err.message} — probando siguiente`);
+      }
+    }
+  }
+
+  return null;
+}
+
+module.exports = {
+  leerAfiche,
+  leerCarteleraMultiple,
+  imagenesValidas,
+  configurado,
+  MODELOS,
+  PROMPT,
+  CARTELERA_PROMPT,
+};
+

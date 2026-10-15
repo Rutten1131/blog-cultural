@@ -1,0 +1,293 @@
+﻿================================================================================
+ GUIA COMPLETA DEL CHATBOT MULTISITE — SISTEMA LOJA
+ Proyecto master: Agenda Cultural Loja (agendaculturalloja.com)
+ Ultima actualizacion: 15 Oct 2026
+================================================================================
+
+Esta carpeta (bot/) es el CEREBRO CENTRAL de la documentacion del chatbot.
+Todo lo que necesitas saber para mantener, actualizar y desplegar el bot
+en los 3 proyectos esta aqui.
+
+================================================================================
+ INDICE
+================================================================================
+
+ 1. Arquitectura general del sistema
+ 2. Los 3 proyectos y como se diferencian
+ 3. Como hacer cambios (flujo de trabajo)
+ 4. Variables de entorno por proyecto
+ 5. Lo que cambia en el codigo de cada proyecto (layout.tsx)
+ 6. Como sincronizar actualizaciones a los 3 proyectos
+ 7. Estructura de archivos del bot
+ 8. Historial de cambios (changelog)
+
+================================================================================
+ 1. ARQUITECTURA GENERAL DEL SISTEMA
+================================================================================
+
+Cada proyecto tiene su PROPIO chatbot independiente.
+NO comparten el endpoint /api/chat — cada uno tiene el suyo.
+
+                    [Agenda Cultural]     [Que Comer Loja]     [Agenda Turistica]
+                    agendacultural.com    quecomerenloja.com   agendaturistica.com
+                           |                     |                    |
+                      /api/chat             /api/chat            /api/chat
+                      (propio)              (propio)             (propio)
+                           |                     |                    |
+                      DATABASE_URL          DATABASE_URL         DATABASE_URL
+                      (su DB propia)        (su DB propia)       (su DB propia)
+                           |                     |                    |
+                           +----------+----------+
+                                      |
+                               CHATBOT_DB_URL
+                          (DB central del bot — COMPARTIDA)
+                          CRM: sesiones, mensajes, leads
+                          de los 3 sitios en un solo lugar
+
+VENTAJAS de esta arquitectura:
+  - Si un proyecto cae, los otros siguen funcionando
+  - Sin CORS ni llamadas cross-domain
+  - CRM centralizado: ves todos los usuarios de los 3 sitios en una sola DB
+  - El codigo del bot es identico en los 3 — solo cambia el .env y el layout.tsx
+
+================================================================================
+ 2. LOS 3 PROYECTOS Y COMO SE DIFERENCIAN
+================================================================================
+
+PROYECTO 1: Agenda Cultural Loja (MASTER — donde se hacen los cambios)
+  - Dominio: agendaculturalloja.com
+  - CHATBOT_SITE_ID: "agenda-cultural-loja"
+  - Especialidad del bot: Eventos culturales, hospedaje, gastronomia, turismo
+  - Color del widget: morado/magenta (purple)
+  - origen en widget: "agendacultural"
+
+PROYECTO 2: Que Comer en Loja
+  - Dominio: quecomerenloja.com
+  - CHATBOT_SITE_ID: "quecomerenloja"
+  - Especialidad del bot: SOLO gastronomia (restaurantes, cafeterias, platos tipicos)
+  - Color del widget: naranja/ambar (orange)
+  - origen en widget: "quecomerenloja"
+  - En route.ts: activa "esQueComer = true" → modo gastronomia exclusivo
+
+PROYECTO 3: Agenda Turistica Loja
+  - Dominio: agendaturisticaloja.com
+  - CHATBOT_SITE_ID: "agendaturisticaloja"
+  - Especialidad del bot: Turismo, naturaleza, atractivos, cantones, hospedaje
+  - Color del widget: verde esmeralda (emerald)
+  - origen en widget: "agendaturisticaloja"
+  - En route.ts: activa "esTurismo = true" → modo turismo
+
+================================================================================
+ 3. COMO HACER CAMBIOS (FLUJO DE TRABAJO)
+================================================================================
+
+REGLA PRINCIPAL: Todos los cambios se hacen en Agenda Cultural (el master).
+Luego se sincronizan a los otros 2 con el script.
+
+FLUJO:
+  1. Modificas el archivo en: D:\Abel paginas\agenda cultural\software\
+     - app/api/chat/route.ts
+     - components/ChatbotWidget.tsx
+     - lib/chat/*.ts
+
+  2. Pruebas localmente en Agenda Cultural con: npm run dev
+
+  3. Cuando esta bien, corres el script de sync:
+     .\bot\sincronizar-proyectos.ps1
+
+  4. El script copia automaticamente los archivos a los otros 2 proyectos.
+
+  5. En cada proyecto destino solo necesitas reiniciar el servidor.
+
+NOTA: El script NUNCA toca los .env ni el layout.tsx.
+Esos son especificos de cada proyecto y los manejas tu manualmente.
+
+================================================================================
+ 4. VARIABLES DE ENTORNO POR PROYECTO
+================================================================================
+
+--- AGENDA CULTURAL (ya configurado) ---
+DATABASE_URL = "mysql://agendaculturalbd-313930d0fa:..."  ← su DB propia
+CHATBOT_DB_URL = "mysql://Botempresas-353039368f96:..."  ← DB bot (compartida)
+CHATBOT_SITE_ID = "agenda-cultural-loja"
+DEEPSEEK_API_KEY = "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+GROQ_API_KEY = "gsk_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+--- QUE COMER EN LOJA (cuando lo crees) ---
+DATABASE_URL = "mysql://USUARIO:PASS@HOST/nombre_db"    ← su DB propia (nueva)
+CHATBOT_DB_URL = "mysql://Botempresas-353039368f96:..."  ← MISMA que Agenda Cultural
+CHATBOT_SITE_ID = "quecomerenloja"                       ← CAMBIA
+DEEPSEEK_API_KEY = (misma clave)
+GROQ_API_KEY = (misma clave)
+NEXT_PUBLIC_APP_URL = "https://www.quecomerenloja.com"
+
+Ver archivo completo: bot/env-ejemplos/quecomerenloja.env.ejemplo
+
+--- AGENDA TURISTICA LOJA (cuando lo crees) ---
+DATABASE_URL = "mysql://USUARIO:PASS@HOST/nombre_db"    ← su DB propia (nueva)
+CHATBOT_DB_URL = "mysql://Botempresas-353039368f96:..."  ← MISMA que Agenda Cultural
+CHATBOT_SITE_ID = "agendaturisticaloja"                  ← CAMBIA
+DEEPSEEK_API_KEY = (misma clave)
+GROQ_API_KEY = (misma clave)
+NEXT_PUBLIC_APP_URL = "https://www.agendaturisticaloja.com"
+
+Ver archivo completo: bot/env-ejemplos/agendaturisticaloja.env.ejemplo
+
+================================================================================
+ 5. LO QUE CAMBIA EN EL CODIGO DE CADA PROYECTO (layout.tsx)
+================================================================================
+
+El unico archivo que se personaliza POR PROYECTO (no lo toca el sync)
+es el layout.tsx donde agregas el widget con sus props especificas.
+
+--- AGENDA CULTURAL (ya hecho, referencia) ---
+<ChatbotWidget
+  origen="agendacultural"
+  btnLabel="¿Que hacer en Loja?"
+  iconEmoji="🎭"
+  acento="purple"
+  headerGradient="from-purple-800 via-purple-700 to-pink-600"
+  welcomeMessage="¡Hola! 👋 Te doy la bienvenida a Loja. Preguntame que hacer..."
+/>
+
+--- QUE COMER EN LOJA ---
+import { ChatbotWidget } from "@/components/ChatbotWidget";
+
+// En el layout.tsx de quecomerenloja, dentro del <body>:
+<ChatbotWidget
+  origen="quecomerenloja"
+  apiUrl="/api/chat"
+  sessionStorageKey="quecomer_chat_session_id"
+  historyStorageKey="quecomer_chat_history"
+  btnLabel="¿Donde comer en Loja?"
+  tooltipText="¿Buscas restaurantes, platos tipicos o cafeterias?"
+  headerTitle="¿Donde comer en Loja?"
+  headerSubtitle="Guia Gastronomica y Restaurantes de Loja"
+  iconEmoji="🍽️"
+  acento="orange"
+  headerGradient="from-orange-600 via-amber-600 to-yellow-500"
+  welcomeMessage="¡Hola! 👋 Bienvenido a QueComerEnLoja. ¿Que se te antoja probar hoy? Preguntame por comida tipica, el mejor repe lojano, cafeterias de especialidad o restaurantes recomendados."
+  preguntasSugeridas={[
+    "🍽️ ¿Donde comer el mejor repe lojano?",
+    "☕ Cafeterias con buen cafe de especialidad",
+    "🍕 Restaurantes para cenar hoy",
+    "🥩 Lugares de comida tipica lojana"
+  ]}
+/>
+
+--- AGENDA TURISTICA LOJA ---
+import { ChatbotWidget } from "@/components/ChatbotWidget";
+
+// En el layout.tsx de agendaturisticaloja, dentro del <body>:
+<ChatbotWidget
+  origen="agendaturisticaloja"
+  apiUrl="/api/chat"
+  sessionStorageKey="turistica_chat_session_id"
+  historyStorageKey="turistica_chat_history"
+  btnLabel="¿Que visitar en Loja?"
+  tooltipText="¿Buscas rutas naturales, cantones u hospedaje?"
+  headerTitle="Agenda Turistica Loja"
+  headerSubtitle="Rutas, Parques, Naturaleza y Hospedaje"
+  iconEmoji="🌿"
+  acento="emerald"
+  headerGradient="from-emerald-700 via-teal-700 to-cyan-600"
+  welcomeMessage="¡Hola! 🌿 Te doy la bienvenida a la Agenda Turistica de Loja. Preguntame sobre que lugares visitar, senderos, cascadas, atractivos en Vilcabamba o donde hospedarte."
+  preguntasSugeridas={[
+    "🌿 ¿Que lugares visitar en Loja?",
+    "🏨 ¿Donde hospedarse en Vilcabamba?",
+    "🚶 Rutas de senderismo y naturaleza",
+    "🗺️ Atractivos turisticos por canton"
+  ]}
+/>
+
+================================================================================
+ 6. COMO SINCRONIZAR ACTUALIZACIONES A LOS 3 PROYECTOS
+================================================================================
+
+Script disponible en: bot/sincronizar-proyectos.ps1
+
+Uso (desde la raiz de Agenda Cultural):
+  .\bot\sincronizar-proyectos.ps1
+
+Antes de usar por primera vez:
+  Abre el script y ajusta las 2 rutas segun donde tengas los proyectos:
+    $QUECOMER      = "D:\Abel paginas\quecomerenloja\software"
+    $TURISTICALOJA = "D:\Abel paginas\agendaturistica\software"
+
+Archivos que sincroniza:
+  app/api/chat/route.ts          ← Cerebro del bot (logica, IA, RAG)
+  components/ChatbotWidget.tsx   ← UI del widget (chat, animaciones)
+  lib/chat/contenidoService.ts   ← Abstraccion multi-DB
+  lib/chat/chatMemory.ts         ← Memoria de sesiones
+  lib/chat/chatRouter.ts         ← Clasificador de intenciones
+  lib/chat/chatCache.ts          ← Cache de respuestas
+  lib/prisma-bot.ts              ← Cliente DB del bot
+
+Archivos que NUNCA toca el sync:
+  .env                           ← Cada proyecto tiene el suyo
+  layout.tsx                     ← Personalizado por proyecto (origen, colores)
+  Todo lo demas del proyecto     ← Paginas, componentes propios, etc.
+
+================================================================================
+ 7. ESTRUCTURA DE ARCHIVOS DEL BOT
+================================================================================
+
+bot/
+├── GUIA-COMPLETA.txt              ← Este archivo — todo lo que necesitas saber
+├── COMO_JALA_LA_DATA.md           ← Documentacion tecnica de como se consultan las DBs
+├── ARQUITECTURA_4_DBS.md          ← Arquitectura de la separacion de bases de datos
+├── MIGRACION_PROYECTOS.md         ← Notas tecnicas de migracion
+├── sincronizar-proyectos.ps1      ← Script para sincronizar los 3 proyectos
+│
+├── env-ejemplos/
+│   ├── quecomerenloja.env.ejemplo      ← .env listo para copiar y llenar
+│   └── agendaturisticaloja.env.ejemplo ← .env listo para copiar y llenar
+│
+└── paquete-migracion/             ← Snapshot del codigo del bot (para migrar)
+    ├── README.txt                 ← Manual de migracion paso a paso
+    ├── app/api/chat/route.ts      ← Copia del route.ts actual
+    ├── components/ChatbotWidget.tsx ← Copia del widget actual
+    ├── lib/chat/*.ts              ← Copias de los servicios del bot
+    ├── lib/prisma-bot.ts
+    ├── prisma/schema-bot.prisma   ← Esquema de la DB del bot
+    └── prisma-bot.config.ts
+
+================================================================================
+ 8. HISTORIAL DE CAMBIOS (CHANGELOG)
+================================================================================
+
+--- 15 Oct 2026 ---
+
+FIX: Typewriter humano (ChatbotWidget.tsx)
+  - Antes: setInterval cada 12ms → completaba en ~1 segundo (robotico)
+  - Ahora: setTimeout recursivo con delays variables:
+    * Pausa inicial de "pensar": 280ms
+    * Caracteres normales: 55-80ms (variacion aleatoria)
+    * Tras coma/punto y coma/dos puntos: 130-180ms
+    * Tras punto/exclamacion/interrogacion: 320-420ms
+  - Resultado: escritura natural, legible, como WhatsApp
+
+FIX: Consistencia temporal Ecuador (app/api/chat/route.ts)
+  - nowEcuador() reescrita: GMT-5 por resta directa al UTC (no toLocaleString)
+  - extraerRangoFecha() reescrita con getUTC* en todo (sin toLocaleDateString)
+  - Comparacion HOY: triple comprobacion UTC (anno + mes + dia)
+  - Nombres de dias generados con array local (no depende de Intl/Node.js)
+  - System prompt: ancla explicita dia-de-semana <-> fecha
+    "El dia de la semana de hoy es miercoles. NUNCA menciones otro dia."
+  - Contexto de eventos: dia calculado con DIAS_ES[fechaEv.getUTCDay()]
+
+ARQUITECTURA: Eliminacion de CORS innecesario
+  - Se removieron los origenes de quecomerenloja.com y agendaturisticaloja.com
+  - Cada proyecto tendra su propio /api/chat
+  - Solo se mantiene localhost para pruebas de desarrollo local
+
+NUEVO: Script de sincronizacion
+  - bot/sincronizar-proyectos.ps1
+  - Copia los archivos del bot de Agenda Cultural a los otros 2 proyectos
+  - Nunca toca .env ni layout.tsx
+
+NUEVO: Archivos de ejemplo de .env
+  - bot/env-ejemplos/quecomerenloja.env.ejemplo
+  - bot/env-ejemplos/agendaturisticaloja.env.ejemplo
+
+================================================================================

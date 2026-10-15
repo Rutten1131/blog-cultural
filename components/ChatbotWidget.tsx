@@ -467,14 +467,17 @@ export function ChatbotWidget({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
 
   // Las sugerencias salen de inmediato si el chat está vacío; si ya hay conversación,
   // recién aparecen tras unos segundos de inactividad para no confundir.
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const [sugerenciasDescartadas, setSugerenciasDescartadas] = useState(false);
   const hayConversacion = messages.some((m) => m.sender === "user");
 
   useEffect(() => {
-    if (!isOpen || loading) {
+    if (!isOpen || loading || sugerenciasDescartadas) {
       setMostrarSugerencias(false);
       return;
     }
@@ -530,6 +533,7 @@ export function ChatbotWidget({
     const newSid = `ses_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     localStorage.setItem(sessionStorageKey, newSid);
     setSessionId(newSid);
+    setSugerenciasDescartadas(false);
     setMessages([
       {
         id: `welcome-${Date.now()}`,
@@ -595,13 +599,37 @@ export function ChatbotWidget({
     );
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (forzar: boolean = false) => {
+    if (!scrollContainerRef.current) return;
+    if (forzar || shouldAutoScrollRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: forzar ? "smooth" : "auto",
+      });
+    }
+  };
+
+  // Listener del scroll del contenedor de mensajes para saber si el usuario está al fondo
+  const handleChatScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    // Si la distancia al fondo es menor a 80px, consideramos que el usuario quiere seguir el flujo
+    const estaAlFondo = scrollHeight - scrollTop - clientHeight < 80;
+    shouldAutoScrollRef.current = estaAlFondo;
   };
 
   useEffect(() => {
     if (isOpen) {
-      scrollToBottom();
+      // Si el último mensaje es del usuario, forzar scroll abajo
+      const ultimoMsg = messages[messages.length - 1];
+      const esDelUsuario = ultimoMsg?.sender === "user";
+      if (esDelUsuario) {
+        shouldAutoScrollRef.current = true;
+        scrollToBottom(true);
+      } else {
+        scrollToBottom(false);
+      }
+
       // Si abre por primera vez y nunca ha respondido a ubicación, sugerir activar
       if (locationStatus === "idle") {
         const dismissed = sessionStorage.getItem("agenda_geo_prompt_dismissed");
@@ -708,23 +736,19 @@ export function ChatbotWidget({
         // Inicializar la burbuja del bot en la lista de mensajes
         setMessages((prev) => [...prev, botMsgBase]);
 
-        // Efecto streaming tipeo suave (typewriter dinámico)
-        let indiceActual = 0;
-        const longitud = textoCompleto.length;
-        // Salto dinámico según el largo del texto para mantener fluidez (15-25ms por bloque)
-        const pasoCaracteres = longitud > 200 ? 3 : 2;
-
+        // Efecto typewriter con ritmo humano:
+        // - Base ~65ms entre ticks (≈15 ticks/s) — un poco más pausado
+        // - Pausa extra en signos de puntuación para que se perciba natural
+        // - Avanza 1-2 chars por tick en textos cortos, 2-3 en largos
         await new Promise<void>((resolve) => {
-          const intervalo = setInterval(() => {
-            indiceActual = Math.min(longitud, indiceActual + pasoCaracteres);
-            const parcial = textoCompleto.slice(0, indiceActual);
+          const longitud = textoCompleto.length;
+          // Cuántos caracteres avanzar por tick según longitud total
+          const pasoBase = longitud > 400 ? 3 : longitud > 200 ? 2 : 1;
+          let indiceActual = 0;
 
-            setMessages((prev) =>
-              prev.map((m) => (m.id === botId ? { ...m, text: parcial } : m))
-            );
-
+          const tick = () => {
             if (indiceActual >= longitud) {
-              clearInterval(intervalo);
+              // Asegurar texto completo al terminar y guardar en historial
               setMessages((prev) => {
                 const finalUpdated = prev.map((m) =>
                   m.id === botId ? { ...m, text: textoCompleto } : m
@@ -733,8 +757,34 @@ export function ChatbotWidget({
                 return finalUpdated;
               });
               resolve();
+              return;
             }
-          }, 18);
+
+            indiceActual = Math.min(longitud, indiceActual + pasoBase);
+            const parcial = textoCompleto.slice(0, indiceActual);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === botId ? { ...m, text: parcial } : m))
+            );
+
+            // Calcular el delay del próximo tick:
+            // Pausa larga tras punto/exclamación/interrogación (~370ms)
+            // Pausa media tras coma/punto y coma/dos puntos (~150ms)
+            // Pausa base aleatoria entre 55-80ms para simular variación humana
+            const charAnterior = textoCompleto[indiceActual - 1] || "";
+            let delay: number;
+            if (".!?…".includes(charAnterior)) {
+              delay = 320 + Math.random() * 100; // 320–420ms
+            } else if (",;:".includes(charAnterior)) {
+              delay = 130 + Math.random() * 50;  // 130–180ms
+            } else {
+              delay = 55 + Math.random() * 25;   // 55–80ms
+            }
+
+            setTimeout(tick, delay);
+          };
+
+          // Pausa inicial antes de comenzar a escribir (~280ms)
+          setTimeout(tick, 280);
         });
       }
     } catch {
@@ -864,20 +914,35 @@ export function ChatbotWidget({
 
           {locationStatus === "granted" && ubicacion && (
             <div className="bg-emerald-50 border-b border-emerald-100 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-emerald-800">
-              <div className="flex items-center gap-1.5">
-                <span>📍</span>
-                <span className="font-semibold truncate max-w-[240px]">
+              <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                <span className="shrink-0">📍</span>
+                <span className="font-semibold truncate">
                   Zona: {ubicacion.zona || ubicacion.ciudad || "Loja"}
                 </span>
               </div>
-              <span className="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded">
-                Activa
-              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={solicitarUbicacion}
+                  title="Actualizar mi ubicación actual"
+                  className="text-[10px] bg-white text-emerald-700 hover:bg-emerald-100/70 border border-emerald-200 font-bold px-2 py-0.5 rounded transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                >
+                  <span>🔄</span>
+                  <span className="hidden sm:inline">Actualizar</span>
+                </button>
+                <span className="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded">
+                  Activa
+                </span>
+              </div>
             </div>
           )}
 
           {/* Área de Mensajes */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-purple-50/40 via-white to-white no-scrollbar">
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleChatScroll}
+            className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-purple-50/40 via-white to-white no-scrollbar"
+          >
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -972,26 +1037,29 @@ export function ChatbotWidget({
                   </SeccionTarjetas>
                 )}
 
-                {/* ─── ALIADOS COMERCIALES ─── (el botón inicia el flujo de venta del hotel) */}
-                {m.aliados && m.aliados.length > 0 && !m.aliadoDetalle && (
-                  <SeccionTarjetas
-                    titulo="⭐ Opciones Recomendadas en Loja:"
-                    total={m.aliados.length}
-                    expandida={seccionAbierta(m.id, "aliados")}
-                    onToggle={() => toggleSeccion(m.id, "aliados")}
-                  >
-                    {recortarTarjetas(m.aliados, m.id, "aliados").map((aliado) => {
+                {/* ─── ALIADOS COMERCIALES SEPARADOS POR CATEGORÍA ─── */}
+                {m.aliados && m.aliados.length > 0 && !m.aliadoDetalle && (() => {
+                  const restaurantes = m.aliados.filter(
+                    (a) => a.tipo === "GASTRONOMIA" || a.tipo === "CAFETERIA"
+                  );
+                  const hoteles = m.aliados.filter((a) => a.tipo === "HOSPEDAJE");
+                  const otros = m.aliados.filter(
+                    (a) => a.tipo !== "GASTRONOMIA" && a.tipo !== "CAFETERIA" && a.tipo !== "HOSPEDAJE"
+                  );
+
+                  const renderTarjetasAliados = (lista: typeof m.aliados, tipoKey: string) =>
+                    recortarTarjetas(lista, m.id, tipoKey).map((aliado) => {
                       const etiqueta = etiquetasAliado(aliado.tipo).boton;
                       return (
                         <TarjetaChat key={aliado.id}>
                           <TarjetaImagen
                             src={aliado.imagenUrl}
                             alt={aliado.nombre}
-                            emoji="🏨"
+                            emoji={aliado.tipo === "GASTRONOMIA" ? "🍽️" : aliado.tipo === "CAFETERIA" ? "☕" : "🏨"}
                             badges={
                               <>
-                                <div className="absolute top-1 left-1 bg-white/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] text-purple-800 font-bold border border-purple-200 shadow-sm">
-                                  ⭐ Aliado
+                                <div className="absolute top-1 left-1 bg-white/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] text-purple-800 font-bold border border-purple-200 shadow-sm flex items-center gap-1">
+                                  <span>{aliado.tipo === "GASTRONOMIA" ? "🍽️ Resto" : aliado.tipo === "CAFETERIA" ? "☕ Café" : "🏨 Hotel"}</span>
                                 </div>
                                 {aliado.rangoPrecio && (
                                   <div className="absolute bottom-1 right-1 bg-gradient-to-r from-purple-700 to-pink-600 text-white font-bold px-1.5 py-0.5 rounded text-[9px] shadow-md">
@@ -1021,10 +1089,51 @@ export function ChatbotWidget({
                           </TarjetaCuerpo>
                         </TarjetaChat>
                       );
-                    })}
+                    });
 
-                  </SeccionTarjetas>
-                )}
+                  return (
+                    <>
+                      {/* Sección Gastronomía / Cafeterías */}
+                      {restaurantes.length > 0 && (
+                        <SeccionTarjetas
+                          titulo="🍽️ Dónde Comer y Cafeterías:"
+                          acento="orange"
+                          total={restaurantes.length}
+                          expandida={seccionAbierta(m.id, "aliados-gastro")}
+                          onToggle={() => toggleSeccion(m.id, "aliados-gastro")}
+                        >
+                          {renderTarjetasAliados(restaurantes, "aliados-gastro")}
+                        </SeccionTarjetas>
+                      )}
+
+                      {/* Sección Hospedaje / Hoteles */}
+                      {hoteles.length > 0 && (
+                        <SeccionTarjetas
+                          titulo="🏨 Dónde Hospedarte en Loja:"
+                          acento="emerald"
+                          total={hoteles.length}
+                          expandida={seccionAbierta(m.id, "aliados-hoteles")}
+                          onToggle={() => toggleSeccion(m.id, "aliados-hoteles")}
+                        >
+                          {renderTarjetasAliados(hoteles, "aliados-hoteles")}
+                        </SeccionTarjetas>
+                      )}
+
+                      {/* Otras opciones comerciales si existiesen */}
+                      {otros.length > 0 && (
+                        <SeccionTarjetas
+                          titulo="⭐ Más Opciones Recomendadas:"
+                          acento="purple"
+                          total={otros.length}
+                          expandida={seccionAbierta(m.id, "aliados-otros")}
+                          onToggle={() => toggleSeccion(m.id, "aliados-otros")}
+                        >
+                          {renderTarjetasAliados(otros, "aliados-otros")}
+                        </SeccionTarjetas>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* ─── FICHA DE VENTA DEL ALIADO ─── (llega con la respuesta del bot) */}
                 {m.aliadoDetalle &&
@@ -1300,11 +1409,24 @@ export function ChatbotWidget({
             {/* Sugerencias: botones destacados y notorios (mismo diseño que los del flujo de venta) */}
             {!loading && mostrarSugerencias && (
               <div className="w-full pt-2 pb-1 space-y-2">
-                <div className="flex items-center gap-1.5 px-0.5">
-                  <span className="text-xs">💡</span>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-purple-700">
-                    Preguntas sugeridas:
-                  </p>
+                <div className="flex items-center justify-between px-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs">💡</span>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-purple-700">
+                      Preguntas sugeridas:
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSugerenciasDescartadas(true);
+                      setMostrarSugerencias(false);
+                    }}
+                    title="Cerrar sugerencias"
+                    className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-purple-100/60 transition-all text-[11px] font-bold leading-none flex items-center justify-center cursor-pointer"
+                  >
+                    ✕
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {PREGUNTAS_SUGERIDAS.map((pregunta, idx) => (

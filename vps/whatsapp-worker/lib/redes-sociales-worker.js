@@ -440,8 +440,8 @@ async function programarPublicacionEnRedes(eventoId, prisma, hermesCopy = null, 
         registroId = registro.id;
       } else {
         await prisma.$executeRaw`
-          INSERT INTO publicaciones_redes_sociales (evento_id, plataforma, tipo, programado_at, estado, respuestaApi, created_at, updated_at)
-          VALUES (${eventoId}, ${plataformas[0] || 'INSTAGRAM'}, ${tipoPublicacion}, ${new Date(scheduledAt)}, 'PROGRAMADO', ${JSON.stringify(respuestaJson)}, NOW(), NOW())
+          INSERT INTO publicaciones_redes_sociales (evento_id, plataformas, tipo, programado_at, estado, respuestaApi, created_at, updated_at)
+          VALUES (${eventoId}, ${JSON.stringify(plataformas)}, ${tipoPublicacion}, ${new Date(scheduledAt)}, 'PROGRAMADO', ${JSON.stringify(respuestaJson)}, NOW(), NOW())
         `;
       }
     } catch (dbSuccessErr) {

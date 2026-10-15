@@ -172,4 +172,80 @@ async function rehospedarImagen(urlOriginal, etiqueta = "evento", bufferDirecto 
   }
 }
 
-module.exports = { rehospedarImagen, subirADisco, configurado, yaEnCdn };
+/**
+ * Recorta un cuadro (cuadrícula/bloque) de una imagen base64 y lo sube a Bunny CDN.
+ *
+ * @param {{ base64: string, tipo: string }} imgObj - Imagen original con base64 y tipo MIME
+ * @param {{ top: number, left: number, width: number, height: number }} cuadro - Coordenadas porcentuales (0-100)
+ * @param {string} etiqueta - Prefijo para el archivo
+ * @returns {Promise<string|null>} URL de la imagen recortada subida a CDN
+ */
+async function recortarYSubirCuadro(imgObj, cuadro, etiqueta) {
+  if (!imgObj || !imgObj.base64) return null;
+
+  // Si el cuadro abarca prácticamente toda la imagen, no recortar
+  if (
+    !cuadro ||
+    (cuadro.top <= 2 && cuadro.left <= 2 && cuadro.width >= 96 && cuadro.height >= 96)
+  ) {
+    const buffer = Buffer.from(imgObj.base64, "base64");
+    return await subirADisco(buffer, imgObj.tipo || "image/jpeg", etiqueta);
+  }
+
+  try {
+    let sharp;
+    try {
+      sharp = require("sharp");
+    } catch {
+      console.warn("[Imagen] sharp no está disponible, usando imagen completa");
+      const buffer = Buffer.from(imgObj.base64, "base64");
+      return await subirADisco(buffer, imgObj.tipo || "image/jpeg", etiqueta);
+    }
+
+    const bufferOriginal = Buffer.from(imgObj.base64, "base64");
+    const metadata = await sharp(bufferOriginal).metadata();
+    const origW = metadata.width;
+    const origH = metadata.height;
+
+    if (!origW || !origH) {
+      return await subirADisco(bufferOriginal, imgObj.tipo || "image/jpeg", etiqueta);
+    }
+
+    // Calcular píxeles a partir de porcentajes (con margen de seguridad)
+    const leftPx = Math.max(0, Math.floor((cuadro.left / 100) * origW));
+    const topPx = Math.max(0, Math.floor((cuadro.top / 100) * origH));
+    const widthPx = Math.min(origW - leftPx, Math.floor((cuadro.width / 100) * origW));
+    const heightPx = Math.min(origH - topPx, Math.floor((cuadro.height / 100) * origH));
+
+    if (widthPx < 100 || heightPx < 100) {
+      console.warn("[Imagen] Cuadro de recorte demasiado pequeño, usando imagen original");
+      return await subirADisco(bufferOriginal, imgObj.tipo || "image/jpeg", etiqueta);
+    }
+
+    console.log(
+      `[Imagen] ✂️ Recortando evento individual: [${leftPx}, ${topPx}, ${widthPx}x${heightPx}] de ${origW}x${origH}`
+    );
+
+    const bufferRecortado = await sharp(bufferOriginal)
+      .extract({ left: leftPx, top: topPx, width: widthPx, height: heightPx })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+
+    const subida = await subirADisco(bufferRecortado, "image/jpeg", `${etiqueta}-crop`);
+    if (subida) {
+      console.log(
+        `[Imagen] 🎯 Recorte individual subido a CDN (${(bufferRecortado.length / 1024).toFixed(0)} KB) → ${subida}`
+      );
+      return subida;
+    }
+  } catch (err) {
+    console.warn(`[Imagen] Error al recortar imagen con sharp: ${err.message}`);
+  }
+
+  // Fallback: subir lámina completa si falla el recorte
+  const bufferFallback = Buffer.from(imgObj.base64, "base64");
+  return await subirADisco(bufferFallback, imgObj.tipo || "image/jpeg", etiqueta);
+}
+
+module.exports = { rehospedarImagen, recortarYSubirCuadro, subirADisco, configurado, yaEnCdn };
+

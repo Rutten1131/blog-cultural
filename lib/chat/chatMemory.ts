@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaBot as prisma } from "@/lib/prisma-bot";
 
 export interface ContextoChat {
   resumen: string | null;
@@ -17,7 +17,7 @@ export interface ContextoChat {
  */
 export async function obtenerMemoriaSesion(sessionId: string): Promise<ContextoChat> {
   try {
-    const sesion = await prisma.chatSession.findUnique({
+    const sesion = await prisma.chat_sessions.findUnique({
       where: { sessionId },
       select: {
         totalMensajes: true,
@@ -25,7 +25,7 @@ export async function obtenerMemoriaSesion(sessionId: string): Promise<ContextoC
       },
     });
 
-    const mensajes = await prisma.chatMessage.findMany({
+    const mensajes = await prisma.chat_messages.findMany({
       where: { sessionId },
       orderBy: { createdAt: "desc" },
       take: 10,
@@ -61,7 +61,7 @@ export async function obtenerMemoriaSesion(sessionId: string): Promise<ContextoC
  */
 export async function sincronizarResumenSiCorresponde(sessionId: string): Promise<void> {
   try {
-    const sesion = await prisma.chatSession.findUnique({
+    const sesion = await prisma.chat_sessions.findUnique({
       where: { sessionId },
       select: {
         totalMensajes: true,
@@ -74,7 +74,7 @@ export async function sincronizarResumenSiCorresponde(sessionId: string): Promis
     }
 
     // Traer todos los mensajes excepto los últimos 10
-    const mensajesAntiguos = await prisma.chatMessage.findMany({
+    const mensajesAntiguos = await prisma.chat_messages.findMany({
       where: { sessionId },
       orderBy: { createdAt: "asc" },
       select: {
@@ -147,7 +147,7 @@ Escribe ÚNICAMENTE el párrafo de resumen actualizado:`;
     }
 
     if (nuevoResumen) {
-      await prisma.chatSession.update({
+      await prisma.chat_sessions.update({
         where: { sessionId },
         data: { contextoResumen: nuevoResumen },
       });

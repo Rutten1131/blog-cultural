@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/bot-client"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/// Sitios registrados que usan este bot compartido
+model bot_sites {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique @db.VarChar(50)
+  nombre    String   @db.VarChar(150)
+  createdAt DateTime @default(now())
+}
+
+model chat_sessions {
+  id                  Int                   @id @default(autoincrement())
+  sessionId           String                @unique @db.VarChar(64)
+  siteId              String                @default("agenda-cultural-loja") @db.VarChar(50)
+  ubicacionLat        Float?
+  ubicacionLng        Float?
+  zonaDetectada       String?               @db.VarChar(150)
+  ciudad              String?               @db.VarChar(100)
+  provincia           String?               @db.VarChar(100)
+  pais                String?               @db.VarChar(50)
+  userAgent           String?               @db.VarChar(500)
+  ipAddress           String?               @db.VarChar(60)
+  totalMensajes       Int                   @default(0)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  direccionDetallada  String?               @db.VarChar(500)
+  contextoResumen     String?               @db.Text
+  intencionDetectada  String?               @db.VarChar(50)
+  nombreUsuario       String?               @db.VarChar(150)
+  chat_messages       chat_messages[]
+  solicitudes_reserva solicitudes_reserva[]
+
+  @@index([createdAt])
+  @@index([zonaDetectada])
+  @@index([siteId])
+}
+
+model chat_messages {
+  id            Int           @id @default(autoincrement())
+  sessionId     String        @db.VarChar(64)
+  sender        String        @db.VarChar(10)
+  contenido     String        @db.Text
+  aliadosIds    Json?
+  eventosIds    Json?
+  atractivosIds Json?
+  createdAt     DateTime      @default(now())
+  chat_sessions chat_sessions @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model solicitudes_reserva {
+  id              Int            @id @default(autoincrement())
+  sessionId       String?        @db.VarChar(64)
+  aliadoId        Int
+  nombreCliente   String         @db.VarChar(150)
+  telefonoCliente String         @db.VarChar(50)
+  fechaInicio     String?        @db.VarChar(50)
+  fechaFin        String?        @db.VarChar(50)
+  numPersonas     Int            @default(1)
+  detalle         String?        @db.Text
+  estado          String         @default("PENDIENTE") @db.VarChar(30)
+  createdAt       DateTime       @default(now())
+  chat_sessions   chat_sessions? @relation(fields: [sessionId], references: [sessionId])
+
+  @@index([aliadoId])
+  @@index([createdAt])
+  @@index([sessionId], map: "solicitudes_reserva_sessionId_fkey")
+}
