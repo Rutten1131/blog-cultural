@@ -1,4 +1,4 @@
-﻿================================================================================
+================================================================================
 PAQUETE DE MIGRACIÓN COMPLETO — CHATBOT MULTISITE LOJA
 Última actualización: 15 Oct 2026
 ================================================================================
@@ -135,10 +135,30 @@ GROQ_API_KEY="gsk_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 
 ================================================================================
-4. PASO 3: GENERAR EL CLIENTE PRISMA DEL BOT
+4. PASO 3: ACTUALIZAR package.json — CRÍTICO PARA PRODUCCIÓN (VERCEL)
 ================================================================================
 
-Abre la terminal en la raíz de tu nuevo proyecto y corre:
+⚠️  SIN ESTE PASO EL DEPLOY EN VERCEL FALLARÁ con:
+    Error: Module not found: Can't resolve '../node_modules/.prisma/bot-client'
+
+Abre el package.json del nuevo proyecto y actualiza el script "postinstall":
+
+  ANTES:
+    "postinstall": "prisma generate",
+
+  DESPUÉS:
+    "postinstall": "prisma generate && prisma generate --schema=prisma/schema-bot.prisma",
+
+¿Por qué? Vercel ejecuta "postinstall" automáticamente al instalar dependencias.
+Si solo genera el schema principal, el cliente del bot (bot-client) nunca existe
+en producción y el build explota. Este cambio hace que se generen AMBOS clientes.
+
+
+================================================================================
+5. PASO 4: GENERAR EL CLIENTE PRISMA DEL BOT (LOCAL)
+================================================================================
+
+Solo necesitas correr esto UNA VEZ localmente (o cuando cambie schema-bot.prisma):
 
   npx prisma generate --schema=prisma/schema-bot.prisma
 

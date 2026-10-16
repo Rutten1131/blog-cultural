@@ -15,6 +15,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { prismaBot } from "@/lib/prisma-bot";
 
 export interface EventoItem {
   id: number;
@@ -255,14 +256,15 @@ export const eventosService = {
 };
 
 // ─────────────────────────────────────────────────────────────
-// 2. SERVICIO DE GASTRONOMÍA (Fuente simulada: DB Qué Comer en Loja)
+// 2. SERVICIO DE GASTRONOMÍA (Fuente: DB Botempresas / QueComerEnLoja)
 // ─────────────────────────────────────────────────────────────
 export const gastronomiaService = {
   /**
    * Carga restaurantes y cafeterías activas con sus especialidades/platos
+   * MIENTRAS TANTO: Se leen desde la base de datos central de Botempresas (CHATBOT_DB_URL).
    */
   async obtenerRestaurantesYCafes(limite = 20): Promise<AliadoItem[]> {
-    return prisma.aliado.findMany({
+    return prismaBot.aliados.findMany({
       where: {
         activo: true,
         tipo: { in: ["GASTRONOMIA", "CAFETERIA"] },
@@ -270,42 +272,53 @@ export const gastronomiaService = {
       orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
       take: limite,
       include: {
-        habitaciones: {
+        aliado_habitaciones: {
           orderBy: [{ orden: "asc" }, { id: "asc" }],
         },
       },
-    }) as unknown as Promise<AliadoItem[]>;
+    }).then((lista) =>
+      lista.map((item) => ({
+        ...item,
+        habitaciones: item.aliado_habitaciones,
+      }))
+    ) as unknown as Promise<AliadoItem[]>;
   },
 
   /**
-   * Obtiene restaurantes o cafeterías por lista de IDs
+   * Obtiene restaurantes o cafeterías por lista de IDs desde Botempresas
    */
   async obtenerPorIds(ids: number[]): Promise<AliadoItem[]> {
     if (!ids || ids.length === 0) return [];
-    return prisma.aliado.findMany({
+    return prismaBot.aliados.findMany({
       where: {
         id: { in: ids },
         activo: true,
         tipo: { in: ["GASTRONOMIA", "CAFETERIA"] },
       },
       include: {
-        habitaciones: {
+        aliado_habitaciones: {
           orderBy: [{ orden: "asc" }, { id: "asc" }],
         },
       },
-    }) as unknown as Promise<AliadoItem[]>;
+    }).then((lista) =>
+      lista.map((item) => ({
+        ...item,
+        habitaciones: item.aliado_habitaciones,
+      }))
+    ) as unknown as Promise<AliadoItem[]>;
   },
 };
 
 // ─────────────────────────────────────────────────────────────
-// 3. SERVICIO DE HOSPEDAJE Y TURISMO (Fuente simulada: DB Agenda Turística Loja)
+// 3. SERVICIO DE HOSPEDAJE Y TURISMO (Fuente: DB Botempresas / AgendaTuristicaLoja)
 // ─────────────────────────────────────────────────────────────
 export const turismoService = {
   /**
    * Carga hoteles, hosterías y hostales con sus habitaciones y tarifas
+   * MIENTRAS TANTO: Se leen desde la base de datos central de Botempresas (CHATBOT_DB_URL).
    */
   async obtenerHoteles(limite = 20): Promise<AliadoItem[]> {
-    return prisma.aliado.findMany({
+    return prismaBot.aliados.findMany({
       where: {
         activo: true,
         tipo: "HOSPEDAJE",
@@ -313,50 +326,60 @@ export const turismoService = {
       orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
       take: limite,
       include: {
-        habitaciones: {
+        aliado_habitaciones: {
           orderBy: [{ orden: "asc" }, { id: "asc" }],
         },
       },
-    }) as unknown as Promise<AliadoItem[]>;
+    }).then((lista) =>
+      lista.map((item) => ({
+        ...item,
+        habitaciones: item.aliado_habitaciones,
+      }))
+    ) as unknown as Promise<AliadoItem[]>;
   },
 
   /**
-   * Obtiene atractivos cantonales, rutas y naturaleza
+   * Obtiene atractivos cantonales, rutas y naturaleza desde Botempresas
    */
   async obtenerAtractivos(limite = 6): Promise<AtractivoItem[]> {
-    return prisma.atractivoCantonal.findMany({
+    return prismaBot.atractivos_cantonales.findMany({
       where: { activo: true },
       take: limite,
     }) as unknown as Promise<AtractivoItem[]>;
   },
 
   /**
-   * Obtiene atractivos por lista de IDs
+   * Obtiene atractivos por lista de IDs desde Botempresas
    */
   async obtenerAtractivosPorIds(ids: number[]): Promise<AtractivoItem[]> {
     if (!ids || ids.length === 0) return [];
-    return prisma.atractivoCantonal.findMany({
+    return prismaBot.atractivos_cantonales.findMany({
       where: { id: { in: ids }, activo: true },
     }) as unknown as Promise<AtractivoItem[]>;
   },
 
   /**
-   * Obtiene hoteles por lista de IDs
+   * Obtiene hoteles por lista de IDs desde Botempresas
    */
   async obtenerHotelesPorIds(ids: number[]): Promise<AliadoItem[]> {
     if (!ids || ids.length === 0) return [];
-    return prisma.aliado.findMany({
+    return prismaBot.aliados.findMany({
       where: {
         id: { in: ids },
         activo: true,
         tipo: "HOSPEDAJE",
       },
       include: {
-        habitaciones: {
+        aliado_habitaciones: {
           orderBy: [{ orden: "asc" }, { id: "asc" }],
         },
       },
-    }) as unknown as Promise<AliadoItem[]>;
+    }).then((lista) =>
+      lista.map((item) => ({
+        ...item,
+        habitaciones: item.aliado_habitaciones,
+      }))
+    ) as unknown as Promise<AliadoItem[]>;
   },
 };
 

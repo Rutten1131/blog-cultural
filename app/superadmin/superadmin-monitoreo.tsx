@@ -367,7 +367,7 @@ export function SuperAdminMonitoreo({
                       </p>
                       <div className="flex items-center gap-3 text-[11px] text-zinc-500 mt-2">
                         <span>🗓️ Fecha Evento: <strong className="text-zinc-300">{formatFechaLojaCliente(ev.fecha)}</strong></span>
-                        <span>Ingreso: <strong className="text-zinc-400">{new Date(ev.createdAt).toLocaleDateString("es-EC")}</strong></span>
+                        <span>Ingreso: <strong suppressHydrationWarning className="text-zinc-400">{new Date(ev.createdAt).toLocaleDateString("es-EC")}</strong></span>
                       </div>
                     </div>
                   </div>
@@ -439,9 +439,9 @@ export function SuperAdminMonitoreo({
                         📍 {pub.evento?.lugar || "Sin lugar especificado"}
                       </p>
                       <div className="flex items-center gap-3 text-[11px] text-zinc-500 mt-2">
-                        <span>⏰ Prog: <strong className="text-purple-300">{new Date(pub.programadoAt).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })}</strong></span>
+                        <span>⏰ Prog: <strong suppressHydrationWarning className="text-purple-300">{new Date(pub.programadoAt).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })}</strong></span>
                         {pub.publicadoAt && (
-                          <span>✅ Publicado: <strong className="text-emerald-400">{new Date(pub.publicadoAt).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })}</strong></span>
+                          <span>✅ Publicado: <strong suppressHydrationWarning className="text-emerald-400">{new Date(pub.publicadoAt).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })}</strong></span>
                         )}
                       </div>
                       {pub.error && (
@@ -519,7 +519,7 @@ export function SuperAdminMonitoreo({
                         📍 {post.lugar || "Lugar pendiente"}
                       </p>
                       <div className="flex items-center gap-3 text-[11px] text-zinc-500 mt-2">
-                        <span>Detectado: <strong className="text-zinc-300">{new Date(post.fechaDeteccion).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })}</strong></span>
+                        <span>Detectado: <strong suppressHydrationWarning className="text-zinc-300">{new Date(post.fechaDeteccion).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })}</strong></span>
                       </div>
                     </div>
                   </div>

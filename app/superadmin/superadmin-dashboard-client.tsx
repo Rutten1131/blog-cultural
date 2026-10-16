@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { AdminAliados, AliadoItem } from "@/app/admin/admin-aliados";
@@ -10,6 +10,7 @@ import {
   type PublicacionRedSocialItem,
   type PostSocialBotItem,
 } from "./superadmin-monitoreo";
+import { SuperAdminBlog } from "./superadmin-blog";
 
 export interface ChatMessageData {
   id: number;
@@ -67,7 +68,7 @@ interface Props {
   postsBot?: PostSocialBotItem[];
 }
 
-type Tab = "monitoreo" | "aliados" | "crm" | "buzon" | "analytics";
+type Tab = "monitoreo" | "aliados" | "crm" | "buzon" | "analytics" | "blog";
 
 export function SuperAdminDashboardClient({
   initialAliados,
@@ -89,9 +90,10 @@ export function SuperAdminDashboardClient({
   const tabs: { id: Tab; label: string; emoji: string; count?: number }[] = [
     { id: "monitoreo", label: "Monitoreo Publicaciones", emoji: "📡", count: eventosWeb.length + publicacionesRedes.length + postsBot.length },
     { id: "crm", label: "CRM Chatbot", emoji: "📊" },
-    { id: "analytics", label: "Analytics Aliados", emoji: "🤝", count: aliadosAnalytics.length },
-    { id: "aliados", label: "Aliados Comerciales", emoji: "⚙️", count: initialAliados.length },
+    { id: "analytics", label: "Analytics Aliados", emoji: "📈", count: aliadosAnalytics.length },
+    { id: "aliados", label: "Aliados Comerciales", emoji: "🤝", count: initialAliados.length },
     { id: "buzon", label: "Buzón de Sugerencias", emoji: "📬", count: initialRecomendaciones.length },
+    { id: "blog", label: "Gestión Blog", emoji: "📝" },
   ];
 
   return (
@@ -100,7 +102,7 @@ export function SuperAdminDashboardClient({
       <header className="sticky top-0 z-50 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-700 shadow-md">
-            <span className="text-lg">🔐</span>
+            <span className="text-lg">🎭</span>
           </div>
           <div>
             <h1 className="text-sm font-black text-white tracking-tight uppercase">Super Admin</h1>
@@ -164,7 +166,7 @@ export function SuperAdminDashboardClient({
           <div className="space-y-6 animate-fadeIn">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                <span>🤝</span> Analytics por Aliado
+                <span>📈</span> Analytics por Aliado
               </h2>
               <p className="text-sm text-zinc-400 mt-1">
                 Qué usuarios preguntaron por cada aliado, sus leads capturados y el hilo completo de la conversación.
@@ -207,10 +209,10 @@ export function SuperAdminDashboardClient({
                       <span>
                         {rec.contacto ? (
                           <span className="text-zinc-300 font-semibold">
-                            👤 {rec.contacto}
+                            ðŸ‘¤ {rec.contacto}
                           </span>
                         ) : (
-                          <span className="italic text-zinc-500">Anónimo</span>
+                          <span className="italic text-zinc-500">AnÃ³nimo</span>
                         )}
                       </span>
                       <span>
@@ -227,7 +229,12 @@ export function SuperAdminDashboardClient({
             )}
           </div>
         )}
+        {activeTab === "blog" && (
+          <SuperAdminBlog />
+        )}
       </main>
     </div>
   );
 }
+
+

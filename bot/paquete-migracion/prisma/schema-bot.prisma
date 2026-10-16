@@ -74,3 +74,75 @@ model solicitudes_reserva {
   @@index([createdAt])
   @@index([sessionId], map: "solicitudes_reserva_sessionId_fkey")
 }
+
+// ─────────────────────────────────────────────────────────────
+// TABLAS DE CONTENIDO CENTRALIZADAS TRANSITORIAS EN BOTEMPRESAS
+// Hospedaje (Hoteles), Gastronomía (Restaurantes) y Atractivos
+// ─────────────────────────────────────────────────────────────
+
+enum aliados_tipo {
+  HOSPEDAJE
+  GASTRONOMIA
+  CAFETERIA
+  EXPERIENCIA
+  TRANSPORTE
+  CANTON_GAD
+  CULTURA_ARTE
+  COMERCIO
+  OTRO
+}
+
+model aliados {
+  id                  Int                   @id @default(autoincrement())
+  nombre              String                @db.VarChar(150)
+  tipo                aliados_tipo          @default(HOSPEDAJE)
+  imagenUrl           String?               @db.VarChar(500)
+  servicios           String?               @db.Text
+  telefono            String?               @db.VarChar(50)
+  destacado           Boolean               @default(true)
+  activo              Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  cuartos             String?               @db.Text
+  descripcion         String                @db.Text
+  mapaUrl             String?               @db.VarChar(500)
+  rangoPrecio         String?               @db.VarChar(100)
+  redesUrl            String?               @db.VarChar(255)
+  ubicacion           String                @db.VarChar(255)
+  websiteUrl          String?               @db.VarChar(255)
+  ubicacionLat        Float?
+  ubicacionLng        Float?
+  estrellas           Int?
+  numeroCuartos       Int?
+  aliado_habitaciones aliado_habitaciones[]
+
+  @@index([tipo, activo])
+}
+
+model aliado_habitaciones {
+  id              Int      @id @default(autoincrement())
+  aliadoId        Int
+  nombre          String   @db.VarChar(150)
+  precio          String?  @db.VarChar(100)
+  caracteristicas String?  @db.Text
+  imagenes        String?  @db.Text
+  orden           Int      @default(0)
+  createdAt       DateTime @default(now())
+  aliados         aliados  @relation(fields: [aliadoId], references: [id], onDelete: Cascade)
+
+  @@index([aliadoId])
+}
+
+model atractivos_cantonales {
+  id          Int      @id @default(autoincrement())
+  nombre      String   @db.VarChar(150)
+  canton      String   @db.VarChar(100)
+  descripcion String   @db.Text
+  distancia   String   @db.VarChar(100)
+  ruta        String   @db.VarChar(255)
+  imagenUrl   String?  @db.VarChar(500)
+  mapaUrl     String?  @db.VarChar(500)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([canton, activo])
+}

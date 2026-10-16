@@ -8,7 +8,7 @@
  * La DB de contenido (eventos, aliados, atractivos) sigue en la DB principal (@/lib/prisma).
  */
 
-import { PrismaClient } from "../node_modules/.prisma/bot-client";
+import { PrismaClient } from "../node_modules/.prisma/bot-client/index.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
 function createPrismaBotClient(): InstanceType<typeof PrismaClient> {

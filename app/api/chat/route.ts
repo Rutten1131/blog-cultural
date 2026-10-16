@@ -702,6 +702,7 @@ Reglas de formato:
 
       let planContent = "";
       const deepseekKeyPlan = process.env.DEEPSEEK_API_KEY;
+      const groqKeyPlan = process.env.GROQ_API_KEY;
       if (deepseekKeyPlan) {
         try {
           const planRes = await fetch("https://api.deepseek.com/chat/completions", {
@@ -720,6 +721,26 @@ Reglas de formato:
             planContent = planData.choices?.[0]?.message?.content || "";
           }
         } catch { /* fallback below */ }
+      }
+      // Groq fallback para PLANIFICA_VISITA si DeepSeek falla
+      if (!planContent && groqKeyPlan) {
+        try {
+          const planResGroq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqKeyPlan}` },
+            body: JSON.stringify({
+              model: "qwen/qwen3.8-27b",
+              messages: [{ role: "system", content: promptPlanificacion }, { role: "user", content: lastUserMessage }],
+              response_format: { type: "json_object" },
+              temperature: 0.5,
+              max_tokens: 700,
+            }),
+          });
+          if (planResGroq.ok) {
+            const planDataGroq = await planResGroq.json();
+            planContent = planDataGroq.choices?.[0]?.message?.content || "";
+          }
+        } catch { /* usa fallback hardcoded */ }
       }
 
       let planParsed = {
@@ -1170,6 +1191,8 @@ TONO Y ESTILO DE CONVERSACIÓN (NATURAL, AMABLE Y ENGAGEMENT):
 2. CONTINUIDAD CONVERSACIONAL: Si el usuario pregunta "¿y eso de qué es?" o similar, responde directamente sobre el evento o aliado en discusión.
 3. CIERRE CONVERSACIONAL ACTIVO: Termina SIEMPRE con una pregunta sugerente o invitación natural para continuar la charla.
 4. RELEVANCIA TEMÁTICA:
+   - SI EL USUARIO SOLO SALUDA (ej: "hola", "buenas", "buenos días"): Da una bienvenida cálida presentándote según tu especialidad, menciona brevemente que puedes ayudarle con eventos culturales, gastronomía/restaurantes, hospedaje/hoteles o rutas turísticas de Loja, y hazle una pregunta abierta para iniciar la conversación. NUNCA envíes tarjetas (deja "eventosRecomendadosIds", "aliadosRecomendadosIds" y "atractivosRecomendadosIds" como arrays VACÍOS []) ante un simple saludo.
+   - Solo envía tarjetas cuando el usuario pida o busque activamente un tema.
    - Mantente enfocado en lo que el usuario preguntó.
    - Solo sugiere hospedaje o gastronomía si el usuario lo menciona.
 4.1 NATURALEZA PRIMERO: si el usuario pide naturaleza, rutas, parques, cascadas, cerros, senderismo, miradores, ríos o actividades al aire libre y NO pidió eventos de cartelera, NO recomiendes eventos: responde con los ATRACTIVOS CANTONALES y usa sus IDs en "atractivosRecomendadosIds".
@@ -1279,7 +1302,7 @@ ${systemPromptBase}`;
             Authorization: `Bearer ${groqKey}`,
           },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "qwen/qwen3.8-27b",
             messages: [
               { role: "system", content: systemPrompt },
               ...mensajesParaModelo,
@@ -1466,7 +1489,12 @@ ${systemPromptBase}`;
     }
 
     // Regla para tarjetas de eventos:
-    if (eventoEnDiscusion) {
+    if (esSaludo && !esEventoExplicito && !esHospedaje && !esGastronomia && !esNaturaleza) {
+      // Ante un saludo simple NUNCA enviar tarjetas de cartelera ni aliados de golpe
+      parsedResult.eventosRecomendadosIds = [];
+      parsedResult.aliadosRecomendadosIds = [];
+      parsedResult.atractivosRecomendadosIds = [];
+    } else if (eventoEnDiscusion) {
       // Si el usuario pregunta de qué trata o detalles de un evento ya mencionado, NO repetir las tarjetas (a menos que la IA explícitamente lo decida)
       // Mantener lo que la IA haya decidido en eventosRecomendadosIds
     } else if (rangoFecha) {

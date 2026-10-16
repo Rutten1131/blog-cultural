@@ -104,7 +104,18 @@ export function clasificarIntencionUsuario(
   // El usuario menciona que viene a Loja + quiere saber qué hacer, dónde comer Y dónde dormir
   // Ejemplos: "vengo este viernes con mi novia", "llego el sábado, qué puedo hacer?",
   //           "voy a visitar Loja en octubre, qué recomiendan?"
-  const esPlanificacion = (
+  //           "eventos de mañana y donde comer y quedarme a dormir" (multi-intención explícita)
+  const esMultiIntentExplicito = (
+    // Pide eventos (mañana, hoy, semana) Y también hospedaje/comida en el mismo mensaje
+    (/mañana|manana|hoy|fin de semana|finde|evento|cartelera|concierto/i.test(qNorm)) &&
+    (/hosped|hotel|hostal|dormir|alojam|quedarm|habitac|quedo/i.test(qNorm)) ||
+    // O pide eventos + comida juntos
+    (/mañana|manana|hoy|fin de semana|finde|evento|cartelera|concierto/i.test(qNorm)) &&
+    (/comer|comida|restaurant|cafeter|cenar|almorz/i.test(qNorm)) &&
+    (/hosped|hotel|hostal|dormir|alojam|quedarm|habitac/i.test(qNorm))
+  );
+
+  const esPlanificacion = esMultiIntentExplicito || (
     // Señales de visita futura
     /voy a|vamos a|vengo|venimos|llego|llegamos|visitar loja|estaré|estaremos|me quedo|nos quedamos|planear|planear|escapada|viaje a loja|fin de semana en loja/i.test(q) ||
     // Contexto de acompañante + fecha
@@ -116,7 +127,7 @@ export function clasificarIntencionUsuario(
 
   let fechaVisita: string | null = null;
   if (esPlanificacion) {
-    const matchFecha = q.match(/\b(hoy|mañana|viernes|sabado|domingo|este fin de semana|finde|esta semana|proximo (viernes|sabado|domingo|fin de semana)|en octubre|en noviembre|en diciembre|en enero)\b/i);
+    const matchFecha = q.match(/\b(hoy|ma[ñn]ana|viernes|sabado|domingo|este fin de semana|finde|esta semana|proximo (viernes|sabado|domingo|fin de semana)|en octubre|en noviembre|en diciembre|en enero)\b/i);
     fechaVisita = matchFecha ? matchFecha[0] : null;
 
     return {

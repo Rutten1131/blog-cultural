@@ -702,6 +702,7 @@ Reglas de formato:
 
       let planContent = "";
       const deepseekKeyPlan = process.env.DEEPSEEK_API_KEY;
+      const groqKeyPlan = process.env.GROQ_API_KEY;
       if (deepseekKeyPlan) {
         try {
           const planRes = await fetch("https://api.deepseek.com/chat/completions", {
@@ -720,6 +721,26 @@ Reglas de formato:
             planContent = planData.choices?.[0]?.message?.content || "";
           }
         } catch { /* fallback below */ }
+      }
+      // Groq fallback para PLANIFICA_VISITA si DeepSeek falla
+      if (!planContent && groqKeyPlan) {
+        try {
+          const planResGroq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqKeyPlan}` },
+            body: JSON.stringify({
+              model: "qwen/qwen3.8-27b",
+              messages: [{ role: "system", content: promptPlanificacion }, { role: "user", content: lastUserMessage }],
+              response_format: { type: "json_object" },
+              temperature: 0.5,
+              max_tokens: 700,
+            }),
+          });
+          if (planResGroq.ok) {
+            const planDataGroq = await planResGroq.json();
+            planContent = planDataGroq.choices?.[0]?.message?.content || "";
+          }
+        } catch { /* usa fallback hardcoded */ }
       }
 
       let planParsed = {
@@ -1279,7 +1300,7 @@ ${systemPromptBase}`;
             Authorization: `Bearer ${groqKey}`,
           },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "qwen/qwen3.8-27b",
             messages: [
               { role: "system", content: systemPrompt },
               ...mensajesParaModelo,

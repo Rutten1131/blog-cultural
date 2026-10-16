@@ -1011,6 +1011,7 @@ export function ChatbotWidget({
                             <div className="absolute bottom-1 left-1 bg-white/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] text-purple-800 font-bold border border-purple-200 shadow-sm">
                               📅{" "}
                               {new Date(evento.fecha).toLocaleDateString("es-EC", {
+                                timeZone: "UTC",
                                 day: "numeric",
                                 month: "short",
                               })}
