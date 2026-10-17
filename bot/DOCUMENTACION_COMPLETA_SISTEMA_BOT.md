@@ -19,44 +19,33 @@ El bot opera bajo una arquitectura de **dos niveles**:
 
 ---
 
-## 🗄️ 2. Arquitectura de Bases de Datos (Actual y Hoja de Ruta a 4 DBs)
+## 🗄️ 2. Arquitectura de las 4 Bases de Datos Definitivas
 
-Actualmente conviven **2 Bases de Datos MySQL**, preparadas para migrar de forma modular a **4 Bases de Datos independientes**:
+Las **4 Bases de Datos MySQL** se encuentran activas y conectadas en los 3 proyectos:
 
 ```
                               ┌────────────────────────────────────────┐
                               │           CHATBOT ORCHESTRATOR         │
                               └───────┬─────────┬─────────┬────────────┘
                                       │         │         │            │
-                         (Eventos)    │         │ (Hoteles│ (Comida)   │ (Rutas)
+                         (CRM/Sesión) │         │ (Hoteles│ (Comida)   │ (Eventos)
                                       ▼         ▼         ▼            ▼
-                           ┌─────────────┐   ┌───────────────────────────┐
-                           │   DB 1      │   │           DB 2            │
-                           │  AGENDA     │   │     BOTEMPRESAS (HUB)     │
-                           │  CULTURAL   │   │  (Alojamientos, Comida,   │
-                           │             │   │   Atractivos Cantonales)  │
-                           └─────────────┘   └───────────────────────────┘
-                                                       │
-                                  ┌────────────────────┴───────────────────┐
-                                  ▼ (Futuro / Hoja de Ruta)                ▼
-                           ┌─────────────┐                          ┌─────────────┐
-                           │   DB 3      │                          │    DB 4     │
-                           │   AGENDA    │                          │  QUE COMER  │
-                           │ TURÍSTICA   │                          │   EN LOJA   │
-                           └─────────────┘                          └─────────────┘
+                            ┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+                            │   DB 1      │   │   DB 2      │   │   DB 3      │   │   DB 4      │
+                            │ BOTEMPRESAS │   │   AGENDA    │   │  QUE COMER  │   │   AGENDA    │
+                            │ (CRM / Hub) │   │  TURÍSTICA  │   │   EN LOJA   │   │  CULTURAL   │
+                            │ :44521      │   │ :46132      │   │ :46630      │   │ :44369      │
+                            └─────────────┘   └─────────────┘   └─────────────┘   └─────────────┘
 ```
 
 ### Tabla de Configuración de Conexiones
 
-| Dominio | Variable de Entorno | Estado Actual | Archivo Responsable |
+| Dominio | Variable de Entorno | Host / DB | Rol y Responsabilidad |
 | :--- | :--- | :--- | :--- |
-| **Eventos** | `DATABASE_URL` | DB `agendaculturalbd-...` | [skillEventos.ts](file:///d:/Abel%20paginas/agenda%20cultural/software/lib/chat/skills/skillEventos.ts) |
-| **Hospedaje** | `CHATBOT_DB_URL` | DB `Botempresas-...` (tabla `aliados` tipo hotel/hostal) | [skillHospedaje.ts](file:///d:/Abel%20paginas/agenda%20cultural/software/lib/chat/skills/skillHospedaje.ts) |
-| **Gastronomía** | `CHATBOT_DB_URL` | DB `Botempresas-...` (tabla `aliados` tipo restaurante/cafetería) | [skillGastronomia.ts](file:///d:/Abel%20paginas/agenda%20cultural/software/lib/chat/skills/skillGastronomia.ts) |
-| **Turismo Cantonal** | `CHATBOT_DB_URL` | DB `Botempresas-...` (tabla `atractivos_cantonales`) | [skillTurismo.ts](file:///d:/Abel%20paginas/agenda%20cultural/software/lib/chat/skills/skillTurismo.ts) |
-
-> **Nota para cuando existan las DBs dedicadas:**  
-> Solo se debe actualizar la instancia de Prisma en `lib/prisma-bot.ts` o agregar `prisma-turismo.ts` y `prisma-restaurantes.ts`, cambiando únicamente la importación en `skillHospedaje.ts` o `skillGastronomia.ts`. El resto del bot no se entera del cambio.
+| **Sesiones / CRM / Leads** | `CHATBOT_DB_URL` | `mysql.us.stackcp.com:44521` (`Botempresas-353039368f96`) | Memoria, historial, prospectos de venta filtrados por `CHATBOT_SITE_ID`. |
+| **Eventos Culturales** | `EVENTOS_DB_URL` | `mysql.us.stackcp.com:44369` (`agendaculturalbd-313930d0fa`) | Cartelera aprobada, fechas, recintos y categorías ([skillEventos.ts](file:///d:/Abel%20paginas/agenda%20cultural/software/lib/chat/skills/skillEventos.ts)). |
+| **Hospedaje y Atractivos** | `TURISTICA_DB_URL` | `mysql.us.stackcp.com:46132` (`agendatursticdinamic-31383916da`) | Hoteles, hostales, habitaciones/precios y rutas cantonales ([skillHospedaje.ts](file:///d:/Abel%20paginas/agenda%20cultural/software/lib/chat/skills/skillHospedaje.ts), [skillTurismo.ts](file:///d:/Abel%20paginas/agenda%20cultural/software/lib/chat/skills/skillTurismo.ts)). |
+| **Gastronomía y Cafeterías** | `GASTRONOMIA_DB_URL`| `mysql.us.stackcp.com:46630` (`quecomerlojadinamic-313931562a`) | Restaurantes, cafeterías y especialidades típicas ([skillGastronomia.ts](file:///d:/Abel%20paginas/agenda%20cultural/software/lib/chat/skills/skillGastronomia.ts)). |
 
 ---
 

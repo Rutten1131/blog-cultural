@@ -20,17 +20,27 @@ lib/chat/chatCache.ts       ← Caché en memoria para respuestas repetidas (evi
 
 ---
 
-## 🔑 Las 2 Bases de Datos Activas (Estado Actual)
+## 🔑 Las 4 Bases de Datos Activas (Arquitectura Definitiva)
 
-### DB 1 — DB Principal de Agenda Cultural (`DATABASE_URL`)
-- **Contiene:** Eventos, Aliados (hoteles, restaurantes, cafeterías), Atractivos Cantonales
-- **Cliente Prisma:** `import { prisma } from "@/lib/prisma"`
-- **Host:** Tu MySQL de cPanel / StackCP principal
-
-### DB 2 — DB del Bot (`CHATBOT_DB_URL`)
-- **Contiene:** Sesiones de chat, mensajes, resúmenes de memoria, leads y reservas
-- **Cliente Prisma:** `import { prismaBot } from "@/lib/prisma-bot"`
+### DB 1 — DB General del Bot (`CHATBOT_DB_URL`)
+- **Contiene:** Sesiones de chat (`chat_sessions`), historial (`chat_messages`), memoria, leads y reservas (`solicitudes_reserva`) filtradas por `CHATBOT_SITE_ID`.
+- **Cliente:** `import { prismaBot } from "@/lib/prisma-bot"`
 - **Host:** `mysql.us.stackcp.com:44521` → `Botempresas-353039368f96`
+
+### DB 2 — DB Eventos Culturales (`EVENTOS_DB_URL`)
+- **Contiene:** Cartelera cultural, fechas, recintos, categorías y estados aprobados.
+- **Cliente:** `prisma.eventos` / `eventosService`
+- **Host:** `mysql.us.stackcp.com:44369` → `agendaculturalbd-313930d0fa`
+
+### DB 3 — DB Hospedaje y Atractivos (`TURISTICA_DB_URL`)
+- **Contiene:** Hoteles, hosterías, hostales (`aliados` tipo `HOSPEDAJE`), habitaciones con precios (`aliado_habitaciones`) y rutas (`atractivos_cantonales`).
+- **Skill:** `skillHospedaje.ts` y `skillTurismo.ts`
+- **Host:** `mysql.us.stackcp.com:46132` → `agendatursticdinamic-31383916da`
+
+### DB 4 — DB Gastronomía (`GASTRONOMIA_DB_URL`)
+- **Contiene:** Restaurantes y cafeterías (`aliados` tipo `GASTRONOMIA` / `CAFETERIA`) y platos/menús especiales (`aliado_habitaciones`).
+- **Skill:** `skillGastronomia.ts`
+- **Host:** `mysql.us.stackcp.com:46630` → `quecomerlojadinamic-313931562a`
 
 ---
 

@@ -13,21 +13,17 @@
  *   PLANIFICA_VISITA       → skillPlanVisita  (Mixto: todas las fuentes)
  *   Cualquier otra         → null (la conversación general la maneja el prompt central)
  *
- * ARQUITECTURA MULTI-DB ACTUAL:
- *   ┌───────────────────────────┬─────────────────────────────────────┐
- *   │ Dominio                   │ DB Actual (TRANSITORIA)              │
- *   ├───────────────────────────┼─────────────────────────────────────┤
- *   │ Eventos Culturales        │ agendaculturalbd (DATABASE_URL)      │
- *   │ Hospedaje / Hoteles       │ Botempresas     (CHATBOT_DB_URL)     │
- *   │ Gastronomía               │ Botempresas     (CHATBOT_DB_URL)     │
- *   │ Atractivos Turísticos     │ Botempresas     (CHATBOT_DB_URL)     │
- *   │ Sesiones / Leads / CRM    │ Botempresas     (CHATBOT_DB_URL)     │
- *   └───────────────────────────┴─────────────────────────────────────┘
+ * ARQUITECTURA 4 DBs DEFINITIVA:
+ *   ┌───────────────────────────┬───────────────────────────────────────────────────────┐
+ *   │ Dominio                   │ Variable / Base de Datos                              │
+ *   ├───────────────────────────┼───────────────────────────────────────────────────────┤
+ *   │ Sesiones / Leads / CRM    │ CHATBOT_DB_URL   (Botempresas-353039368f96:44521)    │
+ *   │ Eventos Culturales        │ EVENTOS_DB_URL   (agendaculturalbd-313930d0fa:44369) │
+ *   │ Hospedaje + Atractivos    │ TURISTICA_DB_URL (agendatursticdinamic-31383916da:46132)│
+ *   │ Gastronomía / Cafeterías  │ GASTRONOMIA_DB_URL(quecomerlojadinamic-313931562a:46630)│
+ *   └───────────────────────────┴───────────────────────────────────────────────────────┘
  *
- * MIGRACIÓN FUTURA (ver bot/ARQUITECTURA_TRANSICION_DBS.md):
- *   🔜 Hospedaje + Atractivos → DB_TURISMO_URL    (cuando exista)
- *   🔜 Gastronomía            → DB_GASTRONOMIA_URL (cuando exista)
- *   Para migrar: cambiar 1 línea en cada skill respectiva. Nada más.
+ * Cada Skill consulta su fuente oficial de datos especializada de forma Lazy (bajo demanda).
  */
 
 import type { DecisionRouter } from "@/lib/chat/chatRouter";

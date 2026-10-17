@@ -20,6 +20,9 @@ function createPrismaBotClient(): InstanceType<typeof PrismaClient> {
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
     database: url.pathname.replace("/", ""),
+    connectionLimit: 15,
+    acquireTimeout: 30000,
+    connectTimeout: 20000,
   });
 
   return new PrismaClient({ adapter } as any);
