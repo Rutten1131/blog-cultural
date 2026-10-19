@@ -44,8 +44,11 @@ REGLAS STRICTAS:
   "confianza": 0.95
 }
 3. "categoria" debe coincidir EXACTAMENTE con uno de los slugs de las categorías permitidas.
-4. "zona" debe coincidir EXACTAMENTE con uno de los nombres de zonas permitidas.
-5. "confianza" es un número decimal entre 0 y 1. Si no estás seguro del lugar o la categoría, asigna una confianza baja (ej. 0.3).
+4. Regla semántica para "eventos-gastronomicos":
+   - Asignar "eventos-gastronomicos" SI Y SOLO SI el evento es PRINCIPALMENTE: degustación, cata, maridaje, festival culinario, concurso gastronómico, ruta del café/cacao/queso, o feria gastronómica.
+   - Si la comida es secundaria (ej. concierto o teatro con venta de comida/catering), clasifícalo en la categoría artística principal (musica, teatro, artes-vivas, etc.).
+5. "zona" debe coincidir EXACTAMENTE con uno de los nombres de zonas permitidas.
+6. "confianza" es un número decimal entre 0 y 1. Si no estás seguro del lugar o la categoría, asigna una confianza baja (ej. 0.3).
 `;
 
   const userPrompt = `Evento a clasificar:

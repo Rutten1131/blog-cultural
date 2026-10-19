@@ -68,12 +68,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.95,
     },
     {
-      url: `${baseUrl}/eventos/esta-semana`,
-      lastModified: new Date(),
-      changeFrequency: "daily" as const,
-      priority: 0.95,
-    },
-    {
       url: `${baseUrl}/eventos/este-fin-de-semana`,
       lastModified: new Date(),
       changeFrequency: "daily" as const,
@@ -84,6 +78,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: "daily" as const,
       priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/eventos-gastronomicos`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.85,
     },
     {
       url: `${baseUrl}/socios-fundadores`,

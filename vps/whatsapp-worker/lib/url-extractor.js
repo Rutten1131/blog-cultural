@@ -1857,7 +1857,10 @@ async function autoPublicarSiCompleto(post, datos, prisma) {
     let categoriaId = null;
     const catTexto = `${nombre} ${lugar} ${post.descripcion || ""}`.toLowerCase();
     const categorias = await prisma.categoria.findMany();
-    if (catTexto.includes("concierto") || catTexto.includes("música") || catTexto.includes("musica") || catTexto.includes("bolero") || catTexto.includes("canta")) {
+    if (catTexto.includes("gastronom") || catTexto.includes("café") || catTexto.includes("cafe") || catTexto.includes("degustaci") || catTexto.includes("cata") || catTexto.includes("culinari") || catTexto.includes("maridaje") || catTexto.includes("tamal") || catTexto.includes("repe") || catTexto.includes("cecina") || catTexto.includes("cuy") || catTexto.includes("hornado")) {
+      const c = categorias.find((x) => x.slug === "eventos-gastronomicos");
+      if (c) categoriaId = c.id;
+    } else if (catTexto.includes("concierto") || catTexto.includes("música") || catTexto.includes("musica") || catTexto.includes("bolero") || catTexto.includes("canta")) {
       const c = categorias.find((x) => x.slug === "musica");
       if (c) categoriaId = c.id;
     } else if (catTexto.includes("teatro") || catTexto.includes("escénic") || catTexto.includes("obra")) {

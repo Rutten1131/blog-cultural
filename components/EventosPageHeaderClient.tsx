@@ -30,7 +30,7 @@ export function EventosPageHeaderClient({ proximosCount }: Props) {
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-display text-4xl sm:text-5xl font-black uppercase tracking-tight text-[var(--color-dark)]">
-          {t("eventos_page.titulo", "Cartelera y Calendario Cultural")}
+          {t("eventos_page.titulo", "Eventos en Loja: Cartelera Cultural Actualizada")}
         </h1>
         <p className="mt-2 text-sm text-[var(--color-muted)]">{desc}</p>
       </div>

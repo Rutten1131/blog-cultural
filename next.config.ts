@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/eventos/esta-semana",
+        destination: "/eventos",
+        permanent: true,
+      },
+      {
         source: "/eventos/categoria/artes-vivas",
         destination: "/festival-artes-vivas-loja-2026",
         permanent: true,

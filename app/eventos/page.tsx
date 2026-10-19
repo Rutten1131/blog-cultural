@@ -15,19 +15,18 @@ import {
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Cartelera Cultural Loja — Calendario Completo de Eventos",
+  title: "Eventos en Loja Hoy — Cartelera Cultural Actualizada",
   description:
-    "Cartelera oficial y calendario interactivo de eventos culturales en Loja, Ecuador. Listado completo de conciertos, teatro, arte, ferias y artes vivas. Actualizado diariamente.",
+    "Descubre eventos en Loja hoy, esta semana y fin de semana. Cartelera cultural actualizada de conciertos, teatro, arte, ferias y festivales.",
   keywords: [
-    "cartelera cultural Loja",
-    "calendario de eventos Loja",
-    "agenda cultural Loja Ecuador",
-    "listado eventos culturales Loja",
-    "cartelera Loja Ecuador",
-    "actividades culturales Loja Ecuador",
-    "próximos eventos Loja",
-    "eventos fin de semana Loja Ecuador",
-    "música teatro arte ferias Loja",
+    "Eventos en Loja",
+    "Eventos en Loja hoy",
+    "Cartelera cultural Loja",
+    "Qué hacer en Loja",
+    "Agenda cultural Loja",
+    "Conciertos en Loja",
+    "Teatro en Loja",
+    "Actividades culturales Loja",
   ],
   alternates: {
     canonical: `${SITE_CONFIG.url}/eventos`,

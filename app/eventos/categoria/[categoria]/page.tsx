@@ -33,79 +33,107 @@ const CATEGORIA_SEO_INFO: Record<
   }
 > = {
   "arte-y-exposiciones": {
-    tituloH1: "Eventos de Arte y Exposiciones en Loja",
-    preguntaH2: "¿Qué exposiciones de arte y galerías visitar en Loja?",
+    tituloH1: "Arte y Exposiciones en Loja: Museos, Galerías y Muestras",
+    preguntaH2: "¿Qué exposiciones de arte y museos visitar en Loja?",
     descripcionSeo:
-      "Explorá la cartelera de exposiciones de pintura, fotografía, escultura y muestras de artes plásticas en galerías y museos de Loja, Ecuador.",
-    metaTitle: "Eventos de Arte y Exposiciones en Loja — Agenda Cultural",
+      "Explora las exposiciones de arte en Loja, galerías, museos, muestras de pintura, fotografía y escultura en la capital cultural del sur del Ecuador.",
+    metaTitle: "Arte y Exposiciones en Loja — Museos, Galerías y Cartelera",
     metaDescription:
-      "Descubrí exposiciones de arte, fotografía y galerías en Loja, Ecuador. Cartelera actualizada con fechas, artistas y salas de exposición.",
+      "Descubre exposiciones de arte en Loja, galerías y muestras vigentes: pintura, fotografía y escultura con artistas, salas y fechas actualizadas.",
     keywords: [
       "Arte y exposiciones en Loja",
-      "Galerías de arte Loja",
-      "Exposición de pintura Loja",
-      "Muestras de arte Loja Ecuador",
+      "Exposiciones de arte Loja",
+      "Galerías de arte en Loja",
+      "Museos en Loja",
+      "Muestras de pintura Loja",
+      "Qué hacer en Loja",
     ],
   },
   teatro: {
-    tituloH1: "Eventos de Teatro en Loja",
-    preguntaH2: "¿Qué obras de teatro y artes escénicas ver en Loja?",
+    tituloH1: "Teatro en Loja: Obras, Funciones y Cartelera Escénica",
+    preguntaH2: "¿Qué obras de teatro ver en Loja hoy?",
     descripcionSeo:
-      "Encontrá la programación completa de obras de teatro, festivales de artes escénicas, microteatro y dramaturgia en las salas teatrales de Loja.",
-    metaTitle: "Eventos de Teatro en Loja — Agenda Cultural Ecuador",
+      "Encuentra la cartelera completa de teatro en Loja: obras teatrales, funciones de comedia, dramaturgia y artes escénicas en el Teatro Bolívar y Teatro Benjamín Carrión.",
+    metaTitle: "Teatro en Loja — Cartelera de Obras y Funciones de Teatro",
     metaDescription:
-      "Cartelera de obras de teatro, microteatro y artes escénicas en Loja, Ecuador. Consultá horarios, salas y boleterías actualizadas.",
+      "Cartelera de teatro en Loja, funciones de comedia, obras y artes escénicas. Consulta horarios, teatros, fechas y venta de entradas en Loja, Ecuador.",
     keywords: [
       "Teatro en Loja",
+      "Teatro Loja",
       "Obras de teatro Loja",
-      "Microteatro Loja",
-      "Artes escénicas Loja Ecuador",
+      "Funciones de teatro Loja",
+      "Cartelera de teatro Loja",
       "Teatro Bolívar Loja",
+      "Eventos en Loja",
     ],
   },
   musica: {
-    tituloH1: "Eventos de Música y Conciertos en Loja",
-    preguntaH2: "¿Qué conciertos y recitales de música hay en Loja?",
+    tituloH1: "Conciertos en Loja y Eventos de Música en Vivo 2026",
+    preguntaH2: "¿Qué conciertos y música en vivo hay en Loja hoy?",
     descripcionSeo:
-      "Descubrí conciertos en vivo, recitales de la orquesta sinfónica, música académica, popular e independiente en la capital musical del Ecuador.",
-    metaTitle: "Conciertos y Eventos de Música en Loja — Agenda Cultural",
+      "Descubre los próximos conciertos en Loja 2026, eventos de música en vivo, recitales de la Orquesta Sinfónica de Loja, festivales y tocadas independientes.",
+    metaTitle: "Conciertos en Loja 2026 — Música en Vivo, Recitales y Eventos",
     metaDescription:
-      "Agenda de conciertos de música en vivo, sinfónica, recitados y festivales en Loja. Enterate de las próximas presentaciones y artistas.",
+      "Agenda de conciertos en Loja 2026: música en vivo hoy, presentaciones de la Orquesta Sinfónica de Loja, recitales y festivales musicales con fechas y lugares.",
     keywords: [
       "Conciertos en Loja",
-      "Música en Loja",
-      "Sinfónica de Loja",
-      "Eventos musicales Loja Ecuador",
+      "Conciertos en Loja 2026",
+      "Música en vivo Loja",
+      "Eventos musicales Loja",
+      "Orquesta Sinfónica de Loja eventos",
+      "Conciertos Loja hoy",
+      "Qué hacer en Loja",
     ],
   },
   ferias: {
-    tituloH1: "Ferias Culturales y Festivales en Loja",
-    preguntaH2: "¿Qué ferias culturales y emprendimientos visitar en Loja?",
+    tituloH1: "Ferias y Artesanías en Loja: Calendario y Participantes",
+    preguntaH2: "¿Qué ferias artesanales y festivales visitar en Loja?",
     descripcionSeo:
-      "Directorio de ferias artesanales, gastronomía local, festivales de emprendimiento cultural y encuentros tradicionales en los cantones y parroquias de Loja.",
-    metaTitle: "Ferias Culturales y Festivales en Loja — Agenda Cultural",
+      "Directorio de ferias en Loja: ferias artesanales, agroecológicas, gastronómicas, festivales de emprendimiento cantonal y detalles de la Feria de Loja 2026.",
+    metaTitle: "Ferias y Artesanías en Loja — Festivales y Emprendimiento",
     metaDescription:
-      "Conocé las ferias artesanales, culturales y gastronómicas que se realizan en Loja, Ecuador. Fechas, ubicaciones y detalles de expositores.",
+      "Conoce las ferias y artesanías en Loja, ferias gastronómicas, culturales y de emprendimiento en Loja, Ecuador. Lugares, fechas y expositores destacados.",
     keywords: [
       "Ferias en Loja",
-      "Ferias culturales Loja",
-      "Festivales gastronómicos Loja",
-      "Emprendimiento cultural Loja",
+      "Ferias y artesanías Loja",
+      "Feria de Loja fechas",
+      "Ferias gastronómicas Loja",
+      "Ferias artesanales Loja",
+      "Eventos en Loja",
     ],
   },
   "artes-vivas": {
-    tituloH1: "Eventos de Artes Vivas en Loja",
-    preguntaH2: "¿Qué festivales y espectáculos de Artes Vivas hay en Loja?",
+    tituloH1: "Festival de Artes Vivas Loja 2026 (FIAVL)",
+    preguntaH2: "¿Cuándo es el Festival de Artes Vivas Loja 2026 y cuál es su programación?",
     descripcionSeo:
-      "Viví las artes vivas en Loja: danza contemporánea, performances escénicas, mimo, teatro de calle y el Festival Internacional de Artes Vivas.",
-    metaTitle: "Eventos de Artes Vivas en Loja — Agenda Cultural Ecuador",
+      "Vive el Festival de Artes Vivas Loja 2026 (FIAVL): programación oficial, fechas, obras en el Teatro Benjamín Carrión, danza, mimo y espectáculos de calle.",
+    metaTitle: "Festival de Artes Vivas Loja 2026 — Programación y Fechas FIAVL",
     metaDescription:
-      "Cartelera del Festival Internacional de Artes Vivas en Loja, danza, performances e intervenciones públicas en la ciudad cultural de Ecuador.",
+      "Cartelera oficial del Festival de Artes Vivas Loja 2026 (FIAVL). Fechas, obras teatrales, programación de calle, entradas e itinerario completo.",
     keywords: [
-      "Artes Vivas Loja",
-      "Festival Internacional de Artes Vivas Loja",
-      "Danza en Loja",
-      "Performance escénica Loja",
+      "Festival de artes vivas Loja",
+      "Festival de artes vivas Loja 2026",
+      "FIAVL",
+      "FIAVL 2026",
+      "Programación festival de artes vivas Loja",
+      "Entradas festival de artes vivas Loja",
+    ],
+  },
+  "eventos-gastronomicos": {
+    tituloH1: "Eventos Gastronómicos en Loja: Ferias, Festivales y Rutas del Café",
+    preguntaH2: "¿Qué eventos gastronómicos, ferias y festivales culinarios hay en Loja?",
+    descripcionSeo:
+      "Descubre los eventos gastronómicos en Loja: ferias culinarias, festivales del café, catas, rutas gastronómicas y encuentros de productores locales en la provincia de Loja.",
+    metaTitle: "Eventos Gastronómicos en Loja 2026 — Ferias y Festivales Culinarios",
+    metaDescription:
+      "Cartelera de eventos gastronómicos en Loja: ferias culinarias, festivales de café, degustaciones y rutas gastronómicas con fechas y lugares actualizados.",
+    keywords: [
+      "Feria de Loja 2026",
+      "Eventos gastronómicos Loja",
+      "Festival gastronómico Loja",
+      "Ruta del café Loja",
+      "Ferias culinarias Loja",
+      "Qué hacer en Loja",
     ],
   },
 };
@@ -131,7 +159,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: seo.metaDescription,
     keywords: seo.keywords,
     alternates: {
-      canonical: `${SITE_CONFIG.url}/eventos/categoria/${cat.slug}`,
+      canonical:
+        cat.slug === "eventos-gastronomicos"
+          ? `${SITE_CONFIG.url}/eventos-gastronomicos`
+          : `${SITE_CONFIG.url}/eventos/categoria/${cat.slug}`,
     },
     openGraph: {
       title: seo.metaTitle,

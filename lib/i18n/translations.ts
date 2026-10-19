@@ -29,15 +29,15 @@ export const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "hero.eyebrow": "Descubre qué está pasando en Loja",
     "hero.h1_prefix": "¿Qué hacer",
     "hero.h1_suffix": "en Loja?",
-    "hero.subtitulo": "Eventos, arte y actividades culturales en la ciudad",
+    "hero.subtitulo": "Eventos en Loja hoy, conciertos, teatro, actividades y lugares para visitar",
     "hero.btn_ver_todos": "Ver todos los eventos",
     "hero.btn_publicar": "Publicar evento",
     "hero.destacado": "Destacado",
     "hero.ver_calendario": "Ver el calendario",
 
     // Secciones Home
-    "section.ultimos_eyebrow": "Recientemente agregados",
-    "section.ultimos_titulo": "Últimos Eventos Artísticos Publicados en Loja",
+    "section.ultimos_eyebrow": "Cartelera actualizada",
+    "section.ultimos_titulo": "Eventos en Loja Hoy y Cartelera Cultural",
     "section.buscar_placeholder": "Buscar eventos por nombre, lugar o artista...",
     "section.proximos_titulo": "Próximos Eventos en Cartelera",
     "section.ver_mas": "Ver más eventos",
@@ -105,6 +105,7 @@ export const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "cat.musica": "Música",
     "cat.ferias": "Ferias",
     "cat.artes_vivas": "Artes Vivas",
+    "cat.eventos_gastronomicos": "Eventos Gastronómicos",
 
     // SeccionCategoria — preguntas H2 SEO
     "scat.h2.arte": "¿Qué eventos artísticos y exposiciones de arte existen en Loja?",
@@ -112,13 +113,15 @@ export const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "scat.h2.musica": "¿Qué conciertos y eventos musicales hay en Loja?",
     "scat.h2.ferias": "¿Qué ferias culturales y festivales se realizan en Loja?",
     "scat.h2.artes_vivas": "¿Qué eventos de Artes Vivas y expresiones escénicas hay en Loja?",
+    "scat.h2.eventos_gastronomicos": "¿Qué ferias y eventos gastronómicos se realizan en Loja?",
 
     // SeccionCategoria — respuestas SEO
     "scat.seo.arte": "Explorá exposiciones de pintura, fotografía, escultura y galerías de arte abiertas al público en Loja.",
     "scat.seo.teatro": "Encontrá cartelera de obras teatrales, microteatro, dramaturgia y presentaciones escénicas en los teatros de Loja.",
     "scat.seo.musica": "Descubrí conciertos en vivo, recitales sinfónicos, festivales musicales y presentaciones acústicas en Loja.",
-    "scat.seo.ferias": "Descubrí ferias artesanales, emprendimientos culturales, festivales gastronómicos y mercados tradicionales en Loja.",
+    "scat.seo.ferias": "Descubrí ferias artesanales, emprendimientos culturales y mercados tradicionales en Loja.",
     "scat.seo.artes_vivas": "Viví los festivales internacionales y locales de artes vivas, danza, mimo y espectáculos callejeros en Loja.",
+    "scat.seo.eventos_gastronomicos": "Descubrí ferias gastronómicas, festivales culinarios, rutas del café y encuentros de productores en Loja.",
     "scat.ver_todo": "Ver todo en",
     "scat.sin_eventos": "No hay eventos registrados en esta categoría por el momento.",
 
@@ -179,7 +182,7 @@ export const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
 
     // Página /eventos
     "eventos_page.breadcrumb_todos": "Todos los eventos",
-    "eventos_page.titulo": "Cartelera y Calendario Cultural",
+    "eventos_page.titulo": "Eventos en Loja: Cartelera Cultural Actualizada",
     "eventos_page.proximos_desc": "Explora los {n} eventos próximos en agenda o toca un día en el calendario interactivo.",
     "eventos_page.sin_proximos": "No hay eventos próximos en este momento.",
     "eventos_page.seccion_proximos": "Eventos Próximos (Hoy y siguientes fechas)",

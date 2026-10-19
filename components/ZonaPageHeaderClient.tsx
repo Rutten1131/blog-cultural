@@ -17,12 +17,12 @@ export function ZonaPageHeaderClient({ zonaNombre, tipoLabel, proximosCount }: P
     : t("zona.parroquia_rural", "Parroquia Rural");
 
   const tituloH1 = (() => {
-    if (locale === "en") return `Events in ${zonaNombre}`;
-    if (locale === "fr") return `Événements à ${zonaNombre}`;
-    if (locale === "de") return `Events in ${zonaNombre}`;
-    if (locale === "pt") return `Eventos em ${zonaNombre}`;
-    if (locale === "ko") return `${zonaNombre} 문화 행사`;
-    return `Eventos en ${zonaNombre}`;
+    if (locale === "en") return `What to do & Events in ${zonaNombre}`;
+    if (locale === "fr") return `Que faire et Événements à ${zonaNombre}`;
+    if (locale === "de") return `Was zu tun & Events in ${zonaNombre}`;
+    if (locale === "pt") return `O que fazer e Eventos em ${zonaNombre}`;
+    if (locale === "ko") return `${zonaNombre} 즐길거리 및 문화 행사`;
+    return `Qué hacer y Eventos en ${zonaNombre}`;
   })();
 
   const countText = (() => {

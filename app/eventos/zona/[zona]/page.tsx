@@ -43,14 +43,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const tipoLabel = zonaInfo.tipo === "URBANA" ? "parroquia urbana" : "parroquia rural";
 
   return {
-    title: `Eventos Culturales en ${zonaInfo.nombre} — Agenda Cultural Loja`,
-    description: `Cartelera de eventos culturales en ${zonaInfo.nombre}, ${tipoLabel} de Loja, Ecuador. Música, teatro, arte y actividades cercanas a ti.`,
+    title: `Qué hacer en ${zonaInfo.nombre}: Eventos, Turismo y Actividades | Loja`,
+    description: `¿Qué hacer en ${zonaInfo.nombre} (${tipoLabel} de Loja, Ecuador)? Descubre eventos culturales hoy, turismo, qué visitar, ferias y actividades de fin de semana.`,
     keywords: [
-      `eventos en ${zonaInfo.nombre}`,
-      `qué hacer en ${zonaInfo.nombre}`,
-      `actividades culturales ${zonaInfo.nombre}`,
-      `agenda cultural ${zonaInfo.nombre} Loja`,
-      `eventos ${tipoLabel} Loja`,
+      `qué hacer en ${zonaInfo.nombre.toLowerCase()}`,
+      `${zonaInfo.nombre.toLowerCase()} qué hacer`,
+      `eventos en ${zonaInfo.nombre.toLowerCase()}`,
+      `turismo en ${zonaInfo.nombre.toLowerCase()}`,
+      `lugares para visitar en loja`,
+      `qué hacer en loja`,
+      `actividades culturales ${zonaInfo.nombre.toLowerCase()}`,
     ],
     alternates: {
       canonical: `${SITE_CONFIG.url}/eventos/zona/${zonaSlug}`,

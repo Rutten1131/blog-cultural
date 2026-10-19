@@ -260,6 +260,37 @@ export function PublicarForm({
           </div>
         </div>
 
+        {/* 🛡️ Alerta interactiva anticanibalización si la fecha excede 15 días */}
+        {(() => {
+          if (!fecha || !fechaFin) return null;
+          const fInicio = new Date(fecha);
+          const fFin = new Date(fechaFin);
+          const diffDias = (fFin.getTime() - fInicio.getTime()) / (1000 * 60 * 60 * 24);
+          if (diffDias <= 15) return null;
+
+          return (
+            <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
+              <p className="font-bold text-sm mb-1 flex items-center gap-1.5">
+                <span>⚠️</span> Duración prolongada ({Math.ceil(diffDias)} días)
+              </p>
+              <p className="leading-relaxed mb-2.5">
+                Agenda Cultural Loja publica exclusivamente <strong>eventos fechados</strong>. Si eres un local o restaurante permanente con menú diario, visita <strong>quecomerenloja.com</strong> para tu ficha fija.
+              </p>
+              <label className="flex items-start gap-2.5 cursor-pointer font-medium text-zinc-800 dark:text-zinc-200 bg-white/70 dark:bg-black/40 p-2.5 rounded-lg border border-amber-200 dark:border-amber-800/60">
+                <input
+                  type="checkbox"
+                  name="solicitudExcepcionCivica"
+                  value="true"
+                  className="mt-0.5 rounded text-amber-600 focus:ring-amber-500"
+                />
+                <span>
+                  Este evento es una <strong>feria cívica o festival institucional de larga duración</strong> (como la Feria de Loja). Solicito revisión y aprobación manual del equipo administrador.
+                </span>
+              </label>
+            </div>
+          );
+        })()}
+
         {/* Lugar */}
         <div>
           <label

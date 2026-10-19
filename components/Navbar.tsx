@@ -33,7 +33,7 @@ function LogoGeometrico({ className = "" }: { className?: string }) {
 
 const MAIN_NAV_LEFT = [
   { href: "/",                           key: "nav.inicio",       fallback: "Inicio" },
-  { href: "/eventos/esta-semana",        key: "nav.esta_semana",  fallback: "Esta Semana" },
+  { href: "/eventos",                    key: "nav.eventos",      fallback: "Eventos" },
   { href: "/eventos/este-fin-de-semana", key: "nav.fin_semana",   fallback: "Fin de Semana" },
 ];
 
@@ -43,6 +43,7 @@ const CATEGORIAS_MENU = [
   { href: "/eventos/categoria/musica",              key: "nav.musica",      fallback: "Música",              emoji: "🎵", color: "from-blue-500/20 to-indigo-500/20",   border: "hover:border-blue-400" },
   { href: "/eventos/categoria/ferias",              key: "nav.ferias",      fallback: "Ferias",              emoji: "🏮", color: "from-amber-500/20 to-orange-500/20",  border: "hover:border-amber-400" },
   { href: "/festival-artes-vivas-loja-2026",        key: "nav.artes_vivas", fallback: "Artes Vivas",         emoji: "✨", color: "from-emerald-500/20 to-teal-500/20",   border: "hover:border-emerald-400" },
+  { href: "/eventos-gastronomicos",                 key: "nav.gastronomia", fallback: "Eventos Gastronómicos", emoji: "🍲", color: "from-orange-500/20 to-amber-500/20",   border: "hover:border-orange-400" },
 ];
 
 export function Navbar() {

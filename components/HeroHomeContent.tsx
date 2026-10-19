@@ -26,7 +26,7 @@ export function HeroHomeContent() {
           {t("hero.h1_prefix", "¿Qué hacer")}{" "}
           <span className="text-gradient-purple">{t("hero.h1_suffix", "en Loja?")}</span>
           <span className="block text-sm md:text-base lg:text-lg font-bold text-[var(--color-muted)] normal-case tracking-normal mt-2">
-            {t("hero.subtitulo", "Eventos, arte y actividades culturales en la ciudad")}
+            {t("hero.subtitulo", "Eventos en Loja hoy, conciertos, teatro, actividades y lugares para visitar")}
           </span>
         </h1>
 

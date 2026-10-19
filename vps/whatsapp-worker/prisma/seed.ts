@@ -27,6 +27,7 @@ const CATEGORIAS = [
   { slug: "musica", nombre: "Música" },
   { slug: "ferias", nombre: "Ferias" },
   { slug: "artes-vivas", nombre: "Artes Vivas" },
+  { slug: "eventos-gastronomicos", nombre: "Eventos Gastronómicos" },
 ];
 
 const ZONAS: { nombre: string; tipo: "URBANA" | "RURAL" }[] = [

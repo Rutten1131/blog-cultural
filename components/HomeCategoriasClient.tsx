@@ -71,6 +71,7 @@ const SLUG_TO_KEYS: Record<string, { cat: string; h2: string; seo: string }> = {
   musica:               { cat: "cat.musica", h2: "scat.h2.musica", seo: "scat.seo.musica" },
   ferias:               { cat: "cat.ferias", h2: "scat.h2.ferias", seo: "scat.seo.ferias" },
   "artes-vivas":        { cat: "cat.artes_vivas", h2: "scat.h2.artes_vivas", seo: "scat.seo.artes_vivas" },
+  "eventos-gastronomicos": { cat: "cat.eventos_gastronomicos", h2: "scat.h2.eventos_gastronomicos", seo: "scat.seo.eventos_gastronomicos" },
 };
 
 /* ── Sección individual por categoría (client) ── */
@@ -120,9 +121,15 @@ function SeccionCategoriaClient({ cat }: { cat: CategoriaConEventos }) {
         )}
 
         {/* Ver todos */}
-        <div className="mt-5">
+        <div className="mt-5 pb-8">
           <Link
-            href={`/eventos/categoria/${cat.slug}`}
+            href={
+              cat.slug === "eventos-gastronomicos"
+                ? "/eventos-gastronomicos"
+                : cat.slug === "artes-vivas"
+                  ? "/festival-artes-vivas-loja-2026"
+                  : `/eventos/categoria/${cat.slug}`
+            }
             className="inline-flex items-center gap-2 rounded-full border-2 px-5 py-2 text-sm font-bold uppercase tracking-wide transition-all duration-200 hover:-translate-y-0.5"
             style={{ borderColor: cat.color, color: cat.color }}
           >
@@ -153,16 +160,21 @@ function ExplorarCategoriasClient({ categorias }: { categorias: CategoriaConEven
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {categorias.map((cat) => {
             const keys = SLUG_TO_KEYS[cat.slug];
             const nombre = keys ? t(keys.cat) : cat.slug;
-            const href = cat.slug === "artes-vivas" ? "/festival-artes-vivas-loja-2026" : `/eventos/categoria/${cat.slug}`;
+            const href =
+              cat.slug === "artes-vivas"
+                ? "/festival-artes-vivas-loja-2026"
+                : cat.slug === "eventos-gastronomicos"
+                  ? "/eventos-gastronomicos"
+                  : `/eventos/categoria/${cat.slug}`;
             return (
               <Link
                 key={cat.slug}
                 href={href}
-                className="group relative flex h-44 sm:h-48 flex-col justify-end overflow-hidden rounded-2xl border border-white/20 p-4 shadow-md transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-white/40"
+                className="group relative flex h-40 sm:h-44 flex-col justify-end overflow-hidden rounded-2xl border border-white/20 p-3.5 shadow-md transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-white/40"
               >
                 {/* Imagen de fondo */}
                 <img
@@ -297,9 +309,18 @@ export function HomeFooterClient({ categorias }: { categorias: CategoriaConEvent
 /* ── Componente principal — agrupa Explorar + Secciones en Tabs ── */
 export function HomeCategoriasClient({ categorias }: HomeCategoriasClientProps) {
   const { t } = useLanguage();
-  const [activeSlug, setActiveSlug] = useState<string>(
-    categorias[0]?.slug || "arte-y-exposiciones"
-  );
+
+  // Seleccionar dinámicamente como pestaña inicial la categoría cultural con mayor número de eventos
+  // (Regla editorial Diana/Hera: eventos-gastronomicos nunca se auto-selecciona de primera en Home)
+  const [activeSlug, setActiveSlug] = useState<string>(() => {
+    if (!categorias || categorias.length === 0) return "arte-y-exposiciones";
+    const categoriasCulturales = categorias.filter((c) => c.slug !== "eventos-gastronomicos");
+    const candidatas = categoriasCulturales.length > 0 ? categoriasCulturales : categorias;
+    const categoriaConMasEventos = [...candidatas].sort(
+      (a, b) => (b.eventos?.length || 0) - (a.eventos?.length || 0)
+    )[0];
+    return categoriaConMasEventos?.slug || candidatas[0].slug;
+  });
 
   const activeCategory =
     categorias.find((c) => c.slug === activeSlug) || categorias[0];
@@ -312,7 +333,7 @@ export function HomeCategoriasClient({ categorias }: HomeCategoriasClientProps) 
       {/* ═══ SECCIÓN DE CATEGORÍAS CON TABS (COMPACTA) ═══ */}
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
         {/* Barra de Tabs de Categorías */}
-        <div className="mb-8 flex items-center justify-start sm:justify-center overflow-x-auto no-scrollbar pb-2 pt-1 gap-2 sm:gap-3">
+        <div className="mb-8 flex items-center justify-start md:justify-center overflow-x-auto md:flex-wrap no-scrollbar pb-3 pt-1 px-2 gap-2 sm:gap-2.5">
           {categorias.map((cat) => {
             const keys = SLUG_TO_KEYS[cat.slug];
             const nombre = keys ? t(keys.cat) : cat.slug;
@@ -323,9 +344,9 @@ export function HomeCategoriasClient({ categorias }: HomeCategoriasClientProps) 
                 key={cat.slug}
                 type="button"
                 onClick={() => setActiveSlug(cat.slug)}
-                className={`group relative flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-300 ${
+                className={`group relative flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs md:text-sm font-black uppercase tracking-wider transition-all duration-300 ${
                   isActive
-                    ? "text-white shadow-lg scale-105"
+                    ? "text-white shadow-lg scale-105 z-10"
                     : "bg-[var(--color-bg-card)] text-[var(--color-muted)] hover:text-[var(--color-dark)] hover:bg-black/5 dark:hover:bg-white/5 border border-black/5 dark:border-white/10"
                 }`}
                 style={{

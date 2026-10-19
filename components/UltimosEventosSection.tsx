@@ -69,7 +69,7 @@ export function UltimosEventosSection({ eventos }: { eventos: Evento[] }) {
               </span>
             </div>
             <h2 className="font-display text-2xl font-black uppercase tracking-tight text-[var(--color-dark)] sm:text-3xl">
-              {t("section.ultimos_titulo", "Últimos Eventos Artísticos Publicados en Loja")}
+              {t("section.ultimos_titulo", "Eventos en Loja Hoy y Cartelera Cultural")}
             </h2>
           </div>
 

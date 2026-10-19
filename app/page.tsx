@@ -18,28 +18,31 @@ import { HomeMobileDescubre } from "@/components/HomeMobileDescubre";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Qué hacer en Loja — Eventos, Arte y Agenda Cultural",
+  title: "Qué hacer en Loja Hoy — Eventos, Agenda Cultural y Turismo",
   description:
-    "Descubre qué está pasando en Loja. ¿Qué hacer en Loja? Conciertos, teatro, exposiciones, ferias y actividades culturales hoy y este fin de semana.",
+    "¿Qué hacer en Loja? Descubre eventos en Loja hoy y este fin de semana: conciertos, teatro, exposiciones de arte, ferias, festival de artes vivas y lugares para visitar.",
   keywords: [
     "Qué hacer en Loja",
     "Eventos en Loja",
+    "Qué hacer en Loja hoy",
     "Eventos Loja",
-    "Agenda cultural de Loja",
-    "Eventos culturales en Loja",
-    "Actividades culturales en Loja",
-    "Qué hacer este fin de semana en Loja",
-    "Teatro en Loja",
+    "Agenda cultural Loja",
+    "Festival de artes vivas Loja",
     "Conciertos en Loja",
+    "Teatro en Loja",
+    "Museos en Loja",
+    "Lugares para visitar en Loja",
+    "Qué hacer en Loja este fin de semana",
     "Ferias en Loja",
+    "Restaurantes Loja",
   ],
   alternates: {
     canonical: "https://www.agendaculturalloja.com",
   },
   openGraph: {
-    title: "Qué hacer en Loja — Agenda Cultural de Loja",
+    title: "Qué hacer en Loja Hoy — Eventos y Agenda Cultural",
     description:
-      "Descubre qué está pasando en Loja. Cartelera oficial de eventos culturales, arte, música y actividades de fin de semana.",
+      "Descubre qué está pasando en Loja. Cartelera oficial de eventos culturales, conciertos, teatro, festivales y actividades de fin de semana.",
     url: "https://www.agendaculturalloja.com",
     siteName: "Agenda Cultural Loja",
     locale: "es_EC",
@@ -78,6 +81,12 @@ const CAT_META: Record<string, { emoji: string; color: string; bg: string; image
     color: "#10b981",
     bg: "from-emerald-900/80 via-teal-900/60 to-emerald-950/90",
     image: "https://images.unsplash.com/photo-1469488865564-c2de10f69f96?auto=format&fit=crop&w=600&q=80",
+  },
+  "eventos-gastronomicos": {
+    emoji: "🍲",
+    color: "#f97316",
+    bg: "from-orange-900/80 via-amber-900/60 to-orange-950/90",
+    image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80",
   },
 };
 

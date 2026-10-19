@@ -130,24 +130,57 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const venue = VENUES[venueSlug];
   if (!venue) return { title: "Venue no encontrado" };
 
+  // Consultar si el recinto tiene eventos vigentes en la base de datos
+  const hoyLoja = inicioDelDiaLojaUTC();
+  const orCondicionesLugar = venue.terminos.map((t) => ({
+    lugar: { contains: t },
+  }));
+
+  const eventosVigentesCount = await prisma.evento.count({
+    where: {
+      estado: "APROBADO",
+      OR: orCondicionesLugar,
+      AND: [
+        {
+          OR: [
+            { fechaFin: { gte: hoyLoja } },
+            { fecha: { gte: hoyLoja } },
+          ],
+        },
+      ],
+    },
+  });
+
+  const tieneEventos = eventosVigentesCount > 0;
+
+  // Título condicional aprobado por Diana y Hera
+  const title = tieneEventos
+    ? `${venue.nombre} — Cartelera Actualizada y Próximos Eventos`
+    : `${venue.nombre} — Ubicación e Historia en Loja`;
+
+  const description = tieneEventos
+    ? `Consulta la cartelera actualizada de eventos, conciertos y presentaciones en ${venue.nombre} (${venue.direccion}, Loja, Ecuador). Fechas y boletería.`
+    : `Información, historia y ubicación de ${venue.nombre} (${venue.direccion}, Loja, Ecuador). Conoce este recinto cultural emblemático de la ciudad.`;
+
   return {
-    title: `Eventos en ${venue.nombre} — Agenda Cultural Loja`,
-    description: `Cartelera de eventos culturales en ${venue.nombre}, ${venue.direccion}, Loja, Ecuador. ${venue.descripcion.slice(0, 100)}...`,
+    title,
+    description,
     keywords: [
-      `eventos en ${venue.nombre}`,
-      `qué hacer en ${venue.nombre}`,
-      `agenda ${venue.nombre} Loja`,
-      `${venue.tipo} Loja`,
-      `actividades culturales ${venue.nombre}`,
-      "qué hacer en Loja",
+      venue.nombre,
+      `${venue.nombre} Loja`,
+      `${venue.nombre} cartelera`,
+      `Qué hacer en Loja`,
+      `Eventos en Loja`,
+      `${venue.tipo} en Loja`,
+      "qué hacer en Loja hoy",
       "agenda cultural Loja",
     ],
     alternates: {
       canonical: `${SITE_CONFIG.url}/lugar/${venueSlug}`,
     },
     openGraph: {
-      title: `Eventos en ${venue.nombre} — Cartelera Oficial`,
-      description: `${venue.descripcion.slice(0, 155)}...`,
+      title,
+      description,
       url: `${SITE_CONFIG.url}/lugar/${venueSlug}`,
       siteName: SITE_CONFIG.nombre,
       locale: "es_EC",
@@ -155,8 +188,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     twitter: {
       card: "summary_large_image",
-      title: `Eventos en ${venue.nombre} — Agenda Cultural Loja`,
-      description: `Cartelera de conciertos, teatro, arte y actividades en ${venue.nombre}, Loja.`,
+      title,
+      description,
     },
   };
 }

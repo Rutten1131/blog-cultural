@@ -112,6 +112,16 @@ export async function crearEvento(
         error: "La fecha de finalización no puede ser anterior a la fecha de inicio.",
       };
     }
+
+    // 🛡️ Guardarraíl Anticanibalización: duración máxima de 15 días
+    const diffDias = (fechaFinDate.getTime() - fechaDate.getTime()) / (1000 * 60 * 60 * 24);
+    const esExcepcionCivica = formData.get("solicitudExcepcionCivica") === "true";
+    if (diffDias > 15 && !esExcepcionCivica) {
+      return {
+        success: false,
+        error: "Agenda Cultural Loja es exclusivamente para eventos fechados puntuales. Si eres un restaurante, cafetería o local permanente, visítanos en quecomerenloja.com para registrar tu negocio. Si este evento corresponde a una feria cívica especial de larga duración (como la Feria de Loja), marca la casilla de solicitud de excepción para revisión manual del administrador.",
+      };
+    }
   }
 
   // Validar URL de imagen o primera de multimedia

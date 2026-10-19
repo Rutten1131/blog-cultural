@@ -19,6 +19,7 @@ const SLUG_TO_KEYS: Record<string, { cat: string; h2: string; seo: string }> = {
   musica:               { cat: "cat.musica", h2: "scat.h2.musica", seo: "scat.seo.musica" },
   ferias:               { cat: "cat.ferias", h2: "scat.h2.ferias", seo: "scat.seo.ferias" },
   "artes-vivas":        { cat: "cat.artes_vivas", h2: "scat.h2.artes_vivas", seo: "scat.seo.artes_vivas" },
+  "eventos-gastronomicos": { cat: "cat.eventos_gastronomicos", h2: "scat.h2.eventos_gastronomicos", seo: "scat.seo.eventos_gastronomicos" },
 };
 
 /* ── Metadatos visuales por categoría (imágenes hero en alta resolución y colores) ── */
@@ -66,6 +67,13 @@ const CAT_HERO_VISUALS: Record<
     color: "#10b981",
     bgGradient: "from-emerald-950/90 via-slate-950/75 to-emerald-950/90",
     tagline: "Danza, Performance, Mimo & Teatro de Calle",
+  },
+  "eventos-gastronomicos": {
+    image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1600&q=85",
+    emoji: "🍲",
+    color: "#f97316",
+    bgGradient: "from-orange-950/90 via-slate-950/75 to-orange-950/90",
+    tagline: "Ferias Gastronómicas, Festivales & Rutas del Café",
   },
 };
 

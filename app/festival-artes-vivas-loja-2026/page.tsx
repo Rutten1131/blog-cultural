@@ -195,18 +195,18 @@ export default async function FestivalArtesVivasPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-300"></span>
             </span>
-            ✨ 10ª Edición Oficial 2026 · Loja, Ecuador
+            ✨ Edición 2026 · Loja, Ecuador
           </div>
 
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-display font-black uppercase tracking-tight text-white leading-[1.05] drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] max-w-4xl">
             Festival Internacional de <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-violet-300 via-pink-400 to-amber-300 bg-clip-text text-transparent">
-              Artes Vivas Loja
+              Artes Vivas Loja 2026
             </span>
           </h1>
 
           <p className="hidden md:block mt-5 text-sm sm:text-base md:text-lg text-slate-200/90 max-w-2xl font-medium leading-relaxed drop-shadow-md">
-            El encuentro de artes escénicas más trascendente del Ecuador. Descubre el itinerario oficial, salas de teatro y las expresiones culturales vivas que transforman las calles lojanas.
+            El encuentro de artes escénicas más trascendente del Ecuador. Descubre la programación, teatros y las expresiones culturales vivas que transforman las calles lojanas.
           </p>
 
           {/* Botones de acción limpia */}
@@ -297,7 +297,7 @@ export default async function FestivalArtesVivasPage() {
         )}
 
         {/* ── SECCIÓN 3: PREGUNTAS FRECUENTES (SEO FAQ RICH SNIPPETS) ── */}
-        <section className="mt-14 pt-10 border-t border-[var(--color-border)]">
+        <section className="mt-14 pt-10 border-t border-[var(--color-border)]" id="faq">
           <h2 className="text-2xl font-display font-black uppercase text-[var(--color-dark)] mb-6">
             Preguntas Frecuentes sobre el Festival de Artes Vivas Loja 2026
           </h2>
@@ -305,10 +305,19 @@ export default async function FestivalArtesVivasPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-white/40 dark:bg-black/10">
               <h3 className="font-bold text-base text-[var(--color-dark)] mb-2">
-                ¿Cuándo se realiza el FIAVL 2026 en Loja?
+                ¿Cuándo se realiza el Festival de Artes Vivas Loja 2026?
               </h3>
               <p className="text-sm text-[var(--color-muted)] leading-relaxed">
-                El festival se realiza anualmente durante el mes de noviembre, convirtiendo a Loja en el epicentro de la dramaturgia y la danza en Ecuador con más de 10 días continuos de espectáculos.
+                El festival tiene lugar habitualmente durante el mes de noviembre en el cantón Loja, convirtiendo a la ciudad en un escenario vivo con compañías escénicas, música y danza.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-white/40 dark:bg-black/10">
+              <h3 className="font-bold text-base text-[var(--color-dark)] mb-2">
+                ¿Dónde se publica la programación del FIAVL 2026?
+              </h3>
+              <p className="text-sm text-[var(--color-muted)] leading-relaxed">
+                La cartelera de obras se difunde a través de los canales institucionales del Municipio de Loja y el Ministerio de Cultura. En esta plataforma recopilamos y mantenemos actualizada la agenda para el público asistente.
               </p>
             </div>
 
@@ -317,7 +326,7 @@ export default async function FestivalArtesVivasPage() {
                 ¿Dónde se presentan las obras del festival?
               </h3>
               <p className="text-sm text-[var(--color-muted)] leading-relaxed">
-                Los principales escenarios cerrados son el <Link href="/lugar/teatro-benjamin-carrion" className="underline font-medium hover:text-purple-600">Teatro Benjamín Carrión</Link>, el <Link href="/lugar/teatro-bolivar" className="underline font-medium hover:text-purple-600">Teatro Bolívar</Link> y la <Link href="/lugar/casona-cultural" className="underline font-medium hover:text-purple-600">Casona Cultural</Link>, además del circuito al aire libre en la <Link href="/lugar/plaza-san-sebastian" className="underline font-medium hover:text-purple-600">Plaza de San Sebastián</Link>.
+                Los principales escenarios cerrados son el <Link href="/lugar/teatro-benjamin-carrion" className="underline font-medium hover:text-purple-600">Teatro Benjamín Carrión</Link>, el <Link href="/lugar/teatro-bolivar" className="underline font-medium hover:text-purple-600">Teatro Simón Bolívar</Link> y el <Link href="/lugar/teatro-segundo-cueva-celi" className="underline font-medium hover:text-purple-600">Teatro Segundo Cueva Celi</Link>, además del circuito al aire libre en la <Link href="/lugar/plaza-san-sebastian" className="underline font-medium hover:text-purple-600">Plaza de San Sebastián</Link>.
               </p>
             </div>
 
@@ -326,16 +335,7 @@ export default async function FestivalArtesVivasPage() {
                 ¿Las funciones del festival son gratuitas?
               </h3>
               <p className="text-sm text-[var(--color-muted)] leading-relaxed">
-                Todas las actividades en las calles, plazas y parques son 100% gratuitas y sin reserva previa. Para los teatros oficiales el acceso suele ser libre mediante canje previo de boletos en boleterías designadas.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-white/40 dark:bg-black/10">
-              <h3 className="font-bold text-base text-[var(--color-dark)] mb-2">
-                ¿Cómo publicar una obra o evento del festival?
-              </h3>
-              <p className="text-sm text-[var(--color-muted)] leading-relaxed">
-                Si eres gestor cultural, artista o compañía participante, puedes registrar tu función de forma gratuita directamente en nuestra sección de <Link href="/publicar" className="underline font-medium hover:text-purple-600">publicar evento</Link>.
+                Todas las actividades en calles y plazas públicas son de libre acceso sin reserva previa. Para las funciones en salas cerradas de teatro se aplican las modalidades de boletería o canje dispuestas por los organizadores.
               </p>
             </div>
           </div>
@@ -345,11 +345,11 @@ export default async function FestivalArtesVivasPage() {
         <div className="mt-12 p-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex flex-wrap items-center justify-between gap-4">
           <div>
             <h4 className="font-bold text-[var(--color-dark)] text-sm">Explora más en Loja</h4>
-            <p className="text-xs text-[var(--color-muted)]">Cartelera de la semana y principales recintos de la ciudad.</p>
+            <p className="text-xs text-[var(--color-muted)]">Cartelera actualizada y principales recintos de la ciudad.</p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
-            <Link href="/eventos/esta-semana" className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-white/70 dark:bg-black/20 font-medium hover:border-purple-500 transition-colors">
-              📅 Esta Semana
+            <Link href="/eventos" className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-white/70 dark:bg-black/20 font-medium hover:border-purple-500 transition-colors">
+              📅 Todos los Eventos
             </Link>
             <Link href="/eventos/este-fin-de-semana" className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-white/70 dark:bg-black/20 font-medium hover:border-purple-500 transition-colors">
               🎉 Fin de Semana

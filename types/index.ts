@@ -12,7 +12,8 @@ export type CategoriaSlug =
   | "teatro"
   | "musica"
   | "ferias"
-  | "artes-vivas";
+  | "artes-vivas"
+  | "eventos-gastronomicos";
 
 export interface Categoria {
   slug: CategoriaSlug;
@@ -25,6 +26,7 @@ export const CATEGORIAS: Categoria[] = [
   { slug: "musica", nombre: "Música" },
   { slug: "ferias", nombre: "Ferias" },
   { slug: "artes-vivas", nombre: "Artes Vivas" },
+  { slug: "eventos-gastronomicos", nombre: "Eventos Gastronómicos" },
 ];
 
 /* ─── Estado de publicación ──────────────────────────────── */
