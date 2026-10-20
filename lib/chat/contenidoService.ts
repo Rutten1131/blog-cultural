@@ -53,6 +53,7 @@ export interface AliadoItem {
   ubicacionLng: number | null;
   estrellas: number | null;
   numeroCuartos: number | null;
+  canton?: string | null;
   habitaciones?: HabitacionItem[];
   distanciaKm?: number | null;
   distanciaTexto?: string;
@@ -317,12 +318,22 @@ export const turismoService = {
    * Carga hoteles, hosterías y hostales con sus habitaciones y tarifas
    * MIENTRAS TANTO: Se leen desde la base de datos central de Botempresas (CHATBOT_DB_URL).
    */
-  async obtenerHoteles(limite = 20): Promise<AliadoItem[]> {
+  async obtenerHoteles(limite = 20, canton?: string): Promise<AliadoItem[]> {
+    const whereClause: any = {
+      activo: true,
+      tipo: "HOSPEDAJE",
+    };
+
+    if (canton && canton.trim()) {
+      whereClause.OR = [
+        { canton: { equals: canton.trim() } },
+        { ubicacion: { contains: canton.trim() } },
+        { descripcion: { contains: canton.trim() } },
+      ];
+    }
+
     return prismaBot.aliados.findMany({
-      where: {
-        activo: true,
-        tipo: "HOSPEDAJE",
-      },
+      where: whereClause,
       orderBy: [{ destacado: "desc" }, { createdAt: "desc" }],
       take: limite,
       include: {

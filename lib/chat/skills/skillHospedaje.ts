@@ -27,42 +27,81 @@ import { turismoService, enriquecerConDistanciaGPS } from "@/lib/chat/contenidoS
 import type { SkillInput, SkillResult } from "./types";
 import type { HabitacionItem } from "@/lib/chat/contenidoService";
 
+// Cantones oficiales de la provincia de Loja para detección inteligente
+const CANTONES_LOJA = [
+  "Loja", "Catamayo", "Saraguro", "Paltas", "Calvas", "Puyango",
+  "Macará", "Celica", "Gonzanamá", "Espíndola", "Chaguarpamba",
+  "Pindal", "Sozoranga", "Zapotillo", "Olmedo", "Quilanga"
+];
+
+function extraerCantonDeTexto(texto: string): string | null {
+  const normalizar = (str: string) =>
+    str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const textoNorm = normalizar(texto);
+  for (const c of CANTONES_LOJA) {
+    const cNorm = normalizar(c);
+    const regex = new RegExp(`\\b${cNorm}\\b`, "i");
+    if (regex.test(textoNorm)) return c;
+  }
+  return null;
+}
+
 export async function ejecutarSkillHospedaje(input: SkillInput): Promise<SkillResult> {
-  const { ubicacion, terminosBusqueda } = input;
+  const { ubicacion, terminosBusqueda, mensajeUsuario } = input;
 
-  // ── 1. Cargar hoteles desde Botempresas ──────────────────────────────────
-  let hoteles = await turismoService.obtenerHoteles(input.limite ?? 20);
+  // ── 1. Detectar si el usuario pregunta por un cantón específico ────────────
+  const cantonDetectado = extraerCantonDeTexto(
+    `${mensajeUsuario || ""} ${terminosBusqueda.join(" ")} ${ubicacion?.ciudad || ""} ${ubicacion?.provincia || ""}`
+  );
 
-  // ── 2. Filtrar por palabras clave si las hay ─────────────────────────────
-  if (terminosBusqueda.length > 0) {
+  // ── 2. Cargar hoteles desde la DB (aprovechando filtro de cantón si existe) ─
+  let hoteles = await turismoService.obtenerHoteles(input.limite ?? 20, cantonDetectado || undefined);
+
+  // ── 3. Priorización estricta por cantón si fue detectado ──────────────────
+  if (cantonDetectado) {
+    const coincidenciasCanton = hoteles.filter((h) => {
+      if (h.canton && h.canton.toLowerCase() === cantonDetectado.toLowerCase()) return true;
+      const haystack = `${h.ubicacion} ${h.descripcion}`.toLowerCase();
+      return haystack.includes(cantonDetectado.toLowerCase());
+    });
+    if (coincidenciasCanton.length > 0) {
+      hoteles = coincidenciasCanton;
+    }
+  } else if (terminosBusqueda.length > 0) {
+    // Filtrar por palabras clave si no fue búsqueda por cantón
     const filtrados = hoteles.filter((h) => {
-      const haystack = `${h.nombre} ${h.descripcion} ${h.ubicacion} ${h.servicios || ""}`.toLowerCase();
+      const haystack = `${h.nombre} ${h.descripcion} ${h.ubicacion} ${h.servicios || ""} ${h.canton || ""}`.toLowerCase();
       return terminosBusqueda.some((t) => haystack.includes(t.toLowerCase()));
     });
     if (filtrados.length > 0) hoteles = filtrados;
   }
 
-  // ── 3. Enriquecer con distancia GPS si aplica ────────────────────────────
+  // ── 4. Enriquecer con distancia GPS si aplica ────────────────────────────
   if (ubicacion?.lat && ubicacion?.lng) {
     hoteles = enriquecerConDistanciaGPS(hoteles, { lat: ubicacion.lat, lng: ubicacion.lng });
   }
 
-  // ── 4. Formatear contexto para el prompt ─────────────────────────────────
+  // ── 5. Formatear contexto para el prompt ─────────────────────────────────
   const aliadosContexto = hoteles.map((a) => {
     const tiposHabitacion = (a.habitaciones || [])
       .map((h: HabitacionItem) =>
         `${h.nombre}${h.precio ? ` (${h.precio})` : ""}${h.caracteristicas ? `: ${h.caracteristicas}` : ""}`
       )
       .join(" / ");
-    return `[ID:${a.id}] ${a.nombre} | Tipo:${a.tipo} | Dirección:${a.ubicacion}${a.distanciaTexto || ""} | Precio:${a.rangoPrecio || "Consultar"} | WhatsApp:${a.telefono || ""} | Web:${a.websiteUrl || ""} | Maps:${a.mapaUrl || ""} | Servicios:${a.servicios || ""}${tiposHabitacion ? ` | Habitaciones:${tiposHabitacion}` : ""} | Desc:${a.descripcion}`;
+    const cantonTexto = a.canton ? ` | Cantón:${a.canton}` : "";
+    return `[ID:${a.id}] ${a.nombre} | Tipo:${a.tipo}${cantonTexto} | Dirección:${a.ubicacion}${a.distanciaTexto || ""} | Precio:${a.rangoPrecio || "Consultar"} | WhatsApp:${a.telefono || ""} | Web:${a.websiteUrl || ""} | Maps:${a.mapaUrl || ""} | Servicios:${a.servicios || ""}${tiposHabitacion ? ` | Habitaciones:${tiposHabitacion}` : ""} | Desc:${a.descripcion}`;
   }).join("\n");
+
+  const contextoCanton = cantonDetectado
+    ? `\nCANTÓN CONSULTADO POR EL USUARIO: "${cantonDetectado}". Los hoteles mostrados pertenecen o están vinculados a este cantón.`
+    : "";
 
   const contextoGPS = ubicacion?.zona
     ? `\nUBICACIÓN GPS DEL USUARIO: Zona "${ubicacion.zona}". Los hoteles están ordenados por cercanía.`
     : "";
 
   return {
-    contextoPrompt: `ALIADOS DE HOSPEDAJE DISPONIBLES:\n${aliadosContexto || "Sin hoteles registrados."}\n${contextoGPS}\n\nREGLA: Cuando el usuario pida hospedaje, incluye SIEMPRE en "aliadosRecomendadosIds" los IDs de los hoteles más relevantes (máximo 3).`,
+    contextoPrompt: `ALIADOS DE HOSPEDAJE DISPONIBLES:\n${aliadosContexto || "Sin hoteles registrados para esta búsqueda."}\n${contextoCanton}${contextoGPS}\n\nREGLA: Cuando el usuario pida hospedaje, incluye SIEMPRE en "aliadosRecomendadosIds" los IDs de los hoteles más relevantes (máximo 3). Si especificó un cantón, recomienda EXCLUSIVAMENTE los hoteles de ese cantón.`,
     eventos: [],
     aliados: hoteles,
     atractivos: [],

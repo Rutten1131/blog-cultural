@@ -113,6 +113,7 @@ model aliados {
   ubicacionLng        Float?
   estrellas           Int?
   numeroCuartos       Int?
+  canton              String?               @db.VarChar(50)
   aliado_habitaciones aliado_habitaciones[]
 
   @@index([tipo, activo])
