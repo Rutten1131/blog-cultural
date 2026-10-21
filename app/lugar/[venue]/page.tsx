@@ -153,14 +153,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const tieneEventos = eventosVigentesCount > 0;
 
-  // Título condicional aprobado por Diana y Hera
-  const title = tieneEventos
-    ? `${venue.nombre} — Cartelera Actualizada y Próximos Eventos`
-    : `${venue.nombre} — Ubicación e Historia en Loja`;
+  const title = `${venue.nombre} Loja — Cartelera, Obras y Próximos Eventos 2026`;
 
   const description = tieneEventos
-    ? `Consulta la cartelera actualizada de eventos, conciertos y presentaciones en ${venue.nombre} (${venue.direccion}, Loja, Ecuador). Fechas y boletería.`
-    : `Información, historia y ubicación de ${venue.nombre} (${venue.direccion}, Loja, Ecuador). Conoce este recinto cultural emblemático de la ciudad.`;
+    ? `Consulta la cartelera actualizada de eventos, obras de teatro, conciertos y presentaciones en ${venue.nombre} (${venue.direccion}, Loja, Ecuador). Fechas y boletería.`
+    : `Cartelera, obras de teatro, conciertos y presentaciones culturales en ${venue.nombre} (${venue.direccion}, Loja, Ecuador). Conoce su programación y eventos actualizados.`;
 
   return {
     title,

@@ -117,10 +117,10 @@ export default async function FestivalArtesVivasPage() {
         mainEntity: [
           {
             "@type": "Question",
-            name: "¿Cuándo es el Festival de Artes Vivas de Loja 2026 (FIAVL)?",
+            name: "¿Cuáles son las fechas confirmadas del Festival de Artes Vivas Loja 2026 (FIAVL)?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "El Festival Internacional de Artes Vivas de Loja se celebra tradicionalmente durante el mes de noviembre en la ciudad de Loja, Ecuador, congregando compañías nacionales e internacionales de teatro, danza y performance.",
+              text: "El Festival Internacional de Artes Vivas de Loja 2026 (FIAVL) se celebra del 12 al 22 de noviembre de 2026 en la ciudad de Loja, Ecuador, con más de 300 actividades, 80 obras teatrales y elencos internacionales invitados.",
             },
           },
           {
@@ -128,7 +128,15 @@ export default async function FestivalArtesVivasPage() {
             name: "¿Cómo consultar el itinerario y programación del FIAVL 2026?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "En Agenda Cultural Loja dispones del calendario en tiempo real con horarios, salas (Teatro Benjamín Carrión, Teatro Bolívar, Casona Cultural) y las intervenciones en plazas públicas como San Sebastián y el Parque Central.",
+              text: "En Agenda Cultural Loja dispones de la cartelera oficial en tiempo real con horarios, salas (Teatro Benjamín Carrión, Teatro Bolívar, Casona Cultural) y las intervenciones de calle en plazas públicas como San Sebastián.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "¿Qué relación tienen las Fiestas de Loja con el Festival de Artes Vivas?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "El Festival de Artes Vivas coincide con las Fiestas de Independencia de Loja (18 de noviembre), por lo que la ciudad celebra simultáneamente desfiles cívicos, conciertos nocturnos gratuitos, ferias gastronómicas y obras artísticas internacionales.",
             },
           },
           {

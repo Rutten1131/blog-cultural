@@ -290,12 +290,17 @@ export default async function Home() {
             name: ev.nombre,
             startDate: new Date(ev.fecha).toISOString(),
             ...(ev.fechaFin ? { endDate: new Date(ev.fechaFin).toISOString() } : {}),
+            eventStatus: "https://schema.org/EventScheduled",
+            eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+            ...(ev.imagenUrl ? { image: ev.imagenUrl } : {}),
+            description: ev.descripcion ? ev.descripcion.slice(0, 160) : `Evento ${ev.nombre} en Loja, Ecuador`,
             location: {
               "@type": "Place",
-              name: ev.lugar,
+              name: ev.lugar || "Loja, Ecuador",
               address: {
                 "@type": "PostalAddress",
                 addressLocality: "Loja",
+                addressRegion: "Loja",
                 addressCountry: "EC",
               },
             },
