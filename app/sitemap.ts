@@ -115,6 +115,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "plaza-san-sebastian",
     "parque-jipiro",
     "museo-musica-loja",
+    "centro-cultural-alfredo-mora-reyes",
+    "museo-cultura-lojana",
+    "nano-casa-museo",
+    "sala-eduardo-kingman",
+    "escena-continua",
   ];
   const venueRoutes: MetadataRoute.Sitemap = venueSlugs.map((slug) => ({
     url: `${baseUrl}/lugar/${slug}`,
@@ -123,5 +128,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  return [homeRoute, ...staticRoutes, ...venueRoutes, ...categoriaRoutes, ...zonaRoutes, ...eventoRoutes];
+  // 7. Directorio de Organizaciones, Elencos y Escuelas Culturales de Loja
+  const { ORGANIZACIONES_CULTURALES } = await import("@/lib/organizacionesData");
+  const directorioHubRoute: MetadataRoute.Sitemap[number] = {
+    url: `${baseUrl}/directorio`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.9,
+  };
+  const directorioRoutes: MetadataRoute.Sitemap = Object.keys(ORGANIZACIONES_CULTURALES).map((slug) => ({
+    url: `${baseUrl}/directorio/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.85,
+  }));
+
+  return [homeRoute, ...staticRoutes, ...venueRoutes, directorioHubRoute, ...directorioRoutes, ...categoriaRoutes, ...zonaRoutes, ...eventoRoutes];
 }
+

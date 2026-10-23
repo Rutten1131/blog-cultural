@@ -35,6 +35,7 @@ const MAIN_NAV_LEFT = [
   { href: "/",                           key: "nav.inicio",       fallback: "Inicio" },
   { href: "/eventos",                    key: "nav.eventos",      fallback: "Eventos" },
   { href: "/eventos/este-fin-de-semana", key: "nav.fin_semana",   fallback: "Fin de Semana" },
+  { href: "/directorio",                 key: "nav.directorio",   fallback: "Directorio" },
 ];
 
 const CATEGORIAS_MENU = [

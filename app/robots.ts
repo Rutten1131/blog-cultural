@@ -7,45 +7,50 @@ export default function robots(): MetadataRoute.Robots {
       // ── Regla general para todos los bots ──────────────────────────────
       {
         userAgent: "*",
-        allow: ["/", "/eventos/", "/sobre-el-proyecto", "/publicar", "/socios-fundadores"],
+        allow: ["/", "/eventos/", "/directorio/", "/lugar/", "/sobre-el-proyecto", "/publicar", "/socios-fundadores"],
         disallow: ["/admin/", "/api/", "/_next/", "/superadmin/"],
       },
       // ── Bots de IA generativa: acceso total a contenido público ────────
-      // Permiten que ChatGPT, Copilot y Perplexity citen agendaculturalloja.com
-      // cuando alguien pregunte "qué eventos hay en Loja"
+      // Permiten que ChatGPT, Copilot, Perplexity y Claude citen agendaculturalloja.com
+      // cuando alguien pregunte "qué academias o espacios culturales hay en Loja"
       {
         userAgent: "GPTBot",
-        allow: ["/", "/eventos/", "/sobre-el-proyecto"],
+        allow: ["/", "/eventos/", "/directorio/", "/lugar/", "/sobre-el-proyecto"],
         disallow: ["/admin/", "/api/", "/superadmin/"],
       },
       {
         userAgent: "OAI-SearchBot",
-        allow: ["/", "/eventos/", "/sobre-el-proyecto"],
+        allow: ["/", "/eventos/", "/directorio/", "/lugar/", "/sobre-el-proyecto"],
         disallow: ["/admin/", "/api/", "/superadmin/"],
       },
       {
         userAgent: "Google-Extended",
-        allow: ["/", "/eventos/", "/sobre-el-proyecto"],
+        allow: ["/", "/eventos/", "/directorio/", "/lugar/", "/sobre-el-proyecto"],
         disallow: ["/admin/", "/api/", "/superadmin/"],
       },
       {
         userAgent: "PerplexityBot",
-        allow: ["/", "/eventos/", "/sobre-el-proyecto"],
+        allow: ["/", "/eventos/", "/directorio/", "/lugar/", "/sobre-el-proyecto"],
+        disallow: ["/admin/", "/api/", "/superadmin/"],
+      },
+      {
+        userAgent: "ClaudeBot",
+        allow: ["/", "/eventos/", "/directorio/", "/lugar/", "/sobre-el-proyecto"],
         disallow: ["/admin/", "/api/", "/superadmin/"],
       },
       {
         userAgent: "YouBot",
-        allow: ["/", "/eventos/"],
+        allow: ["/", "/eventos/", "/directorio/", "/lugar/"],
         disallow: ["/admin/", "/api/", "/superadmin/"],
       },
       {
         userAgent: "Bingbot",
-        allow: ["/", "/eventos/", "/sobre-el-proyecto"],
+        allow: ["/", "/eventos/", "/directorio/", "/lugar/", "/sobre-el-proyecto"],
         disallow: ["/admin/", "/api/", "/superadmin/"],
       },
       {
         userAgent: "DuckDuckBot",
-        allow: ["/", "/eventos/"],
+        allow: ["/", "/eventos/", "/directorio/", "/lugar/"],
         disallow: ["/admin/", "/api/", "/superadmin/"],
       },
       // ── Auditoría SEO profesional ────────────────────────────────────
